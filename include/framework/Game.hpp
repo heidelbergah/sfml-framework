@@ -7,14 +7,9 @@
 #ifndef GAME_HPP
 #define GAME_HPP
 
-#include <SFML/Window.hpp>
-#include <SFML/System.hpp>
-#include <SFML/Graphics.hpp>
-//#include <SFML/Audio.hpp>
-//#include <SFML/Network.hpp>
-
-#include <iostream>
-//#include <vector>
+#include "../Includes.hpp"
+#include "../gui/Widget.hpp"
+#include "../gui/Button.hpp"
 
 class Game
 {
@@ -25,16 +20,19 @@ private:
     const std::string GAME_NAME = "undefined";
     const unsigned int WINDOW_WIDTH = 800, WINDOW_HEIGHT = 800;
 
+    void initialize_objects();
     void process_events();
     void update(sf::Time delta_time);
     void render();
 
 private:
     // ADD YOUR DATA HERE
-    sf::CircleShape m_player;
+    std::vector<std::unique_ptr<Widget>> m_widgets;
 
 public:
     Game();
+    ~Game();
+
     void run(int frame_per_seconds);
 
 };
