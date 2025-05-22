@@ -10,6 +10,7 @@
 #include "../Includes.hpp"
 #include "../gui/Widget.hpp"
 #include "../gui/Button.hpp"
+#include "../gui/TextBox.hpp"
 
 class Game
 {

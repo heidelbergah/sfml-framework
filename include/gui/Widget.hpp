@@ -9,6 +9,13 @@
 
 #include "../Includes.hpp"
 
+enum Alignment
+{
+    CENTER = 1,
+    RIGHT = 2,
+    LEFT = 3
+};
+
 class Widget : public sf::Drawable
 {
     private:

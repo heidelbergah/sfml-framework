@@ -12,6 +12,8 @@ void Button::draw(sf::RenderTarget &target, sf::RenderStates states) const
     m_render_texture.clear();
     m_render_texture.draw(m_outline);
     m_render_texture.draw(m_background);
+    if(m_text) // If m_text is not null
+        m_render_texture.draw(*m_text);
     m_render_texture.display();
     m_sprite.setTexture(m_render_texture.getTexture());
     target.draw(m_sprite, states);
@@ -82,5 +84,37 @@ void Button::set_outline(sf::Color color, int thickness)
     m_outline.setPosition(sf::Vector2f(0, 0));
     m_background.setPosition(sf::Vector2f(thickness, thickness));
     m_background.setSize(sf::Vector2f(m_size.x - (thickness*2), m_size.y - (thickness*2)));
+}
+
+void Button::add_text(std::string text, sf::Font& font, sf::Color color, Alignment alignment)
+{
+    m_font = std::make_unique<sf::Font>(font);
+    m_text = std::make_unique<sf::Text>(*m_font, text, text.size());
+    
+    m_text->setCharacterSize(12);
+    m_text->setStyle(sf::Text::Regular);
+    m_text->setFillColor(color);
+
+    sf::Vector2f text_pos;
+    sf::Vector2f text_bounds = m_text->getLocalBounds().size;
+    int letter_spacing = m_text->getLetterSpacing();
+
+    switch(alignment)
+    {
+        case CENTER:
+            m_text->setOrigin(sf::Vector2f(text_bounds.x/2, text_bounds.y/2));
+            text_pos = sf::Vector2f(m_size.x/2, m_size.y/2);
+            break;
+        case LEFT:
+            m_text->setOrigin(sf::Vector2f(0, text_bounds.y/2));
+            text_pos = sf::Vector2f(letter_spacing, m_size.y/2);
+            break;
+        case RIGHT:
+            m_text->setOrigin(sf::Vector2f(text_bounds.x, text_bounds.y/2));
+            text_pos = sf::Vector2f(m_size.x-letter_spacing, m_size.y/2);
+            break;
+    }
+
+    m_text->setPosition(text_pos);
 }
 
