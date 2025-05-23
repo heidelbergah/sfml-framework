@@ -7,9 +7,9 @@
 #ifndef BUTTON_HPP
 #define BUTTON_HPP
 
-#include "Widget.hpp"
+#include "TextWidget.hpp"
 
-class Button : public Widget
+class Button : public TextWidget
 {
 private:
     mutable sf::RenderTexture m_render_texture;
@@ -21,13 +21,8 @@ private:
     sf::Color m_light_color;
     sf::Color m_outline_color;
     sf::Vector2f m_pos;
-    sf::Vector2f m_size;
-
-    std::unique_ptr<sf::Font> m_font;
-    std::unique_ptr<sf::Text> m_text;
 
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
-
     void create_color_variants();
 public:
     Button(sf::Vector2f button_shape, sf::Color color);
@@ -36,8 +31,6 @@ public:
 
     void set_position(sf::Vector2f pos);
     void set_outline(sf::Color color, int thickness);
-
-    void add_text(std::string text, sf::Font& font, sf::Color color, Alignment alignment=CENTER);
 };
 
 #endif

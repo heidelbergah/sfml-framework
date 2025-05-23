@@ -18,13 +18,17 @@ enum Alignment
 
 class Widget : public sf::Drawable
 {
-    private:
-        void virtual draw(sf::RenderTarget &target, sf::RenderStates states) const = 0;
+private:
+    void virtual draw(sf::RenderTarget &target, sf::RenderStates states) const = 0;
 
-    public:
-        Widget() = default;
-        virtual void update(sf::Time delta_time) {};
-        virtual void handle_event(const sf::RenderWindow& window) {};
+protected:
+    sf::Vector2f m_pos;
+    sf::Vector2f m_size;
+
+public:
+    Widget() = default;
+    virtual void update(sf::Time delta_time) {};
+    virtual void handle_event(const sf::RenderWindow& window) {};
 };
 
 #endif

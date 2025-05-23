@@ -16,7 +16,8 @@ void TextBox::draw(sf::RenderTarget& target, sf::RenderStates states) const
     m_render_texture.clear();
     m_render_texture.draw(m_outline);
     m_render_texture.draw(m_background);
-    m_render_texture.draw(m_text);
+    if(m_text)
+        m_render_texture.draw(*m_text);
     m_render_texture.display();
     m_sprite.setTexture(m_render_texture.getTexture());
     target.draw(m_sprite, states);
@@ -27,41 +28,26 @@ void TextBox::update_text(int num_chars)
     std::string new_text = "";
     new_text.append(m_string, 0, num_chars);
 
-    m_text.setString(new_text);
-    m_text.setCharacterSize(12);
-    m_text.setStyle(sf::Text::Regular);
-    m_text.setFillColor(sf::Color::Black);
-
-    sf::Vector2f text_pos;
-    sf::Vector2f text_bounds = m_text.getLocalBounds().size;
-    int letter_spacing = m_text.getLetterSpacing();
-
-    m_text.setOrigin(sf::Vector2f(text_bounds.x/2, text_bounds.y/2));
-    text_pos = sf::Vector2f(m_size.x/2, m_size.y/2);
-
-    m_text.setPosition(text_pos);
+    set_text(new_text, m_text_color);
+    set_alignment(CENTER);
 }
 
 TextBox::TextBox(sf::Vector2f size, sf::Color color,
-                 std::string text, sf::Font& font) :
+                 std::string string, sf::Font& font,
+                 sf::Color text_color) :
     m_render_texture({static_cast<unsigned>(size.x),
                       static_cast<unsigned>(size.y)}),
-    m_sprite(m_render_texture.getTexture()),
-    m_font(font),
-    m_text(m_font, text, text.size())
+    m_sprite(m_render_texture.getTexture())
 {
     m_color = color;
     m_size = size;
-    m_string = text;
+
+    add_text(string, font, text_color);
 
     m_sprite.setPosition(sf::Vector2f(0, 0));
     m_background.setPosition(sf::Vector2f(0, 0));
     m_background.setSize(m_size);
     m_background.setFillColor(m_color);
-
-    // ================================
-    update_text(text.size());   
-    // ================================
 }
 
 void TextBox::update(sf::Time delta_time)
@@ -104,5 +90,4 @@ void TextBox::add_text_scroll(int speed)
     m_chars_displayed = 0;
     m_chars_displayed_max = m_string.size();
 }
-
 
