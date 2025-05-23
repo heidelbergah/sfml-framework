@@ -8,7 +8,7 @@
 
 void Game::initialize_objects()
 {
-    sf::Font font("././assets/fonts/OpenSans-Regular.ttf");
+    sf::Font font("././assets/fonts/default-font.ttf");
 
     // Buttons
     auto button = std::make_unique<Button>(sf::Vector2f(50, 50), sf::Color::Red);
@@ -29,6 +29,20 @@ void Game::initialize_objects()
     text_box->set_outline(sf::Color::Black, 2);
     text_box->add_text_scroll(25);
     m_widgets.push_back(std::move(text_box));
+
+    // Frames
+    auto frame = std::make_unique<Frame>(sf::Vector2f(200, 200), sf::Color::White, font);
+    frame->set_position(sf::Vector2f(0, 300));
+    frame->set_outline(sf::Color::Black, 3);
+    frame->add_taskbar(20, sf::Color::Cyan, sf::Color::Black, 3, "Taskbar");
+
+    // Adding a button
+    std::unique_ptr<Widget> framebutton = std::make_unique<Button>(sf::Vector2f(50, 50),
+            sf::Color::Yellow);
+    framebutton->set_position(sf::Vector2f(3, 0));
+    frame->add_widget(std::move(framebutton));
+
+    m_widgets.push_back(std::move(frame));
 }
 
 void Game::process_events()

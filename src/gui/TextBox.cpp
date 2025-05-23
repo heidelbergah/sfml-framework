@@ -35,9 +35,7 @@ void TextBox::update_text(int num_chars)
 TextBox::TextBox(sf::Vector2f size, sf::Color color,
                  std::string string, sf::Font& font,
                  sf::Color text_color) :
-    m_render_texture({static_cast<unsigned>(size.x),
-                      static_cast<unsigned>(size.y)}),
-    m_sprite(m_render_texture.getTexture())
+    TextWidget(size)
 {
     m_color = color;
     m_size = size;
@@ -64,22 +62,6 @@ void TextBox::update(sf::Time delta_time)
             m_text_scroll = false;
         }
     }
-}
-
-void TextBox::set_position(sf::Vector2f pos)
-{
-    m_pos = pos;
-    m_sprite.setPosition(m_pos);
-}
-
-void TextBox::set_outline(sf::Color color, int thickness)
-{
-    m_outline_color = color;
-    m_outline.setSize(m_size);
-    m_outline.setFillColor(m_outline_color);
-    m_outline.setPosition(sf::Vector2f(0, 0));
-    m_background.setPosition(sf::Vector2f(thickness, thickness));
-    m_background.setSize(sf::Vector2f(m_size.x - (thickness*2), m_size.y - (thickness*2)));
 }
 
 void TextBox::add_text_scroll(int speed)

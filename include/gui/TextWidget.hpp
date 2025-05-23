@@ -24,7 +24,7 @@ protected:
     void set_text(std::string string, sf::Color color);
 
 public:
-    TextWidget() = default;
+    TextWidget(sf::Vector2f size);
     virtual void update(sf::Time delta_time) {};
     virtual void handle_event(const sf::RenderWindow& window) {};
     

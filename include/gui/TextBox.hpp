@@ -12,13 +12,6 @@
 class TextBox : public TextWidget
 {
 private:
-    mutable sf::RenderTexture m_render_texture;
-    mutable sf::Sprite m_sprite;
-    sf::RectangleShape m_background;
-    sf::RectangleShape m_outline;
-    sf::Color m_color;
-    sf::Color m_outline_color;
-
     std::unique_ptr<sf::Clock> clock;
 
     bool m_text_scroll = false;
@@ -33,9 +26,6 @@ public:
     TextBox(sf::Vector2f size, sf::Color color, std::string text, sf::Font& font, sf::Color text_color);
 
     void update(sf::Time delta_time) override;
-
-    void set_position(sf::Vector2f pos);
-    void set_outline(sf::Color color, int thickness);
 
     void add_text_scroll(int speed);
 };

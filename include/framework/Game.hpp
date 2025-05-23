@@ -11,6 +11,7 @@
 #include "../gui/Widget.hpp"
 #include "../gui/Button.hpp"
 #include "../gui/TextBox.hpp"
+#include "../gui/Frame.hpp"
 
 class Game
 {

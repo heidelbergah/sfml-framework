@@ -6,6 +6,12 @@
 
 #include "../../include/gui/TextWidget.hpp"
 
+TextWidget::TextWidget(sf::Vector2f size) :
+    Widget(size)
+{
+
+}
+
 void TextWidget::set_text(std::string string, sf::Color color)
 {
     m_text = std::make_unique<sf::Text>(*m_font, string, string.size());
