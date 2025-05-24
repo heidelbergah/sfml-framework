@@ -15,6 +15,7 @@ private:
     sf::Color m_taskbar_color;
     sf::Color m_taskbar_outline_color;
     bool m_show_taskbar = false;
+    bool m_being_dragged = false;
 
     sf::Font m_font;
 
@@ -26,7 +27,7 @@ public:
     Frame(sf::Vector2f size, sf::Color color, sf::Font &font);
 
     void update(sf::Time delta_time) override;
-    void handle_event(const sf::RenderWindow& window) override;
+    void handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) override;
 
     void set_position(sf::Vector2f pos);
     void set_outline(sf::Color color, int thickness);

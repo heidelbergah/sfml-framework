@@ -49,14 +49,19 @@ Button::Button(sf::Vector2f size, sf::Color color) :
     m_background.setFillColor(m_color);
 }
 
-void Button::handle_event(const sf::RenderWindow& window)
+void Button::handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos)
 {
-    sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
-    sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos);
+    sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
+    sf::Vector2f world_pos = window.mapPixelToCoords(pixel_pos);
+    
+    if(local_mouse_pos.has_value())
+    {
+        world_pos = local_mouse_pos.value();
+    }
 
     m_background.setFillColor(m_color);
 
-    if (m_sprite.getGlobalBounds().contains(worldPos))
+    if (m_sprite.getGlobalBounds().contains(world_pos))
     {
         // If hovering, lighten the background
         m_background.setFillColor(m_light_color);

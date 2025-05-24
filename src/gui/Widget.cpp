@@ -17,7 +17,7 @@ Widget::Widget(sf::Vector2f size) :
 void Widget::set_position(sf::Vector2f pos)
 {
     m_pos = pos;
-    m_sprite.setPosition(m_pos);
+    m_sprite.setPosition(pos);
 }
 
 void Widget::set_outline(sf::Color color, int thickness)
@@ -43,4 +43,9 @@ sf::Vector2f Widget::get_position()
 sf::Vector2f Widget::get_size()
 {
     return m_size;
+}
+
+sf::FloatRect Widget::get_global_bounds()
+{
+    return m_sprite.getGlobalBounds();
 }

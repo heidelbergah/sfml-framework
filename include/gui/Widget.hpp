@@ -34,7 +34,7 @@ protected:
 public:
     Widget(sf::Vector2f size);
     virtual void update(sf::Time delta_time) {};
-    virtual void handle_event(const sf::RenderWindow& window) {};
+    virtual void handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) {};
 
     void set_position(sf::Vector2f pos);
     void set_outline(sf::Color color, int thickness);
@@ -43,6 +43,8 @@ public:
 
     sf::Vector2f get_position();
     sf::Vector2f get_size();
+    
+    sf::FloatRect get_global_bounds();
 };
 
 #endif

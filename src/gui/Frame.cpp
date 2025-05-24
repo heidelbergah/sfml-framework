@@ -51,14 +51,48 @@ void Frame::update(sf::Time delta_time)
     }
 }
 
-void Frame::handle_event(const sf::RenderWindow& window)
+void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos)
 {
     int start_index = 2;
     if(m_show_taskbar)
         start_index = 0;
+    
+    sf::Vector2i mouse_pixel = sf::Mouse::getPosition(window);
+    sf::Vector2f world_mouse = window.mapPixelToCoords(mouse_pixel);
+    sf::Vector2f local_mouse = world_mouse - m_sprite.getPosition();
+
     for(int i = start_index; i < m_widgets.size(); ++i)
     {
-        m_widgets[i]->handle_event(window);
+        m_widgets[i]->handle_event(window, local_mouse);
+    }
+
+    if(m_show_taskbar)
+    {
+        sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
+        sf::Vector2f world_pos = window.mapPixelToCoords(pixel_pos);
+
+        // Need to localize position
+        sf::Vector2f local_pos = world_pos - m_sprite.getPosition();
+
+        if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+        {
+            if(m_widgets[0]->get_global_bounds().contains(local_pos) && !m_being_dragged)
+            {
+                m_being_dragged = true;
+                m_sprite.setOrigin(local_pos);
+            }
+        }
+        else
+        {
+            m_being_dragged = false;
+            move(-m_sprite.getOrigin());
+            m_sprite.setOrigin(sf::Vector2f(0, 0));
+        }
+
+        if(m_being_dragged)
+        {
+            set_position(world_pos);
+        }
     }
 }
 

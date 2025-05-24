@@ -23,7 +23,7 @@ void Game::initialize_objects()
 
     // Textboxes
     std::string text = "I am a textbox.\nFear me, as my swiftness\nand jurisdiction convicts you.\nI am inevitable.";
-    auto text_box = std::make_unique<TextBox>(sf::Vector2f(200, 100),
+    auto text_box = std::make_unique<TextBox>(sf::Vector2f(300, 150),
             sf::Color::White, text, font, sf::Color::Black);
     text_box->set_position(sf::Vector2f(300, 300));
     text_box->set_outline(sf::Color::Black, 2);
