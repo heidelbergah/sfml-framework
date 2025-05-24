@@ -82,7 +82,7 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
                 m_sprite.setOrigin(local_pos);
             }
         }
-        else
+        else if(m_being_dragged)
         {
             m_being_dragged = false;
             move(-m_sprite.getOrigin());
@@ -94,22 +94,6 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
             set_position(world_pos);
         }
     }
-}
-
-void Frame::set_position(sf::Vector2f pos)
-{
-    m_pos = pos;
-    m_sprite.setPosition(m_pos);
-}
-
-void Frame::set_outline(sf::Color color, int thickness)
-{
-    m_outline_color = color;
-    m_outline.setSize(m_size);
-    m_outline.setFillColor(m_outline_color);
-    m_outline.setPosition(sf::Vector2f(0, 0));
-    m_background.setPosition(sf::Vector2f(thickness, thickness));
-    m_background.setSize(sf::Vector2f(m_size.x - (thickness*2), m_size.y - (thickness*2)));
 }
 
 void Frame::add_taskbar(int height, sf::Color color, sf::Color outline_color, int thickness, std::string string)

@@ -11,14 +11,10 @@ void Game::initialize_objects()
     sf::Font font("././assets/fonts/default-font.ttf");
 
     // Buttons
-    auto button = std::make_unique<Button>(sf::Vector2f(50, 50), sf::Color::Red);
-    button->set_position(sf::Vector2f(20, 35));
-    m_widgets.push_back(std::move(button));
-
-    button = std::make_unique<Button>(sf::Vector2f(100, 50), sf::Color::Red);
+    auto button = std::make_unique<Button>(sf::Vector2f(100, 50), sf::Color::Green);
     button->set_position(sf::Vector2f(600, 480));
     button->set_outline(sf::Color::White, 1);
-    button->add_text("Hello World", font, sf::Color::Black);
+    button->add_text("Click Me!", font, sf::Color::Black);
     m_widgets.push_back(std::move(button));
 
     // Textboxes
@@ -34,12 +30,18 @@ void Game::initialize_objects()
     auto frame = std::make_unique<Frame>(sf::Vector2f(200, 200), sf::Color::White, font);
     frame->set_position(sf::Vector2f(0, 300));
     frame->set_outline(sf::Color::Black, 3);
-    frame->add_taskbar(20, sf::Color::Cyan, sf::Color::Black, 3, "Taskbar");
+    frame->add_taskbar(20, sf::Color(120, 120, 120), sf::Color::Black, 3, "Taskbar");
+
+    // Sliders
+    auto slider = std::make_unique<Slider>(sf::Vector2f(200, 30), sf::Color::Red);
+    slider->set_position(sf::Vector2f(200, 200));
+    m_widgets.push_back(std::move(slider));
 
     // Adding a button
     std::unique_ptr<Widget> framebutton = std::make_unique<Button>(sf::Vector2f(50, 50),
-            sf::Color::Yellow);
-    framebutton->set_position(sf::Vector2f(3, 0));
+            sf::Color::Magenta);
+    framebutton->set_outline(sf::Color::Black, 4);
+    framebutton->set_position(sf::Vector2f(40, 50));
     frame->add_widget(std::move(framebutton));
 
     m_widgets.push_back(std::move(frame));
