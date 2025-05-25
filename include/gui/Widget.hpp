@@ -31,6 +31,8 @@ protected:
     sf::Vector2f m_pos;
     sf::Vector2f m_size;
 
+    unsigned int m_z_value = 0; // Higher the number = higher the priority
+
 public:
     Widget(sf::Vector2f size);
     virtual void update(sf::Time delta_time) {};
@@ -38,6 +40,7 @@ public:
 
     void set_position(sf::Vector2f pos);
     void set_outline(sf::Color color, int thickness);
+    void set_z_value(unsigned int z);
 
     void move(sf::Vector2f move_vector);
 
@@ -45,6 +48,8 @@ public:
     sf::Vector2f get_size();
     
     sf::FloatRect get_global_bounds();
+    
+    unsigned int get_z_value();
 };
 
 #endif

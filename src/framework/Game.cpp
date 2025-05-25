@@ -78,10 +78,16 @@ void Game::update(sf::Time delta_time)
 void Game::render()
 {
     m_window.clear(sf::Color(50, 50, 50));
+
+    // Make sure lowest z values are drawn first and highest drawn last
+    std::sort(m_widgets.begin(), m_widgets.end(), [](const std::unique_ptr<Widget>& a, const std::unique_ptr<Widget>& b) {
+        return a->get_z_value() < b->get_z_value();
+    });
     for(const auto& widget : m_widgets)
     {
         m_window.draw(*widget);
     }
+
     m_window.display();
 }
 
@@ -122,3 +128,4 @@ void Game::run(int frame_per_seconds)
         }
     }
 }
+

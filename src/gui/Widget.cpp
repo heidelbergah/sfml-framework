@@ -30,6 +30,11 @@ void Widget::set_outline(sf::Color color, int thickness)
     m_background.setSize(sf::Vector2f(m_size.x - (thickness*2), m_size.y - (thickness*2)));
 }
 
+void Widget::set_z_value(unsigned int z)
+{
+    m_z_value = z;
+}
+
 void Widget::move(sf::Vector2f move_vector)
 {
     m_sprite.move(move_vector);
@@ -48,4 +53,9 @@ sf::Vector2f Widget::get_size()
 sf::FloatRect Widget::get_global_bounds()
 {
     return m_sprite.getGlobalBounds();
+}
+
+unsigned int Widget::get_z_value()
+{
+    return m_z_value;
 }

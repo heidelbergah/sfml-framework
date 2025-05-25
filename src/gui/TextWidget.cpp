@@ -52,7 +52,7 @@ void TextWidget::set_alignment(Alignment alignment)
             break;
     }
     
-    int x_pos = (int)text_pos.x, y_pos = (int)text_pos.y;
+    int x_pos = std::floor(text_pos.x), y_pos = std::floor(text_pos.y);
     m_text->setPosition(sf::Vector2f(x_pos, y_pos));
 }
 

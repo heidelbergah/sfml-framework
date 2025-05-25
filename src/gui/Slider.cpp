@@ -83,7 +83,8 @@ void Slider::handle_event(const sf::RenderWindow& window, std::optional<sf::Vect
 
 float Slider::get_percentage()
 {
-    return m_size.x / m_thumb.getPosition().x;
+    float offset = m_thumb.getSize().x/2;
+    return (m_thumb.getPosition().x - offset) / (m_size.x - (offset*2));
 }
 
 void Slider::set_body_color(sf::Color color)
