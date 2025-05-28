@@ -13,6 +13,7 @@
 #include "../gui/TextBox.hpp"
 #include "../gui/Frame.hpp"
 #include "../gui/Slider.hpp"
+#include "../gui/Gauge.hpp"
 
 class Game
 {

@@ -19,7 +19,7 @@ private:
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
     void create_color_variants();
 public:
-    Button(sf::Vector2f button_shape, sf::Color color);
+    Button(sf::Vector2f size, sf::Color color);
 
     void handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) override;
 };

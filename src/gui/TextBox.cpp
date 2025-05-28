@@ -13,7 +13,7 @@
 
 void TextBox::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
-    m_render_texture.clear();
+    m_render_texture.clear(sf::Color::Transparent);
     m_render_texture.draw(m_outline);
     m_render_texture.draw(m_background);
     if(m_text)

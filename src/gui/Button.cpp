@@ -9,7 +9,7 @@
 void Button::draw(sf::RenderTarget &target, sf::RenderStates states) const
 {
     // Render everything to a render texture, then DRAW that render texture
-    m_render_texture.clear();
+    m_render_texture.clear(sf::Color::Transparent);
     m_render_texture.draw(m_outline);
     m_render_texture.draw(m_background);
     if(m_text) // If m_text is not null
@@ -69,6 +69,8 @@ void Button::handle_event(const sf::RenderWindow& window, std::optional<sf::Vect
         {
             // If clicking, darken the background
             m_background.setFillColor(m_dark_color);
+            if(m_callback)
+                m_callback.value()();
         }
     }
 }

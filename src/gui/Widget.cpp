@@ -35,6 +35,11 @@ void Widget::set_z_value(unsigned int z)
     m_z_value = z;
 }
 
+void Widget::set_callback(std::function<void()> callback)
+{
+    m_callback = callback;
+}
+
 void Widget::move(sf::Vector2f move_vector)
 {
     m_sprite.move(move_vector);

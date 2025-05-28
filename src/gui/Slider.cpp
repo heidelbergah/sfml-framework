@@ -21,7 +21,7 @@ void Slider::draw(sf::RenderTarget &target, sf::RenderStates states) const
 Slider::Slider(sf::Vector2f size, sf::Color color) :
     Widget(size)
 {
-    m_color = sf::Color(0, 0, 0, 0);
+    m_color = sf::Color::Transparent;
     m_size = size;
     m_thumb_color = color;
     m_body_color = sf::Color::White;
@@ -78,6 +78,10 @@ void Slider::handle_event(const sf::RenderWindow& window, std::optional<sf::Vect
         local_pos.x = std::max(offset, local_pos.x);
         local_pos.x = std::min(m_size.x-offset, local_pos.x);
         m_thumb.setPosition(sf::Vector2f(local_pos.x, m_thumb.getPosition().y));
+        if(m_callback.has_value())
+        {
+            m_callback.value()();
+        }
     }
 }
 

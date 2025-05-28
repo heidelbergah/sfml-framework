@@ -32,6 +32,8 @@ protected:
     sf::Vector2f m_size;
 
     unsigned int m_z_value = 0; // Higher the number = higher the priority
+ 
+    std::optional<std::function<void()>> m_callback = std::nullopt;
 
 public:
     Widget(sf::Vector2f size);
@@ -41,6 +43,8 @@ public:
     void set_position(sf::Vector2f pos);
     void set_outline(sf::Color color, int thickness);
     void set_z_value(unsigned int z);
+
+    void set_callback(std::function<void()> callback);
 
     void move(sf::Vector2f move_vector);
 

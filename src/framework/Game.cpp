@@ -6,6 +6,11 @@
 
 #include "../../include/framework/Game.hpp"
 
+void print()
+{
+    std::cout << "Callback function" << std::endl;
+}
+
 void Game::initialize_objects()
 {
     sf::Font font("././assets/fonts/default-font.ttf");
@@ -15,6 +20,7 @@ void Game::initialize_objects()
     button->set_position(sf::Vector2f(600, 480));
     button->set_outline(sf::Color::White, 1);
     button->add_text("Click Me!", font, sf::Color::Black);
+    button->set_callback(print);
     m_widgets.push_back(std::move(button));
 
     // Textboxes
@@ -32,6 +38,14 @@ void Game::initialize_objects()
     frame->set_outline(sf::Color::Black, 3);
     frame->add_taskbar(20, sf::Color(120, 120, 120), sf::Color::Black, 3, "Taskbar");
 
+    // Gauges
+    auto gauge = std::make_unique<Gauge>(sf::Vector2f(100, 100), sf::Color::Green,
+            sf::Vector2f(0, 80), sf::Vector2f(0, 180));
+    gauge->set_position(sf::Vector2f(0, 0));
+    gauge->set_dial_color(sf::Color::Black);
+    gauge->set_arm_angle_based_on_value(40);
+    m_widgets.push_back(std::move(gauge));
+    
     // Sliders
     auto slider = std::make_unique<Slider>(sf::Vector2f(200, 30), sf::Color::Red);
     slider->set_position(sf::Vector2f(200, 200));
