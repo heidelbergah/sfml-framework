@@ -15,50 +15,41 @@ void Game::initialize_objects()
 {
     sf::Font font("././assets/fonts/default-font.ttf");
 
-    // Buttons
+    /**** OLD WAY OF MAKING WIDGETS ****
     auto button = std::make_unique<Button>(sf::Vector2f(100, 50), sf::Color::Green);
     button->set_position(sf::Vector2f(600, 480));
     button->set_outline(sf::Color::White, 1);
     button->add_text("Click Me!", font, sf::Color::Black);
     button->set_callback(print);
     m_widgets.push_back(std::move(button));
+    */
 
-    // Textboxes
-    std::string text = "I am a textbox.\nFear me, as my swiftness\nand jurisdiction convicts you.\nI am inevitable.";
-    auto text_box = std::make_unique<TextBox>(sf::Vector2f(300, 150),
-            sf::Color::White, text, font, sf::Color::Black);
-    text_box->set_position(sf::Vector2f(300, 300));
-    text_box->set_outline(sf::Color::Black, 2);
-    text_box->add_text_scroll(25);
-    m_widgets.push_back(std::move(text_box));
+    m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(100, 50), sf::Color::Green));
+    m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(600, 480));
+    m_widgets.get_widget<Button>("button")->set_outline(sf::Color::White, 1);
+    m_widgets.get_widget<Button>("button")->add_text("Click Me!", font, sf::Color::Black);
 
-    // Frames
-    auto frame = std::make_unique<Frame>(sf::Vector2f(200, 200), sf::Color::White, font);
-    frame->set_position(sf::Vector2f(0, 300));
-    frame->set_outline(sf::Color::Black, 3);
-    frame->add_taskbar(20, sf::Color(120, 120, 120), sf::Color::Black, 3, "Taskbar");
+    m_widgets.add_widget("slider", std::make_shared<Slider>(sf::Vector2f(200, 50), sf::Color::White));
+    m_widgets.get_widget<Slider>("slider")->set_position(sf::Vector2f(WINDOW_WIDTH-300, 100));
+    m_widgets.get_widget<Slider>("slider")->set_thumb_color(sf::Color::Yellow);
 
-    // Gauges
-    auto gauge = std::make_unique<Gauge>(sf::Vector2f(100, 100), sf::Color::Green,
-            sf::Vector2f(0, 80), sf::Vector2f(0, 180));
-    gauge->set_position(sf::Vector2f(0, 0));
-    gauge->set_dial_color(sf::Color::Black);
-    gauge->set_arm_angle_based_on_value(40);
-    m_widgets.push_back(std::move(gauge));
-    
-    // Sliders
-    auto slider = std::make_unique<Slider>(sf::Vector2f(200, 30), sf::Color::Red);
-    slider->set_position(sf::Vector2f(200, 200));
-    m_widgets.push_back(std::move(slider));
+    m_widgets.add_widget("frame", std::make_shared<Frame>(sf::Vector2f(300, 300), sf::Color::Blue, font));
+    m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(50, 50));
+    m_widgets.get_widget<Frame>("frame")->set_outline(sf::Color::Black, 2);
+    m_widgets.get_widget<Frame>("frame")->add_taskbar(20, sf::Color::White, sf::Color::Black, 2, "Big Frame");
+    m_widgets.get_widget<Frame>("frame")->set_z_value(10);
 
-    // Adding a button
-    std::unique_ptr<Widget> framebutton = std::make_unique<Button>(sf::Vector2f(50, 50),
-            sf::Color::Magenta);
-    framebutton->set_outline(sf::Color::Black, 4);
-    framebutton->set_position(sf::Vector2f(40, 50));
-    frame->add_widget(std::move(framebutton));
+    m_widgets.add_widget("gauge", std::make_shared<Gauge>(sf::Vector2f(100, 100), sf::Color::Green,
+                sf::Vector2f(0, 80), sf::Vector2f(1, 360)));
+    m_widgets.get_widget<Gauge>("gauge")->set_position(sf::Vector2f(100, WINDOW_HEIGHT-200));
+    m_widgets.get_widget<Gauge>("gauge")->set_dial_color(sf::Color::White);
 
-    m_widgets.push_back(std::move(frame));
+    m_widgets.add_widget("textbox", std::make_shared<TextBox>(sf::Vector2f(200, 100), sf::Color::White,
+                "I am a textbox\nand I have a\nsick ass animation", font, sf::Color::Black));
+    m_widgets.get_widget<TextBox>("textbox")->set_position(sf::Vector2f(WINDOW_WIDTH-300, WINDOW_HEIGHT-200));
+    m_widgets.get_widget<TextBox>("textbox")->add_text_scroll(20);
+    m_widgets.get_widget<TextBox>("textbox")->set_z_value(5);
+
 }
 
 void Game::process_events()
@@ -70,7 +61,7 @@ void Game::process_events()
             m_window.close();
         }
 
-        for(const auto& widget : m_widgets)
+        for(const auto& widget : m_widgets.get_widgets())
         {
             widget->handle_event(m_window);
         }
@@ -82,10 +73,13 @@ void Game::update(sf::Time delta_time)
 {
     float delta_time_seconds = delta_time.asSeconds() * 10;
 
-    for(const auto& widget : m_widgets)
+    for(const auto& widget : m_widgets.get_widgets())
     {
         widget->update(delta_time);
     }
+
+    float p = m_widgets.get_widget<Slider>("slider")->get_percentage();
+    m_widgets.get_widget<Gauge>("gauge")->set_arm_angle_based_on_value(80*p);
 
 }
 
@@ -93,11 +87,7 @@ void Game::render()
 {
     m_window.clear(sf::Color(50, 50, 50));
 
-    // Make sure lowest z values are drawn first and highest drawn last
-    std::sort(m_widgets.begin(), m_widgets.end(), [](const std::unique_ptr<Widget>& a, const std::unique_ptr<Widget>& b) {
-        return a->get_z_value() < b->get_z_value();
-    });
-    for(const auto& widget : m_widgets)
+    for(const auto& widget : m_widgets.get_widgets())
     {
         m_window.draw(*widget);
     }

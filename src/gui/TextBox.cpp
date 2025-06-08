@@ -70,6 +70,6 @@ void TextBox::add_text_scroll(int speed)
     m_text_scroll = true;
     m_animation_speed = speed;
     m_chars_displayed = 0;
-    m_chars_displayed_max = m_string.size();
+    m_chars_displayed_max = m_string.size()+1;
 }
 

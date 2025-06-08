@@ -8,7 +8,6 @@
 #include "../../include/gui/Button.hpp"
 #include "../../include/gui/TextBox.hpp"
 
-
 void Frame::draw(sf::RenderTarget &target, sf::RenderStates states) const
 {
     m_render_texture.clear(sf::Color::Transparent);
@@ -115,7 +114,7 @@ void Frame::add_taskbar(int height, sf::Color color, sf::Color outline_color, in
 
 void Frame::toggle_moveability()
 {
-    m_show_taskbar = !m_show_taskbar;
+    // Missing implementation
 }
 
 void Frame::add_widget(std::unique_ptr<Widget> widget)

@@ -14,6 +14,7 @@
 #include "../gui/Frame.hpp"
 #include "../gui/Slider.hpp"
 #include "../gui/Gauge.hpp"
+#include "../gui/WidgetManager.hpp"
 
 class Game
 {
@@ -31,7 +32,7 @@ private:
 
 private:
     // ADD YOUR DATA HERE
-    std::vector<std::unique_ptr<Widget>> m_widgets;
+    WidgetManager m_widgets;
 
 public:
     Game();
