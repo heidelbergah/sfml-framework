@@ -50,6 +50,7 @@ void Game::initialize_objects()
     m_widgets.get_widget<TextBox>("textbox")->add_text_scroll(20);
     m_widgets.get_widget<TextBox>("textbox")->set_z_value(5);
 
+    ps.toggle_gravity();
 }
 
 void Game::process_events()
@@ -81,6 +82,9 @@ void Game::update(sf::Time delta_time)
     float p = m_widgets.get_widget<Slider>("slider")->get_percentage();
     m_widgets.get_widget<Gauge>("gauge")->set_arm_angle_based_on_value(80*p);
 
+    ps.set_position(sf::Vector2f(sf::Mouse::getPosition()));
+    ps.add_particles(1);
+    ps.update(delta_time);
 }
 
 void Game::render()
@@ -92,10 +96,12 @@ void Game::render()
         m_window.draw(*widget);
     }
 
+    m_window.draw(ps);
+
     m_window.display();
 }
 
-Game::Game()
+Game::Game() : ps(sf::Vector2f(400, 400), 300)
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_window.create(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), GAME_NAME);

@@ -16,6 +16,8 @@
 #include "../gui/Gauge.hpp"
 #include "../gui/WidgetManager.hpp"
 
+#include "../framework/ParticleSystem.hpp"
+
 class Game
 {
 private:
@@ -33,6 +35,8 @@ private:
 private:
     // ADD YOUR DATA HERE
     WidgetManager m_widgets;
+
+    ParticleSystem ps;
 
 public:
     Game();
