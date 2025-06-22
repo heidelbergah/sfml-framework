@@ -82,7 +82,11 @@ void Game::update(sf::Time delta_time)
     float p = m_widgets.get_widget<Slider>("slider")->get_percentage();
     m_widgets.get_widget<Gauge>("gauge")->set_arm_angle_based_on_value(80*p);
 
-    ps.set_position(sf::Vector2f(sf::Mouse::getPosition()));
+    sf::Vector2i pixelPos = sf::Mouse::getPosition(m_window);
+
+    sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
+
+    ps.set_position(worldPos);
     ps.add_particles(1);
     ps.update(delta_time);
 }

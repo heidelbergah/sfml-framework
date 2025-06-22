@@ -1,13 +1,40 @@
 #include "../../include/framework/Particle.hpp"
 
+Vector Particle::add_vectors(Vector v1, Vector v2)
+{
+    float r1 = v1.magnitude, r2 = v2.magnitude;
+    float p1 = v1.direction.asRadians();
+    float p2 = v2.direction.asRadians();
+
+    float p_diff = p2 - p1;
+    
+    float r = sqrt((r1 * r1) + (r2 * r2) + (2 * r1 * r2 * cos(p_diff)));
+
+    sf::Angle p;
+    float y = r2 * sin(p_diff);
+    float x = r1 + (r2 * cos(p_diff));
+
+    p = sf::radians(p1 + atan2(y, x));
+
+    Vector vector;
+    vector.magnitude = r;
+    vector.direction = p;
+    return vector;
+}
+
 Particle::Particle(sf::Vector2f position, sf::Color color)
 {
     m_pos = position;
     m_prev_pos = position;
     m_color = color;
 
-    m_vel = sf::Vector2f(0, 0);
-    m_acc = sf::Vector2f(0, 0);
+    Vector v;
+    v.magnitude = 0;
+    v.direction = sf::degrees(0);
+
+    m_vel = v;
+    m_acc = v;
+
     m_fades = false;
     m_fade_time = 0;
 }
@@ -17,9 +44,14 @@ void Particle::update(sf::Time delta_time)
     // Note previous position
     m_prev_pos = m_pos;
 
-    // Update position and velocity
-    m_vel += m_acc;
-    m_pos += m_vel;
+    // Add acceleration to velocity
+    add_velocity(m_acc);
+
+    std::cout << m_vel.magnitude << ", " << m_vel.direction.asDegrees() << std::endl;
+
+    // Update position with velocity
+    m_pos.x += cos(m_vel.direction.asRadians()) * m_vel.magnitude;
+    m_pos.y -= sin(m_vel.direction.asRadians()) * m_vel.magnitude;
 
     if(m_fades)
     {
@@ -27,14 +59,14 @@ void Particle::update(sf::Time delta_time)
     }
 }
 
-void Particle::add_velocity(sf::Vector2f velocity)
+void Particle::add_velocity(Vector velocity)
 {
-    m_vel += velocity;
+    m_vel = add_vectors(m_vel, velocity);
 }
 
-void Particle::add_acceleration(sf::Vector2f acceleration)
+void Particle::add_acceleration(Vector acceleration)
 {
-    m_acc += acceleration;
+    m_acc = add_vectors(m_acc, acceleration);
 }
 
 void Particle::add_fade_time(unsigned int fade_time)
@@ -53,12 +85,12 @@ sf::Vector2f Particle::get_prev_position() const
     return m_prev_pos;
 }
 
-sf::Vector2f Particle::get_velocity() const
+Vector Particle::get_velocity() const
 {
     return m_vel;
 }
 
-sf::Vector2f Particle::get_acceleration() const
+Vector Particle::get_acceleration() const
 {
     return m_acc;
 }

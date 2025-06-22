@@ -44,11 +44,16 @@ void ParticleSystem::add_particles(int count)
         int g = rand() % 255;
         int b = rand() % 255;
         
-        int x_force = (rand() % 10) - 5;
-        int y_force = (rand() % 10) - 5;
+        float direction = rand() % 360;
+        float magnitude = rand() % 5;
         
         Particle p(m_pos, sf::Color(r, g, b));
-        p.add_velocity(sf::Vector2f(x_force, y_force));
+
+        Vector v;
+        v.magnitude = magnitude;
+        v.direction = sf::degrees(direction);
+
+        p.add_velocity(v);
         m_particles.push_back(p);
     }
 
