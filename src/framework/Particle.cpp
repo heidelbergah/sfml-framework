@@ -1,28 +1,6 @@
 #include "../../include/framework/Particle.hpp"
 
-Vector Particle::add_vectors(Vector v1, Vector v2)
-{
-    float r1 = v1.magnitude, r2 = v2.magnitude;
-    float p1 = v1.direction.asRadians();
-    float p2 = v2.direction.asRadians();
-
-    float p_diff = p2 - p1;
-    
-    float r = sqrt((r1 * r1) + (r2 * r2) + (2 * r1 * r2 * cos(p_diff)));
-
-    sf::Angle p;
-    float y = r2 * sin(p_diff);
-    float x = r1 + (r2 * cos(p_diff));
-
-    p = sf::radians(p1 + atan2(y, x));
-
-    Vector vector;
-    vector.magnitude = r;
-    vector.direction = p;
-    return vector;
-}
-
-Particle::Particle(sf::Vector2f position, sf::Color color)
+Particle::Particle(sf::Vector2f position, sf::Color color, sf::Time lifespan)
 {
     m_pos = position;
     m_prev_pos = position;
@@ -35,8 +13,8 @@ Particle::Particle(sf::Vector2f position, sf::Color color)
     m_vel = v;
     m_acc = v;
 
-    m_fades = false;
-    m_fade_time = 0;
+    m_lifespan = lifespan;
+    m_elapsed_time = sf::milliseconds(0);
 }
 
 void Particle::update(sf::Time delta_time)
@@ -47,16 +25,23 @@ void Particle::update(sf::Time delta_time)
     // Add acceleration to velocity
     add_velocity(m_acc);
 
-    std::cout << m_vel.magnitude << ", " << m_vel.direction.asDegrees() << std::endl;
-
     // Update position with velocity
     m_pos.x += cos(m_vel.direction.asRadians()) * m_vel.magnitude;
     m_pos.y -= sin(m_vel.direction.asRadians()) * m_vel.magnitude;
 
-    if(m_fades)
+    m_elapsed_time = sf::milliseconds(m_elapsed_time.asMilliseconds() + delta_time.asMilliseconds());
+
+    if(m_fade)
     {
-        // Perform alpha dampening bs
+        float time_diff = m_lifespan.asMilliseconds() - m_elapsed_time.asMilliseconds();
+        float ratio = time_diff / m_lifespan.asMilliseconds();
+        m_color.a = 255 * ratio;
     }
+}
+
+void Particle::toggle_fade()
+{
+    m_fade = !m_fade;
 }
 
 void Particle::add_velocity(Vector velocity)
@@ -69,10 +54,9 @@ void Particle::add_acceleration(Vector acceleration)
     m_acc = add_vectors(m_acc, acceleration);
 }
 
-void Particle::add_fade_time(unsigned int fade_time)
+void Particle::set_velocity(Vector v)
 {
-    m_fades = true;
-    m_fade_time += fade_time;
+    m_vel = v;
 }
 
 sf::Vector2f Particle::get_position() const
@@ -99,14 +83,19 @@ sf::Color Particle::get_color() const
 {
     return m_color;
 }
-    
-bool Particle::fades() const
+
+sf::Time Particle::get_lifespan() const
 {
-    return m_fades;
+    return m_lifespan;
 }
 
-unsigned int Particle::get_fade_time() const
+sf::Time Particle::get_elapsed_time() const
 {
-    return m_fade_time;
+    return m_elapsed_time;
+}
+
+bool Particle::fades() const
+{
+    return m_fade;
 }
 

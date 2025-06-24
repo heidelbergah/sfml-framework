@@ -5,28 +5,43 @@ void ParticleSystem::draw(sf::RenderTarget &target, sf::RenderStates states) con
     target.draw(m_particle_lines, states);
 }
 
-ParticleSystem::ParticleSystem(sf::Vector2f pos, int particles)
+ParticleSystem::ParticleSystem(sf::Vector2f pos)
 {
     srand(time(NULL));
 
     m_particle_lines.setPrimitiveType(sf::PrimitiveType::Lines);
     set_position(pos);
-    add_particles(particles);
 }
 
 void ParticleSystem::update(sf::Time delta_time)
 {
+    int index = 0;
     for(Particle& p : m_particles)
     {
+        if(m_gravity_on)
+            p.add_velocity(m_gravity);
+
+        Vector new_vel = p.get_velocity();
+        new_vel.magnitude *= m_drag;
+        p.set_velocity(new_vel);
+        
         p.update(delta_time);
+        if(p.get_elapsed_time().asMilliseconds() > p.get_lifespan().asMilliseconds())
+        {
+            m_particles.erase(m_particles.begin() + index);
+        }
+        index++;
     }
 
     int index_count = 0;
+    m_particle_lines.resize(m_particles.size()*2);
     for(const Particle& p : m_particles)
     {
         m_particle_lines[index_count].position = p.get_prev_position();
+        m_particle_lines[index_count].color = p.get_color();
         index_count++;
         m_particle_lines[index_count].position = p.get_position();
+        m_particle_lines[index_count].color = p.get_color();
         index_count++;
     }
 }
@@ -36,57 +51,56 @@ void ParticleSystem::set_position(sf::Vector2f pos)
     m_pos = pos;
 }
 
-void ParticleSystem::add_particles(int count)
+void ParticleSystem::add_particles(int count, sf::Color c, Vector v = {0, sf::degrees(0)}, int randomness = 0)
 {
     for(int i = 0; i < count; ++i)
     {
-        int r = rand() % 255;
-        int g = rand() % 255;
-        int b = rand() % 255;
-        
-        float direction = rand() % 360;
-        float magnitude = rand() % 5;
-        
-        Particle p(m_pos, sf::Color(r, g, b));
+        float magnitude = v.magnitude;
+        float direction = v.direction.asDegrees() + ((rand() % (randomness*2)) - randomness);
+
+        Particle p(m_pos, c, sf::milliseconds(1000));
 
         Vector v;
         v.magnitude = magnitude;
         v.direction = sf::degrees(direction);
 
+        if(m_fade)
+            p.toggle_fade();
+
         p.add_velocity(v);
         m_particles.push_back(p);
     }
-
-    m_particle_lines.resize(m_particles.size()*2);
 }
 
 void ParticleSystem::toggle_gravity()
 {
     m_gravity_on = !m_gravity_on;
-    if(m_gravity_on)
-        m_force.y += m_gravity;
-    else
-        m_force.y -= m_gravity;
 }
 
-void ParticleSystem::set_gravity(float g)
+void ParticleSystem::toggle_fade()
 {
-    if(m_gravity_on)
+    m_fade = !m_fade;
+    for(Particle& p : m_particles)
     {
-        // If gravity on, reset the current force applied
-        // to reflect the new value
-        m_force.y -= m_gravity;
-        m_gravity = g;
-        m_force.y += m_gravity;
-    }
-    else
-    {
-        m_gravity = g;
+        p.toggle_fade();
     }
 }
 
-void ParticleSystem::apply_force(sf::Vector2f force)
+void ParticleSystem::set_gravity(Vector g)
 {
-    m_force += force;
+    m_gravity = g;
+}
+
+void ParticleSystem::set_drag(float drag)
+{
+    m_drag = drag;
+}
+
+void ParticleSystem::apply_force(Vector force)
+{
+    for(Particle& p : m_particles)
+    {
+        p.add_velocity(force);
+    }
 }
 

@@ -17,23 +17,27 @@ private:
     sf::VertexArray m_particle_lines;
 
     sf::Vector2f m_pos;
-    sf::Vector2f m_force;
 
+    bool m_fade = false;
     bool m_gravity_on = false;
-    float m_gravity = 9.3;
+    Vector m_gravity = {0.05, sf::degrees(270)};
+
+    float m_drag = 0.99; // (0.0 - 1.0); lower is stronger
 
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 
 public:
-    ParticleSystem(sf::Vector2f pos, int particles);
+    ParticleSystem(sf::Vector2f pos);
 
     void update(sf::Time delta_time);
 
     void set_position(sf::Vector2f pos);
-    void add_particles(int count);
+    void add_particles(int count, sf::Color c, Vector v, int randomness);
     void toggle_gravity();
-    void set_gravity(float g);
-    void apply_force(sf::Vector2f force);
+    void toggle_fade();
+    void set_gravity(Vector g);
+    void set_drag(float drag);
+    void apply_force(Vector force);
 
     /**
      * Add whole bunch of attribute changing functions

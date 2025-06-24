@@ -9,12 +9,6 @@
 
 #include "../Includes.hpp"
 
-struct Vector
-{
-    float magnitude;
-    sf::Angle direction;
-};
-
 class Particle
 {
 private:
@@ -26,27 +20,30 @@ private:
 
     sf::Color m_color;
 
-    bool m_fades;
-    unsigned int m_fade_time;
+    sf::Time m_lifespan;
+    sf::Time m_elapsed_time;
 
-    Vector add_vectors(Vector v1, Vector v2);
+    bool m_fade = false;
 
 public:
-    Particle(sf::Vector2f position, sf::Color color);
+    Particle(sf::Vector2f position, sf::Color color, sf::Time lifespan);
 
     void update(sf::Time delta_time);
+    void toggle_fade();
 
     void add_velocity(Vector vector);
     void add_acceleration(Vector vector);
-    void add_fade_time(unsigned int fade_time);
+
+    void set_velocity(Vector v);
 
     sf::Vector2f get_position() const;
     sf::Vector2f get_prev_position() const;
     Vector get_velocity() const;
     Vector get_acceleration() const;
     sf::Color get_color() const;
+    sf::Time get_lifespan() const;
+    sf::Time get_elapsed_time() const;
     bool fades() const;
-    unsigned int get_fade_time() const;
 };
 
 #endif

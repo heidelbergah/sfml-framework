@@ -50,7 +50,6 @@ void Game::initialize_objects()
     m_widgets.get_widget<TextBox>("textbox")->add_text_scroll(20);
     m_widgets.get_widget<TextBox>("textbox")->set_z_value(5);
 
-    ps.toggle_gravity();
 }
 
 void Game::process_events()
@@ -66,8 +65,30 @@ void Game::process_events()
         {
             widget->handle_event(m_window);
         }
+        if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
+        {
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::G))
+            {
+                ps.toggle_gravity();
+                std::cout << "Gravity" << std::endl;
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F))
+            {
+                ps.toggle_fade();
+                std::cout << "Fade" << std::endl;
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
+            {
+                ps.apply_force(Vector{5, sf::degrees(0)});
+                std::cout << "Right" << std::endl;
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+            {
+                ps.apply_force(Vector{5, sf::degrees(180)});
+                std::cout << "Left" << std::endl;
+            }
+        }
     }
-    
 }
 
 void Game::update(sf::Time delta_time)
@@ -87,7 +108,9 @@ void Game::update(sf::Time delta_time)
     sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
 
     ps.set_position(worldPos);
-    ps.add_particles(1);
+    if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+        ps.add_particles(1, sf::Color::Yellow, Vector{8, sf::degrees(0)}, 180);
+
     ps.update(delta_time);
 }
 
@@ -105,7 +128,7 @@ void Game::render()
     m_window.display();
 }
 
-Game::Game() : ps(sf::Vector2f(400, 400), 300)
+Game::Game() : ps(sf::Vector2f(400, 400))
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_window.create(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), GAME_NAME);
