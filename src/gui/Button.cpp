@@ -61,17 +61,31 @@ void Button::handle_event(const sf::RenderWindow& window, std::optional<sf::Vect
 
     m_background.setFillColor(m_color);
 
+    m_hovered = false;
+    m_pressed = false;
     if (m_sprite.getGlobalBounds().contains(world_pos))
     {
         // If hovering, lighten the background
+        m_hovered = true;
         m_background.setFillColor(m_light_color);
         if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
         {
+            m_pressed = true;
             // If clicking, darken the background
             m_background.setFillColor(m_dark_color);
             if(m_callback)
                 m_callback.value()();
         }
     }
+}
+
+bool Button::is_hovered()
+{
+    return m_hovered;
+}
+
+bool Button::is_pressed()
+{
+    return m_pressed;
 }
 

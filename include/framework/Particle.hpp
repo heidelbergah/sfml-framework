@@ -35,6 +35,7 @@ public:
     void add_acceleration(Vector vector);
 
     void set_velocity(Vector v);
+    void set_lifespan(sf::Time lifespan);
 
     sf::Vector2f get_position() const;
     sf::Vector2f get_prev_position() const;

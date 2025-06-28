@@ -50,6 +50,21 @@ void Game::initialize_objects()
     m_widgets.get_widget<TextBox>("textbox")->add_text_scroll(20);
     m_widgets.get_widget<TextBox>("textbox")->set_z_value(5);
 
+    sf::Vector2f pos = m_widgets.get_widget<Button>("button")->get_position();
+    ParticleSystem ps1(pos);
+    ps1.toggle_gravity();
+    ps1.toggle_fade();
+    ps1.set_drag(0.99f);
+    ps1.set_lifespan(sf::seconds(4));
+
+    ParticleSystem ps2(sf::Vector2f(400, 400));
+    ps2.toggle_gravity();
+    ps2.toggle_fade();
+    ps2.set_drag(0.94f);
+    ps2.set_lifespan(sf::seconds(2));
+
+    m_particle_system_manager.add_particle_system("bp", ps1);
+    m_particle_system_manager.add_particle_system("rp", ps2);
 }
 
 void Game::process_events()
@@ -67,25 +82,19 @@ void Game::process_events()
         }
         if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
         {
-            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::G))
+            // Put whatever you want in here
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Enter))
             {
-                ps.toggle_gravity();
-                std::cout << "Gravity" << std::endl;
+                m_particle_system_manager.get_particle_system("rp")->add_particles(100, sf::Color::Red, Vector{10, sf::degrees(0)}, 180);
             }
-            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::F))
+        }
+        if(const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>())
+        {
+            if(m_widgets.get_widget<Button>("button")->is_pressed())
             {
-                ps.toggle_fade();
-                std::cout << "Fade" << std::endl;
-            }
-            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
-            {
-                ps.apply_force(Vector{5, sf::degrees(0)});
-                std::cout << "Right" << std::endl;
-            }
-            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
-            {
-                ps.apply_force(Vector{5, sf::degrees(180)});
-                std::cout << "Left" << std::endl;
+                m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color::Green, Vector{4, sf::degrees(0)}, 180);
+                m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color::Yellow, Vector{6, sf::degrees(0)}, 180);
+                m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color::Blue, Vector{8, sf::degrees(0)}, 180);
             }
         }
     }
@@ -107,11 +116,7 @@ void Game::update(sf::Time delta_time)
 
     sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
 
-    ps.set_position(worldPos);
-    if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-        ps.add_particles(1, sf::Color::Yellow, Vector{8, sf::degrees(0)}, 180);
-
-    ps.update(delta_time);
+    m_particle_system_manager.update(delta_time);
 }
 
 void Game::render()
@@ -123,12 +128,15 @@ void Game::render()
         m_window.draw(*widget);
     }
 
-    m_window.draw(ps);
+    for(const auto& particle_system : m_particle_system_manager.get_particle_systems())
+    {
+        m_window.draw(*particle_system);
+    }
 
     m_window.display();
 }
 
-Game::Game() : ps(sf::Vector2f(400, 400))
+Game::Game()
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_window.create(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), GAME_NAME);

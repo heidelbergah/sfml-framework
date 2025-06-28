@@ -22,6 +22,8 @@ private:
     bool m_gravity_on = false;
     Vector m_gravity = {0.05, sf::degrees(270)};
 
+    sf::Time m_lifespans = sf::milliseconds(1000);
+
     float m_drag = 0.99; // (0.0 - 1.0); lower is stronger
 
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
@@ -38,6 +40,7 @@ public:
     void set_gravity(Vector g);
     void set_drag(float drag);
     void apply_force(Vector force);
+    void set_lifespan(sf::Time lifespan);
 
     /**
      * Add whole bunch of attribute changing functions

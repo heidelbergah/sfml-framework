@@ -59,6 +59,11 @@ void Particle::set_velocity(Vector v)
     m_vel = v;
 }
 
+void Particle::set_lifespan(sf::Time lifespan)
+{
+    m_lifespan = lifespan;
+}
+
 sf::Vector2f Particle::get_position() const
 {
     return m_pos;

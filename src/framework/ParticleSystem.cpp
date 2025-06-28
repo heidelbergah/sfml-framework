@@ -58,7 +58,7 @@ void ParticleSystem::add_particles(int count, sf::Color c, Vector v = {0, sf::de
         float magnitude = v.magnitude;
         float direction = v.direction.asDegrees() + ((rand() % (randomness*2)) - randomness);
 
-        Particle p(m_pos, c, sf::milliseconds(1000));
+        Particle p(m_pos, c, m_lifespans);
 
         Vector v;
         v.magnitude = magnitude;
@@ -104,3 +104,7 @@ void ParticleSystem::apply_force(Vector force)
     }
 }
 
+void ParticleSystem::set_lifespan(sf::Time lifespan)
+{
+    m_lifespans = lifespan;
+}
