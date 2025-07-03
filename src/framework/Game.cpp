@@ -65,6 +65,12 @@ void Game::initialize_objects()
 
     m_particle_system_manager.add_particle_system("bp", ps1);
     m_particle_system_manager.add_particle_system("rp", ps2);
+
+    m_circle.setRadius(50.f);
+    m_circle.setPosition(sf::Vector2f{300.f, 100.f});
+    m_circle.setFillColor(sf::Color::White);
+
+    m_circle_pos.set_transition(TransitionFunction::EaseOutElastic);
 }
 
 void Game::process_events()
@@ -86,6 +92,22 @@ void Game::process_events()
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Enter))
             {
                 m_particle_system_manager.get_particle_system("rp")->add_particles(100, sf::Color::Red, Vector{10, sf::degrees(0)}, 180);
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up))
+            {
+                m_circle_pos.set_value(sf::Vector2f{300.f, 100.f});
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
+            {
+                m_circle_pos.set_value(sf::Vector2f{100.f, 300.f});
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
+            {
+                m_circle_pos.set_value(sf::Vector2f{600.f, 300.f});
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down))
+            {
+                m_circle_pos.set_value(sf::Vector2f{300.f, 600.f});
             }
         }
         if(const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>())
@@ -117,6 +139,8 @@ void Game::update(sf::Time delta_time)
     sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
 
     m_particle_system_manager.update(delta_time);
+                
+    m_circle.setPosition(m_circle_pos);
 }
 
 void Game::render()
@@ -132,6 +156,8 @@ void Game::render()
     {
         m_window.draw(*particle_system);
     }
+
+    m_window.draw(m_circle);
 
     m_window.display();
 }

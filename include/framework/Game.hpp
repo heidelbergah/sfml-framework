@@ -37,6 +37,9 @@ private:
     WidgetManager m_widgets;
     ParticleSystemManager m_particle_system_manager;
 
+    sf::CircleShape m_circle;
+    Interpolated<sf::Vector2f> m_circle_pos;
+
 public:
     Game();
     ~Game();
