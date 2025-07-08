@@ -17,6 +17,7 @@
 #include "../gui/WidgetManager.hpp"
 
 #include "../framework/ParticleSystemManager.hpp"
+#include "../framework/ShaderManager.hpp"
 
 class Game
 {
@@ -36,9 +37,7 @@ private:
     // ADD YOUR DATA HERE
     WidgetManager m_widgets;
     ParticleSystemManager m_particle_system_manager;
-
-    sf::CircleShape m_circle;
-    Interpolated<sf::Vector2f> m_circle_pos;
+    ShaderManager m_shader_manager;
 
 public:
     Game();
