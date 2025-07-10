@@ -12,6 +12,9 @@
 class ParticleSystem : public sf::Drawable
 {
 private:
+    mutable sf::RenderTexture m_render_texture;
+    mutable sf::Sprite m_sprite;
+
     std::vector<Particle> m_particles;
     
     sf::VertexArray m_particle_lines;
@@ -27,6 +30,8 @@ private:
     float m_drag = 0.99; // (0.0 - 1.0); lower is stronger
 
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
+    void determine_texture_size(sf::Vector2u &min, sf::Vector2u &max) const;
+    void update_particle_positions(sf::Vector2u offset);
 
 public:
     ParticleSystem(sf::Vector2f pos);

@@ -18,7 +18,7 @@ void ParticleSystemManager::update(sf::Time delta_time)
 
 void ParticleSystemManager::add_particle_system(std::string key, ParticleSystem ps)
 {
-    std::shared_ptr p_ps = std::make_shared<ParticleSystem>(ps);
+    std::shared_ptr p_ps = std::make_shared<ParticleSystem>(std::move(ps));
     m_particle_systems[key] = p_ps;
 }
 

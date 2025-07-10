@@ -58,8 +58,8 @@ void Game::initialize_objects()
     ps2.set_drag(0.94f);
     ps2.set_lifespan(sf::seconds(2));
 
-    m_particle_system_manager.add_particle_system("bp", ps1);
-    m_particle_system_manager.add_particle_system("rp", ps2);
+    m_particle_system_manager.add_particle_system("bp", std::move(ps1));
+    m_particle_system_manager.add_particle_system("rp", std::move(ps2));
 
     /** INITIALIZE SHADERS **/
     sf::Shader bloom;
@@ -68,8 +68,8 @@ void Game::initialize_objects()
         std::cerr << "FAILED TO LOAD SHADER: bloom.frag" << std::endl;
     }
 
-    float intensity = 0.7f; // Good default value
-    float threshold = 0.5; // Good default value
+    float intensity = 3.0f; // Good default value
+    float threshold = 0.1; // Good default value
     bloom.setUniform("texture", sf::Shader::CurrentTexture);
     bloom.setUniform("threshold", threshold);
     bloom.setUniform("intensity", intensity);
@@ -142,8 +142,7 @@ void Game::render()
 
     for(const auto& particle_system : m_particle_system_manager.get_particle_systems())
     {
-        //m_window.draw(*particle_system, m_shader_manager.get_shader("bloom").get());
-        m_window.draw(*particle_system);
+        m_window.draw(*particle_system, m_shader_manager.get_shader("bloom").get());
     }
 
     m_window.display();
