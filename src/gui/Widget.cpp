@@ -17,7 +17,7 @@ Widget::Widget(sf::Vector2f size) :
 void Widget::set_position(sf::Vector2f pos)
 {
     m_pos = pos;
-    m_sprite.setPosition(pos);
+    m_sprite.setPosition(m_pos);
 }
 
 void Widget::set_outline(sf::Color color, int thickness)
@@ -38,6 +38,16 @@ void Widget::set_z_value(unsigned int z)
 void Widget::set_callback(std::function<void()> callback)
 {
     m_callback = callback;
+}
+
+void Widget::set_transition(TransitionFunction transition)
+{
+    m_pos.set_transition(transition);
+}
+
+void Widget::set_transition_duration(float duration)
+{
+    m_pos.set_duration(duration);
 }
 
 void Widget::move(sf::Vector2f move_vector)

@@ -28,7 +28,7 @@ protected:
     sf::RectangleShape m_outline;
     sf::Color m_color;
     sf::Color m_outline_color;
-    sf::Vector2f m_pos;
+    Interpolated<sf::Vector2f> m_pos;
     sf::Vector2f m_size;
 
     unsigned int m_z_value = 0; // Higher the number = higher the priority
@@ -46,13 +46,16 @@ public:
 
     void set_callback(std::function<void()> callback);
 
+    void set_transition(TransitionFunction transition);
+    void set_transition_duration(float duration);
+
     void move(sf::Vector2f move_vector);
 
     sf::Vector2f get_position();
     sf::Vector2f get_size();
     
     sf::FloatRect get_global_bounds();
-    
+
     unsigned int get_z_value();
 };
 

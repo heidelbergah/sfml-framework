@@ -48,6 +48,7 @@ void Frame::update(sf::Time delta_time)
     {
         m_widgets[i]->update(delta_time);
     }
+    m_sprite.setPosition(m_pos);
 }
 
 void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos)

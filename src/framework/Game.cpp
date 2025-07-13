@@ -21,27 +21,13 @@ void Game::initialize_objects()
     m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(600, 480));
     m_widgets.get_widget<Button>("button")->set_outline(sf::Color::White, 1);
     m_widgets.get_widget<Button>("button")->add_text("Click Me!", font, sf::Color::Black);
-
-    m_widgets.add_widget("slider", std::make_shared<Slider>(sf::Vector2f(200, 50), sf::Color::White));
-    m_widgets.get_widget<Slider>("slider")->set_position(sf::Vector2f(WINDOW_WIDTH-300, 100));
-    m_widgets.get_widget<Slider>("slider")->set_thumb_color(sf::Color::Yellow);
+    m_widgets.get_widget<Button>("button")->set_transition(TransitionFunction::EaseOutElastic);
 
     m_widgets.add_widget("frame", std::make_shared<Frame>(sf::Vector2f(300, 300), sf::Color::Blue, font));
     m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(50, 50));
     m_widgets.get_widget<Frame>("frame")->set_outline(sf::Color::Black, 2);
     m_widgets.get_widget<Frame>("frame")->add_taskbar(20, sf::Color::White, sf::Color::Black, 2, "Big Frame");
     m_widgets.get_widget<Frame>("frame")->set_z_value(10);
-
-    m_widgets.add_widget("gauge", std::make_shared<Gauge>(sf::Vector2f(100, 100), sf::Color::Green,
-                sf::Vector2f(0, 80), sf::Vector2f(1, 360)));
-    m_widgets.get_widget<Gauge>("gauge")->set_position(sf::Vector2f(100, WINDOW_HEIGHT-200));
-    m_widgets.get_widget<Gauge>("gauge")->set_dial_color(sf::Color::White);
-
-    m_widgets.add_widget("textbox", std::make_shared<TextBox>(sf::Vector2f(200, 100), sf::Color::White,
-                "I am a textbox\nand I have a\nsick ass animation", font, sf::Color::Black));
-    m_widgets.get_widget<TextBox>("textbox")->set_position(sf::Vector2f(WINDOW_WIDTH-300, WINDOW_HEIGHT-200));
-    m_widgets.get_widget<TextBox>("textbox")->add_text_scroll(20);
-    m_widgets.get_widget<TextBox>("textbox")->set_z_value(5);
 
     /** INITIALIZE PARTICLE SYSTEMS **/
 
@@ -52,14 +38,7 @@ void Game::initialize_objects()
     ps1.set_drag(0.99f);
     ps1.set_lifespan(sf::seconds(4));
 
-    ParticleSystem ps2(sf::Vector2f(400, 400));
-    ps2.toggle_gravity();
-    ps2.toggle_fade();
-    ps2.set_drag(0.94f);
-    ps2.set_lifespan(sf::seconds(2));
-
     m_particle_system_manager.add_particle_system("bp", std::move(ps1));
-    m_particle_system_manager.add_particle_system("rp", std::move(ps2));
 
     /** INITIALIZE SHADERS **/
     sf::Shader bloom;
@@ -94,10 +73,8 @@ void Game::process_events()
         if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
         {
             // Put whatever you want in here
-            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Enter))
-            {
-                m_particle_system_manager.get_particle_system("rp")->add_particles(100, sf::Color::Red, Vector{10, sf::degrees(0)}, 180);
-            }
+            m_widgets.get_widget<Button>("button")->set_position({100, 100});
+
         }
         if(const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>())
         {
@@ -120,13 +97,10 @@ void Game::update(sf::Time delta_time)
         widget->update(delta_time);
     }
 
-    float p = m_widgets.get_widget<Slider>("slider")->get_percentage();
-    m_widgets.get_widget<Gauge>("gauge")->set_arm_angle_based_on_value(80*p);
-
     sf::Vector2i pixelPos = sf::Mouse::getPosition(m_window);
-
     sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
-
+    
+    m_particle_system_manager.get_particle_system("bp")->set_position(m_widgets.get_widget<Button>("button")->get_position());
     m_particle_system_manager.update(delta_time);
                 
 }
@@ -135,11 +109,13 @@ void Game::render()
 {
     m_window.clear(sf::Color(50, 50, 50));
 
+    // Render all widgets
     for(const auto& widget : m_widgets.get_widgets())
     {
         m_window.draw(*widget);
     }
 
+    // Render all particle systems added to manager
     m_window.draw(m_particle_system_manager, m_shader_manager.get_shader("bloom").get());
 
     m_window.display();

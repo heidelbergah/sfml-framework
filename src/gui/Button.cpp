@@ -49,6 +49,11 @@ Button::Button(sf::Vector2f size, sf::Color color) :
     m_background.setFillColor(m_color);
 }
 
+void Button::update(sf::Time delta_time)
+{
+    m_sprite.setPosition(m_pos);
+}
+
 void Button::handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos)
 {
     sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
