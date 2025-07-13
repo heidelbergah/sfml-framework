@@ -2,46 +2,10 @@
     
 void ParticleSystem::draw(sf::RenderTarget &target, sf::RenderStates states) const
 {
-    m_render_texture.clear(sf::Color::Transparent);
-    m_render_texture.draw(m_particle_lines);
-    m_render_texture.display();
-    m_sprite.setTexture(m_render_texture.getTexture());
-
-    std::cout << "POS: " << m_sprite.getPosition().x << ", " << m_sprite.getPosition().y << std::endl;
-    std::cout << "SIZE: " << m_render_texture.getSize().x << ", " << m_render_texture.getSize().y << std::endl;
-
-    target.draw(m_sprite, states);
+    target.draw(m_particle_lines, states);
 }
 
-void ParticleSystem::determine_texture_size(sf::Vector2u &min, sf::Vector2u &max) const
-{
-    min.x = min.y = 999999999.f;
-    max.x = max.y = 0;
-
-    for(int i = 0; i < m_particle_lines.getVertexCount(); ++i)
-    {
-        sf::Vector2f particle = m_particle_lines[i].position;
-
-        if(particle.x > max.x) max.x = particle.x;
-        else if(particle.x < min.x) min.x = particle.x; 
-        
-        if(particle.y > max.y) max.y = particle.y;
-        else if(particle.y < min.y) min.y = particle.y; 
-    }
-}
-
-void ParticleSystem::update_particle_positions(sf::Vector2u offset)
-{
-    for(int i = 0; i < m_particle_lines.getVertexCount(); ++i)
-    {
-        m_particle_lines[i].position.x -= offset.x;
-        m_particle_lines[i].position.y -= offset.y;
-    }
-}
-
-ParticleSystem::ParticleSystem(sf::Vector2f pos) :
-    m_render_texture({1920, 1080}),
-    m_sprite(m_render_texture.getTexture())
+ParticleSystem::ParticleSystem(sf::Vector2f pos)
 {
     srand(time(NULL));
 
@@ -80,40 +44,11 @@ void ParticleSystem::update(sf::Time delta_time)
         m_particle_lines[index_count].color = p.get_color();
         index_count++;
     }
+}
 
-    // Update rendering data
-    sf::Vector2u min = {9999999, 9999999};
-    sf::Vector2u max = {0, 0};
-
-    unsigned padding = 20; // value added to all faces of render texture
-
-    determine_texture_size(min, max);
-
-    max.x += padding * 2;
-    max.y += padding * 2;
-
-    min.x -= padding;
-    min.y -= padding;
-
-    update_particle_positions(min);
-
-    m_render_texture.clear(sf::Color::Transparent);
-    if(m_particles.size() != 0)
-    {
-        if(!m_render_texture.resize(max))
-        {
-            std::cerr << "COULD NOT RESIZE PARTICLE SYSTEM RENDER TEXTURE" << std::endl;
-        }
-    }
-    else
-    {
-        if(!m_render_texture.resize({5, 5}))
-        {
-            std::cerr << "COULD NOT RESIZE PARTICLE SYSTEM RENDER TEXTURE" << std::endl;
-        }
-    }
-    m_sprite.setPosition(sf::Vector2f{min});
-
+sf::VertexArray ParticleSystem::get_particle_lines() const
+{
+    return m_particle_lines;
 }
 
 void ParticleSystem::set_position(sf::Vector2f pos)

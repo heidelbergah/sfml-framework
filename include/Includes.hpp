@@ -17,6 +17,8 @@
 #include <optional>
 #include <cmath>
 
+inline unsigned WINDOW_WIDTH = 800, WINDOW_HEIGHT = 800;
+
 float ease_in_out_exponential(float t);
 float ease_out_back(float t);
 float ease_in_back(float t);

@@ -68,7 +68,7 @@ void Game::initialize_objects()
         std::cerr << "FAILED TO LOAD SHADER: bloom.frag" << std::endl;
     }
 
-    float intensity = 3.0f; // Good default value
+    float intensity = 2.0f; // Good default value
     float threshold = 0.1; // Good default value
     bloom.setUniform("texture", sf::Shader::CurrentTexture);
     bloom.setUniform("threshold", threshold);
@@ -140,10 +140,7 @@ void Game::render()
         m_window.draw(*widget);
     }
 
-    for(const auto& particle_system : m_particle_system_manager.get_particle_systems())
-    {
-        m_window.draw(*particle_system, m_shader_manager.get_shader("bloom").get());
-    }
+    m_window.draw(m_particle_system_manager, m_shader_manager.get_shader("bloom").get());
 
     m_window.display();
 }
@@ -153,7 +150,6 @@ Game::Game()
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_window.create(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), GAME_NAME);
     // ======================================== //
- 
 }
 
 Game::~Game() {}

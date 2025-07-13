@@ -26,7 +26,6 @@ private:
     sf::RenderWindow m_window;
     sf::Clock m_clock;
     const std::string GAME_NAME = "undefined";
-    const unsigned int WINDOW_WIDTH = 800, WINDOW_HEIGHT = 800;
 
     void initialize_objects();
     void process_events();

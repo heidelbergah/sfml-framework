@@ -6,7 +6,24 @@
 
 #include "../../include/framework/ParticleSystemManager.hpp"
 
-ParticleSystemManager::ParticleSystemManager() {}
+ParticleSystemManager::ParticleSystemManager() :
+    m_render_texture({WINDOW_WIDTH, WINDOW_HEIGHT}),
+    m_sprite(m_render_texture.getTexture())
+{
+    m_sprite.setPosition({0, 0});
+}
+
+void ParticleSystemManager::draw(sf::RenderTarget &target, sf::RenderStates states) const
+{
+    m_render_texture.clear(sf::Color::Transparent);
+    for(const auto [key, system] : m_particle_systems)
+    {
+        m_render_texture.draw(*system);
+    }
+    m_render_texture.display();
+    m_sprite.setTexture(m_render_texture.getTexture());
+    target.draw(m_sprite, states);
+}
 
 void ParticleSystemManager::update(sf::Time delta_time)
 {

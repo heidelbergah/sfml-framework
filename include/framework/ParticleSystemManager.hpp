@@ -9,10 +9,15 @@
 
 #include "ParticleSystem.hpp"
 
-class ParticleSystemManager
+class ParticleSystemManager : public sf::Drawable
 {
 private:
+
+    mutable sf::RenderTexture m_render_texture;
+    mutable sf::Sprite m_sprite;
     std::unordered_map<std::string, std::shared_ptr<ParticleSystem>> m_particle_systems;
+    
+    void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 
 public:
     ParticleSystemManager();
