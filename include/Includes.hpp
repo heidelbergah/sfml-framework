@@ -76,6 +76,7 @@ struct Interpolated
     [[nodiscard]]
     T get_value() const
     {
+        if(m_transition == TransitionFunction::None) return m_end;
         float const elapsed = get_elapsed_seconds();
         float const t = elapsed * m_speed;
         if(t >= 1.0f)
@@ -102,6 +103,19 @@ struct Interpolated
     void set_transition(TransitionFunction transition)
     {
         m_transition = transition;
+    }
+
+    void set_instant(T const& value)
+    {
+        m_start = value;
+        m_end = value;
+        m_start_time = get_current_time();
+    }
+
+    [[nodiscard]]
+    TransitionFunction get_transition() const
+    {
+        return m_transition;
     }
 
     /*

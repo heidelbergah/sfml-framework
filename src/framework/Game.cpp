@@ -18,16 +18,17 @@ void Game::initialize_objects()
     /** INITIALIZE GUI WIDGETS **/
 
     m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(100, 50), sf::Color::Green));
-    m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(600, 480));
+    m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(600, 480), true);
     m_widgets.get_widget<Button>("button")->set_outline(sf::Color::White, 1);
     m_widgets.get_widget<Button>("button")->add_text("Click Me!", font, sf::Color::Black);
     m_widgets.get_widget<Button>("button")->set_transition(TransitionFunction::EaseOutElastic);
 
     m_widgets.add_widget("frame", std::make_shared<Frame>(sf::Vector2f(300, 300), sf::Color::Blue, font));
-    m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(50, 50));
+    m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(50, 50), true);
     m_widgets.get_widget<Frame>("frame")->set_outline(sf::Color::Black, 2);
     m_widgets.get_widget<Frame>("frame")->add_taskbar(20, sf::Color::White, sf::Color::Black, 2, "Big Frame");
     m_widgets.get_widget<Frame>("frame")->set_z_value(10);
+    m_widgets.get_widget<Frame>("frame")->set_transition_duration(0.5f);
 
     /** INITIALIZE PARTICLE SYSTEMS **/
 

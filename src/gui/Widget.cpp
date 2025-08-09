@@ -14,9 +14,12 @@ Widget::Widget(sf::Vector2f size) :
 
 }
 
-void Widget::set_position(sf::Vector2f pos)
+void Widget::set_position(sf::Vector2f pos, bool instant)
 {
-    m_pos = pos;
+    if(instant)
+        m_pos.set_instant(pos);
+    else
+        m_pos = pos;
     m_sprite.setPosition(m_pos);
 }
 
@@ -68,6 +71,11 @@ sf::Vector2f Widget::get_size()
 sf::FloatRect Widget::get_global_bounds()
 {
     return m_sprite.getGlobalBounds();
+}
+
+TransitionFunction Widget::get_transition() const
+{
+    return m_pos.get_transition();
 }
 
 unsigned int Widget::get_z_value()

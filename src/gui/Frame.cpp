@@ -33,6 +33,9 @@ Frame::Frame(sf::Vector2f size, sf::Color color, sf::Font& font) :
     m_color = color;
     m_size = size;
 
+    m_base_transition = get_transition();
+    m_skip_transition = true;
+
     m_sprite.setPosition(sf::Vector2f(0, 0));
     m_background.setPosition(sf::Vector2f(0, 0));
     m_background.setSize(m_size);
@@ -44,6 +47,17 @@ void Frame::update(sf::Time delta_time)
     int start_index = 2;
     if(m_show_taskbar)
         start_index = 0;
+
+    if(m_skip_transition)
+    {
+        set_transition(TransitionFunction::None);
+        m_skip_transition = false;
+    }
+    else
+    {
+        set_transition(m_base_transition);
+    }
+
     for(int i = start_index; i < m_widgets.size(); ++i)
     {
         m_widgets[i]->update(delta_time);
@@ -79,19 +93,17 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
             if(m_widgets[0]->get_global_bounds().contains(local_pos) && !m_being_dragged)
             {
                 m_being_dragged = true;
-                m_sprite.setOrigin(local_pos);
+                m_drag_offset = world_pos - m_pos.get_value();
             }
         }
         else if(m_being_dragged)
         {
             m_being_dragged = false;
-            move(-m_sprite.getOrigin());
-            m_sprite.setOrigin(sf::Vector2f(0, 0));
         }
 
         if(m_being_dragged)
         {
-            set_position(world_pos);
+            set_position(world_pos - m_drag_offset);
         }
     }
 }
@@ -102,11 +114,13 @@ void Frame::add_taskbar(int height, sf::Color color, sf::Color outline_color, in
 
     auto taskbar = std::make_unique<TextBox>(sf::Vector2f(m_size.x, height), color,
             string, m_font, sf::Color::Black);
+    taskbar->set_transition(TransitionFunction::None);
     taskbar->set_position(sf::Vector2f(0, 0));
     taskbar->set_outline(outline_color, thickness);
     m_widgets.push_back(std::move(taskbar));
 
     auto button = std::make_unique<Button>(sf::Vector2f(height, height), sf::Color::Red);
+    button->set_transition(TransitionFunction::None);
     button->set_position(sf::Vector2f(m_size.x-height, 0));
     button->set_outline(outline_color, thickness);
     button->add_text("X", m_font, sf::Color::Black);

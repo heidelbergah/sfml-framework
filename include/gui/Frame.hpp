@@ -16,6 +16,11 @@ private:
     sf::Color m_taskbar_outline_color;
     bool m_show_taskbar = false;
     bool m_being_dragged = false;
+    bool m_skip_transition = false;
+
+    sf::Vector2f m_drag_offset;
+
+    TransitionFunction m_base_transition;
 
     sf::Font m_font;
 
