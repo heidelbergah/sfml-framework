@@ -74,9 +74,17 @@ void Game::process_events()
         if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
         {
             // Put whatever you want in here
-            m_widgets.get_widget<Button>("button")->set_position({100, 100});
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Enter))
+            {
+                m_widgets.get_widget<Frame>("frame")->toggle_moveability();
+            }
 
         }
+        if(m_widgets.get_widget<Frame>("frame")->get_widget<Button>("button")->is_pressed())
+        {
+            m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color::White, Vector{2, sf::degrees(0)}, 180);
+        }
+
         if(const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>())
         {
             if(m_widgets.get_widget<Button>("button")->is_pressed())

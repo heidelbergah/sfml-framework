@@ -7,11 +7,13 @@
 #ifndef FRAME_HPP
 #define FRAME_HPP
 
-#include "Widget.hpp"
+#include "WidgetManager.hpp"
 
 class Frame : public Widget
 {
 private:
+    WidgetManager m_widgets;
+
     sf::Color m_taskbar_color;
     sf::Color m_taskbar_outline_color;
     bool m_show_taskbar = false;
@@ -24,8 +26,6 @@ private:
 
     sf::Font m_font;
 
-    std::vector<std::unique_ptr<Widget>> m_widgets;
-
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 
 public:
@@ -37,7 +37,17 @@ public:
     void add_taskbar(int height, sf::Color color, sf::Color outline_color, int thickness, std::string string="");
     void toggle_moveability();
 
-    void add_widget(std::unique_ptr<Widget> widget);
+    void add_widget(std::string key, std::shared_ptr<Widget> widget);
+    void remove_widget(std::string key);
+
+    template<typename T>
+    std::shared_ptr<T> get_widget(std::string key) const;
 };
+
+template<typename T>
+std::shared_ptr<T> Frame::get_widget(std::string key) const
+{
+    return m_widgets.get_widget<T>(key);
+}
 
 #endif

@@ -23,13 +23,13 @@ public:
     void remove_widget(std::string key);
 
     template<typename T>
-    std::shared_ptr<T> get_widget(std::string key);
+    std::shared_ptr<T> get_widget(std::string key) const;
 
     std::vector<std::shared_ptr<Widget>> get_widgets();
 };
 
 template<typename T>
-std::shared_ptr<T> WidgetManager::get_widget(std::string key)
+std::shared_ptr<T> WidgetManager::get_widget(std::string key) const
 {
     auto it = m_widgets.find(key);
     if(it != m_widgets.end()) return std::dynamic_pointer_cast<T>(it->second);

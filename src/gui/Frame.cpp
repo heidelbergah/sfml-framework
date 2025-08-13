@@ -15,12 +15,12 @@ void Frame::draw(sf::RenderTarget &target, sf::RenderStates states) const
     m_render_texture.draw(m_background);
     if(m_show_taskbar)
     {
-        m_render_texture.draw(*m_widgets[0]);
-        m_render_texture.draw(*m_widgets[1]);
-    }
-    for(int i = 2; i < m_widgets.size(); ++i)
-    {
-        m_render_texture.draw(*m_widgets[i]);
+        auto taskbar = m_widgets.get_widget<TextBox>("taskbar");
+        auto button = m_widgets.get_widget<Button>("button");
+        if (taskbar && button) {
+            m_render_texture.draw(*taskbar);
+            m_render_texture.draw(*button);
+        }
     }
     m_render_texture.display();
     m_sprite.setTexture(m_render_texture.getTexture());
@@ -35,6 +35,8 @@ Frame::Frame(sf::Vector2f size, sf::Color color, sf::Font& font) :
 
     m_base_transition = get_transition();
     m_skip_transition = true;
+
+    m_show_taskbar = false;
 
     m_sprite.setPosition(sf::Vector2f(0, 0));
     m_background.setPosition(sf::Vector2f(0, 0));
@@ -58,10 +60,9 @@ void Frame::update(sf::Time delta_time)
         set_transition(m_base_transition);
     }
 
-    for(int i = start_index; i < m_widgets.size(); ++i)
-    {
-        m_widgets[i]->update(delta_time);
-    }
+    m_widgets.get_widget<TextBox>("taskbar")->update(delta_time);
+    m_widgets.get_widget<Button>("button")->update(delta_time);
+
     m_sprite.setPosition(m_pos);
 }
 
@@ -75,10 +76,8 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
     sf::Vector2f world_mouse = window.mapPixelToCoords(mouse_pixel);
     sf::Vector2f local_mouse = world_mouse - m_sprite.getPosition();
 
-    for(int i = start_index; i < m_widgets.size(); ++i)
-    {
-        m_widgets[i]->handle_event(window, local_mouse);
-    }
+    m_widgets.get_widget<TextBox>("taskbar")->handle_event(window, local_mouse);
+    m_widgets.get_widget<Button>("button")->handle_event(window, local_mouse);
 
     if(m_show_taskbar)
     {
@@ -90,7 +89,7 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
 
         if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
         {
-            if(m_widgets[0]->get_global_bounds().contains(local_pos) && !m_being_dragged)
+            if(m_widgets.get_widget<TextBox>("taskbar")->get_global_bounds().contains(local_pos) && !m_being_dragged)
             {
                 m_being_dragged = true;
                 m_drag_offset = world_pos - m_pos.get_value();
@@ -112,32 +111,35 @@ void Frame::add_taskbar(int height, sf::Color color, sf::Color outline_color, in
 {
     m_show_taskbar = true;
 
-    auto taskbar = std::make_unique<TextBox>(sf::Vector2f(m_size.x, height), color,
-            string, m_font, sf::Color::Black);
-    taskbar->set_transition(TransitionFunction::None);
-    taskbar->set_position(sf::Vector2f(0, 0));
-    taskbar->set_outline(outline_color, thickness);
-    m_widgets.push_back(std::move(taskbar));
+    // Add the taskbar
+    m_widgets.add_widget("taskbar", std::make_shared<TextBox>(sf::Vector2f(m_size.x, height),
+                color, string, m_font, sf::Color::Black));
+    m_widgets.get_widget<TextBox>("taskbar")->set_transition(TransitionFunction::None);
+    m_widgets.get_widget<TextBox>("taskbar")->set_position(sf::Vector2f(0, 0));
+    m_widgets.get_widget<TextBox>("taskbar")->set_outline(outline_color, thickness);
 
-    auto button = std::make_unique<Button>(sf::Vector2f(height, height), sf::Color::Red);
-    button->set_transition(TransitionFunction::None);
-    button->set_position(sf::Vector2f(m_size.x-height, 0));
-    button->set_outline(outline_color, thickness);
-    button->add_text("X", m_font, sf::Color::Black);
-    m_widgets.push_back(std::move(button));
+    // Add the exit button
+    m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(height, height),
+                sf::Color::Red));
+    m_widgets.get_widget<Button>("button")->set_transition(TransitionFunction::None);
+    m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(m_size.x-height, 0));
+    m_widgets.get_widget<Button>("button")->set_outline(outline_color, thickness);
+    m_widgets.get_widget<Button>("button")->add_text("X", m_font, sf::Color::Black);
+
 }
 
 void Frame::toggle_moveability()
 {
-    // Missing implementation
+    m_show_taskbar = !m_show_taskbar;
 }
 
-void Frame::add_widget(std::unique_ptr<Widget> widget)
+void Frame::add_widget(std::string key, std::shared_ptr<Widget> widget)
 {
-    if(m_show_taskbar)
-    {
-        int height = m_widgets[0]->get_size().y;
-        widget->move(sf::Vector2f(0, height));
-    }
-    m_widgets.push_back(std::move(widget));
+    m_widgets.add_widget(key, widget);
 }
+
+void Frame::remove_widget(std::string key)
+{
+    m_widgets.remove_widget(key);
+}
+
