@@ -103,3 +103,15 @@ void Slider::set_thumb_color(sf::Color color)
     m_thumb.setFillColor(m_thumb_color);
 }
 
+void Slider::set_thumb_texture(sf::Texture texture, bool reset_rect)
+{
+    m_thumb_texture = std::make_unique<sf::Texture>(texture);
+    m_thumb.setTexture(m_thumb_texture.get(), reset_rect);
+}
+
+void Slider::set_body_texture(sf::Texture texture, bool reset_rect)
+{
+    m_body_texture = std::make_unique<sf::Texture>(texture);
+    m_body.setTexture(m_body_texture.get(), reset_rect);
+}
+

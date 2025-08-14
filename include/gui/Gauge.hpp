@@ -21,6 +21,9 @@ private:
 
     sf::Angle m_arm_angle;
 
+    std::unique_ptr<sf::Texture> m_dial_texture = nullptr;
+    std::unique_ptr<sf::Texture> m_arm_texture = nullptr;
+
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 public:
     Gauge(sf::Vector2f size, sf::Color color, sf::Vector2f range, sf::Vector2f boundary);
@@ -33,6 +36,9 @@ public:
     void set_dial_color(sf::Color color);
 
     void set_rotation(sf::Angle angle);
+
+    void set_dial_texture(sf::Texture texture, bool reset_rect=false);
+    void set_arm_texture(sf::Texture texture, bool reset_rect=false);
 };
 
 #endif

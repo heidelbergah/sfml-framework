@@ -31,6 +31,8 @@ protected:
     Interpolated<sf::Vector2f> m_pos;
     sf::Vector2f m_size;
 
+    std::unique_ptr<sf::Texture> m_background_texture = nullptr;
+
     unsigned int m_z_value = 0; // Higher the number = higher the priority
  
     std::optional<std::function<void()>> m_callback = std::nullopt;
@@ -48,6 +50,8 @@ public:
 
     void set_transition(TransitionFunction transition);
     void set_transition_duration(float duration);
+
+    void set_background_texture(sf::Texture texture, bool reset_rect=false);
 
     void move(sf::Vector2f move_vector);
 

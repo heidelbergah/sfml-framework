@@ -20,6 +20,9 @@ private:
     sf::Color m_body_outline_color;
     bool m_being_dragged = false;
 
+    std::unique_ptr<sf::Texture> m_thumb_texture = nullptr;
+    std::unique_ptr<sf::Texture> m_body_texture = nullptr;
+
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 
 public:
@@ -31,6 +34,9 @@ public:
 
     void set_body_color(sf::Color color);
     void set_thumb_color(sf::Color color);
+
+    void set_thumb_texture(sf::Texture texture, bool reset_rect=false);
+    void set_body_texture(sf::Texture texture, bool reset_rect=false);
 };
 
 #endif

@@ -81,3 +81,16 @@ void Gauge::set_rotation(sf::Angle angle)
 {
     m_sprite.setRotation(angle);
 }
+
+void Gauge::set_dial_texture(sf::Texture texture, bool reset_rect)
+{
+    m_dial_texture = std::make_unique<sf::Texture>(texture);
+    m_dial.setTexture(m_dial_texture.get(), reset_rect);
+}
+
+void Gauge::set_arm_texture(sf::Texture texture, bool reset_rect)
+{
+    m_arm_texture = std::make_unique<sf::Texture>(texture);
+    m_arm.setTexture(m_arm_texture.get(), reset_rect);
+}
+

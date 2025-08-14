@@ -16,7 +16,7 @@ void Frame::draw(sf::RenderTarget &target, sf::RenderStates states) const
     if(m_show_taskbar)
     {
         auto taskbar = m_widgets.get_widget<TextBox>("taskbar");
-        auto button = m_widgets.get_widget<Button>("button");
+        auto button = m_widgets.get_widget<Button>("exit");
         if (taskbar && button) {
             m_render_texture.draw(*taskbar);
             m_render_texture.draw(*button);
@@ -61,7 +61,7 @@ void Frame::update(sf::Time delta_time)
     }
 
     m_widgets.get_widget<TextBox>("taskbar")->update(delta_time);
-    m_widgets.get_widget<Button>("button")->update(delta_time);
+    m_widgets.get_widget<Button>("exit")->update(delta_time);
 
     m_sprite.setPosition(m_pos);
 }
@@ -77,7 +77,7 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
     sf::Vector2f local_mouse = world_mouse - m_sprite.getPosition();
 
     m_widgets.get_widget<TextBox>("taskbar")->handle_event(window, local_mouse);
-    m_widgets.get_widget<Button>("button")->handle_event(window, local_mouse);
+    m_widgets.get_widget<Button>("exit")->handle_event(window, local_mouse);
 
     if(m_show_taskbar)
     {
@@ -119,12 +119,12 @@ void Frame::add_taskbar(int height, sf::Color color, sf::Color outline_color, in
     m_widgets.get_widget<TextBox>("taskbar")->set_outline(outline_color, thickness);
 
     // Add the exit button
-    m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(height, height),
+    m_widgets.add_widget("exit", std::make_shared<Button>(sf::Vector2f(height, height),
                 sf::Color::Red));
-    m_widgets.get_widget<Button>("button")->set_transition(TransitionFunction::None);
-    m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(m_size.x-height, 0));
-    m_widgets.get_widget<Button>("button")->set_outline(outline_color, thickness);
-    m_widgets.get_widget<Button>("button")->add_text("X", m_font, sf::Color::Black);
+    m_widgets.get_widget<Button>("exit")->set_transition(TransitionFunction::None);
+    m_widgets.get_widget<Button>("exit")->set_position(sf::Vector2f(m_size.x-height, 0));
+    m_widgets.get_widget<Button>("exit")->set_outline(outline_color, thickness);
+    m_widgets.get_widget<Button>("exit")->add_text("X", m_font, sf::Color::Black);
 
 }
 
@@ -141,5 +141,17 @@ void Frame::add_widget(std::string key, std::shared_ptr<Widget> widget)
 void Frame::remove_widget(std::string key)
 {
     m_widgets.remove_widget(key);
+}
+
+void Frame::add_taskbar_texture(sf::Texture texture, bool reset_rect)
+{
+    m_taskbar_texture = std::make_unique<sf::Texture>(texture);
+    m_widgets.get_widget<TextBox>("taskbar")->set_background_texture(*m_taskbar_texture, reset_rect);
+}
+
+void Frame::add_taskbar_exit(sf::Texture texture, bool reset_rect)
+{
+    m_exit_texture = std::make_unique<sf::Texture>(texture);
+    m_widgets.get_widget<Button>("exit")->set_background_texture(*m_exit_texture, reset_rect);
 }
 

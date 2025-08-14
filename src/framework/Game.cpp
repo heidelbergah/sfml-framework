@@ -14,14 +14,25 @@ void print()
 void Game::initialize_objects()
 {
     sf::Font font("././assets/fonts/default-font.ttf");
+    sf::Texture texture("././assets/textures/simple_button.png");
 
     /** INITIALIZE GUI WIDGETS **/
-
-    m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(100, 50), sf::Color::Green));
+    m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(100, 50), sf::Color::White));
     m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(600, 480), true);
     m_widgets.get_widget<Button>("button")->set_outline(sf::Color::White, 1);
     m_widgets.get_widget<Button>("button")->add_text("Click Me!", font, sf::Color::Black);
     m_widgets.get_widget<Button>("button")->set_transition(TransitionFunction::EaseOutElastic);
+    m_widgets.get_widget<Button>("button")->set_background_texture(texture);
+    
+    m_widgets.add_widget("slider", std::make_shared<Slider>(sf::Vector2f(100, 15), sf::Color::Green));
+    m_widgets.get_widget<Slider>("slider")->set_position(sf::Vector2f(400, 480), true);
+    m_widgets.get_widget<Slider>("slider")->set_thumb_texture(texture, false);
+    m_widgets.get_widget<Slider>("slider")->set_body_texture(texture, false);
+
+    m_widgets.add_widget("gauge", std::make_shared<Gauge>(sf::Vector2f(50, 50), sf::Color::White, sf::Vector2f(0, 100), sf::Vector2f(0, 90)));
+    m_widgets.get_widget<Gauge>("gauge")->set_position(sf::Vector2f(300, 480), true);
+    m_widgets.get_widget<Gauge>("gauge")->set_dial_texture(texture, false);
+    m_widgets.get_widget<Gauge>("gauge")->set_arm_texture(texture, false);
 
     m_widgets.add_widget("frame", std::make_shared<Frame>(sf::Vector2f(300, 300), sf::Color::Blue, font));
     m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(50, 50), true);
@@ -31,7 +42,6 @@ void Game::initialize_objects()
     m_widgets.get_widget<Frame>("frame")->set_transition_duration(0.5f);
 
     /** INITIALIZE PARTICLE SYSTEMS **/
-
     sf::Vector2f pos = m_widgets.get_widget<Button>("button")->get_position();
     ParticleSystem ps1(pos);
     ps1.toggle_gravity();
@@ -80,7 +90,7 @@ void Game::process_events()
             }
 
         }
-        if(m_widgets.get_widget<Frame>("frame")->get_widget<Button>("button")->is_pressed())
+        if(m_widgets.get_widget<Frame>("frame")->get_widget<Button>("exit")->is_pressed())
         {
             m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color::White, Vector{2, sf::degrees(0)}, 180);
         }

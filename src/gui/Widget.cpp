@@ -53,6 +53,12 @@ void Widget::set_transition_duration(float duration)
     m_pos.set_duration(duration);
 }
 
+void Widget::set_background_texture(sf::Texture texture, bool reset_rect)
+{
+    m_background_texture = std::make_unique<sf::Texture>(texture);
+    m_background.setTexture(m_background_texture.get(), reset_rect);
+}
+
 void Widget::move(sf::Vector2f move_vector)
 {
     m_sprite.move(move_vector);

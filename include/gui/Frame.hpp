@@ -26,6 +26,9 @@ private:
 
     sf::Font m_font;
 
+    std::unique_ptr<sf::Texture> m_taskbar_texture = nullptr;
+    std::unique_ptr<sf::Texture> m_exit_texture = nullptr;
+
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 
 public:
@@ -39,6 +42,9 @@ public:
 
     void add_widget(std::string key, std::shared_ptr<Widget> widget);
     void remove_widget(std::string key);
+
+    void add_taskbar_texture(sf::Texture texture, bool reset_rect=false);
+    void add_taskbar_exit(sf::Texture texture, bool reset_rect=false);
 
     template<typename T>
     std::shared_ptr<T> get_widget(std::string key) const;

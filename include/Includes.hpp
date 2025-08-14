@@ -50,7 +50,7 @@ struct Interpolated
 
     float m_speed{1.0f};
 
-    TransitionFunction m_transition{TransitionFunction::Linear};
+    TransitionFunction m_transition{TransitionFunction::None};
 
     explicit Interpolated(T const& initial_value = {})
         : m_start{initial_value},
