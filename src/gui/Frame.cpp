@@ -72,17 +72,23 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
     if(m_show_taskbar)
         start_index = 0;
     
-    sf::Vector2i mouse_pixel = sf::Mouse::getPosition(window);
-    sf::Vector2f world_mouse = window.mapPixelToCoords(mouse_pixel);
-    sf::Vector2f local_mouse = world_mouse - m_sprite.getPosition();
+    sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
+    sf::Vector2f world_pos(
+        pixel_pos.x / m_mouse_scale,
+        pixel_pos.y / m_mouse_scale
+    );
+    sf::Vector2f local_mouse = world_pos - m_sprite.getPosition();
 
     m_widgets.get_widget<TextBox>("taskbar")->handle_event(window, local_mouse);
     m_widgets.get_widget<Button>("exit")->handle_event(window, local_mouse);
 
     if(m_show_taskbar)
     {
-        sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
-        sf::Vector2f world_pos = window.mapPixelToCoords(pixel_pos);
+        pixel_pos = sf::Mouse::getPosition(window);
+        sf::Vector2f world_pos(
+            pixel_pos.x / m_mouse_scale,
+            pixel_pos.y / m_mouse_scale
+        );
 
         // Need to localize position
         sf::Vector2f local_pos = world_pos - m_sprite.getPosition();

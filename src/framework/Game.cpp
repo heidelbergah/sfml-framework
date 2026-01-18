@@ -13,31 +13,20 @@ void print()
 
 void Game::initialize_objects()
 {
-    sf::Font font("././assets/fonts/default-font.ttf");
+    sf::Font font("././assets/fonts/Windows-Regular.ttf");
     sf::Texture texture("././assets/textures/simple_button.png");
 
     /** INITIALIZE GUI WIDGETS **/
-    m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(100, 50), sf::Color::White));
-    m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(600, 480), true);
-    m_widgets.get_widget<Button>("button")->set_outline(sf::Color::White, 1);
+    m_widgets.add_widget("button", std::make_shared<Button>(sf::Vector2f(64, 64), sf::Color::White));
+    m_widgets.get_widget<Button>("button")->set_position(sf::Vector2f(32, 32), true);
     m_widgets.get_widget<Button>("button")->add_text("Click Me!", font, sf::Color::Black);
     m_widgets.get_widget<Button>("button")->set_transition(TransitionFunction::EaseOutElastic);
     m_widgets.get_widget<Button>("button")->set_background_texture(texture);
-    
-    m_widgets.add_widget("slider", std::make_shared<Slider>(sf::Vector2f(100, 15), sf::Color::Green));
-    m_widgets.get_widget<Slider>("slider")->set_position(sf::Vector2f(400, 480), true);
-    m_widgets.get_widget<Slider>("slider")->set_thumb_texture(texture, false);
-    m_widgets.get_widget<Slider>("slider")->set_body_texture(texture, false);
 
-    m_widgets.add_widget("gauge", std::make_shared<Gauge>(sf::Vector2f(50, 50), sf::Color::White, sf::Vector2f(0, 100), sf::Vector2f(0, 90)));
-    m_widgets.get_widget<Gauge>("gauge")->set_position(sf::Vector2f(300, 480), true);
-    m_widgets.get_widget<Gauge>("gauge")->set_dial_texture(texture, false);
-    m_widgets.get_widget<Gauge>("gauge")->set_arm_texture(texture, false);
-
-    m_widgets.add_widget("frame", std::make_shared<Frame>(sf::Vector2f(300, 300), sf::Color::Blue, font));
-    m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(50, 50), true);
+    m_widgets.add_widget("frame", std::make_shared<Frame>(sf::Vector2f(128, 128), sf::Color::Blue, font));
+    m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(96, 96), true);
     m_widgets.get_widget<Frame>("frame")->set_outline(sf::Color::Black, 2);
-    m_widgets.get_widget<Frame>("frame")->add_taskbar(20, sf::Color::White, sf::Color::Black, 2, "Big Frame");
+    m_widgets.get_widget<Frame>("frame")->add_taskbar(10, sf::Color::White, sf::Color::Black, 2, "Big Frame");
     m_widgets.get_widget<Frame>("frame")->set_z_value(10);
     m_widgets.get_widget<Frame>("frame")->set_transition_duration(0.5f);
 
@@ -88,6 +77,14 @@ void Game::process_events()
             {
                 m_widgets.get_widget<Frame>("frame")->toggle_moveability();
             }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1))
+            {
+                m_widgets.get_widget<Button>("button")->set_position({256, 128});
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2))
+            {
+                m_widgets.get_widget<Button>("button")->set_position({900, 400});
+            }
 
         }
         if(m_widgets.get_widget<Frame>("frame")->get_widget<Button>("exit")->is_pressed())
@@ -117,8 +114,12 @@ void Game::update(sf::Time delta_time)
     }
 
     sf::Vector2i pixelPos = sf::Mouse::getPosition(m_window);
-    sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
-    
+    //sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
+    sf::Vector2f worldPos(
+        pixelPos.x / m_resolution_scale.x,
+        pixelPos.y / m_resolution_scale.y
+    );
+
     m_particle_system_manager.get_particle_system("bp")->set_position(m_widgets.get_widget<Button>("button")->get_position());
     m_particle_system_manager.update(delta_time);
                 
@@ -127,23 +128,33 @@ void Game::update(sf::Time delta_time)
 void Game::render()
 {
     m_window.clear(sf::Color(50, 50, 50));
+    m_whole_screen_texture.clear(sf::Color(50, 50, 50));
 
     // Render all widgets
     for(const auto& widget : m_widgets.get_widgets())
     {
-        m_window.draw(*widget);
+        m_whole_screen_texture.draw(*widget);
     }
 
     // Render all particle systems added to manager
-    m_window.draw(m_particle_system_manager, m_shader_manager.get_shader("bloom").get());
-
+    m_whole_screen_texture.draw(m_particle_system_manager, m_shader_manager.get_shader("bloom").get());
+    
+    m_whole_screen_texture.display();
+    m_whole_screen_sprite.setTexture(m_whole_screen_texture.getTexture());
+    m_window.draw(m_whole_screen_sprite);
     m_window.display();
 }
 
-Game::Game()
+Game::Game() :
+    m_whole_screen_texture(m_base_resolution), 
+    m_whole_screen_sprite(m_whole_screen_texture.getTexture())
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
-    m_window.create(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), GAME_NAME);
+    m_context_settings.antiAliasingLevel = 0;
+    m_window.create(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), GAME_NAME, sf::Style::Default, sf::State::Windowed, m_context_settings); 
+    
+    m_whole_screen_sprite.setScale(m_resolution_scale);
+    m_whole_screen_sprite.setPosition({0, 0});
     // ======================================== //
 }
 

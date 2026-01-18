@@ -33,6 +33,7 @@ protected:
 
     std::unique_ptr<sf::Texture> m_background_texture = nullptr;
 
+    unsigned int m_mouse_scale = 2; // Change depending on window scale
     unsigned int m_z_value = 0; // Higher the number = higher the priority
  
     std::optional<std::function<void()>> m_callback = std::nullopt;

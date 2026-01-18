@@ -9,7 +9,7 @@
 TextWidget::TextWidget(sf::Vector2f size) :
     Widget(size)
 {
-    m_character_size = 16;
+    m_character_size = 8;
 }
 
 void TextWidget::set_text(std::string string, sf::Color color)
