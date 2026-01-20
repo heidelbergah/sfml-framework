@@ -9,7 +9,7 @@
 TextWidget::TextWidget(sf::Vector2f size) :
     Widget(size)
 {
-    m_character_size = 8;
+    m_character_size = 12;
 }
 
 void TextWidget::set_text(std::string string, sf::Color color)
@@ -40,15 +40,15 @@ void TextWidget::set_alignment(Alignment alignment)
     {
         case CENTER:
             m_text->setOrigin(sf::Vector2f(text_bounds.x/2, (text_bounds.y/2) + vertical_spacing));
-            text_pos = sf::Vector2f(m_size.x/2, m_size.y/2);
+            text_pos = sf::Vector2f(int(m_size.x/2), int(m_size.y/2));
             break;
         case LEFT:
             m_text->setOrigin(sf::Vector2f(0, (text_bounds.y/2) + vertical_spacing));
-            text_pos = sf::Vector2f(letter_spacing, m_size.y/2);
+            text_pos = sf::Vector2f(letter_spacing, int(m_size.y/2));
             break;
         case RIGHT:
             m_text->setOrigin(sf::Vector2f(text_bounds.x, (text_bounds.y/2) + vertical_spacing));
-            text_pos = sf::Vector2f(m_size.x-letter_spacing, m_size.y/2);
+            text_pos = sf::Vector2f(m_size.x-letter_spacing, int(m_size.y/2));
             break;
     }
     

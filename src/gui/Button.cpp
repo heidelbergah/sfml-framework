@@ -21,17 +21,17 @@ void Button::draw(sf::RenderTarget &target, sf::RenderStates states) const
 
 void Button::create_color_variants()
 {
-    int darkening_factor = 80;
-    int lightening_factor = 80;
+    int pressing_factor = 120;
+    int hovering_factor = 80;
 
-    m_dark_color.r = std::max(0, m_color.r - darkening_factor);
-    m_dark_color.g = std::max(0, m_color.g - darkening_factor);
-    m_dark_color.b = std::max(0, m_color.b - darkening_factor);
+    m_dark_color.r = std::max(0, m_color.r - pressing_factor);
+    m_dark_color.g = std::max(0, m_color.g - pressing_factor);
+    m_dark_color.b = std::max(0, m_color.b - pressing_factor);
     m_dark_color.a = 255;
 
-    m_light_color.r = std::min(255, m_color.r + lightening_factor);
-    m_light_color.g = std::min(255, m_color.g + lightening_factor);
-    m_light_color.b = std::min(255, m_color.b + lightening_factor);
+    m_light_color.r = std::max(0, m_color.r - hovering_factor);
+    m_light_color.g = std::max(0, m_color.g - hovering_factor);
+    m_light_color.b = std::max(0, m_color.b - hovering_factor);
     m_light_color.a = 255; 
 }
 

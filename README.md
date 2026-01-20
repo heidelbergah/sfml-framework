@@ -16,5 +16,5 @@ SFML 3.0 Framework designed to make game development much more organized and eas
 
 ## Optional
 
-[] - Frame transition function being weird... might not even be necessary to fix :p
+[X] - Frame transition function being weird... might not even be necessary to fix :p
 

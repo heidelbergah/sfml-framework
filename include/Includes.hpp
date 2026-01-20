@@ -18,6 +18,7 @@
 #include <cmath>
 
 inline unsigned WINDOW_WIDTH = 960, WINDOW_HEIGHT = 540;
+inline unsigned SCALE = 2;
 
 float ease_in_out_exponential(float t);
 float ease_out_back(float t);

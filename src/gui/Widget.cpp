@@ -11,7 +11,7 @@ Widget::Widget(sf::Vector2f size) :
                       static_cast<unsigned>(size.y)}),
     m_sprite(m_render_texture.getTexture())
 {
-
+    m_render_texture.setSmooth(false);
 }
 
 void Widget::set_position(sf::Vector2f pos, bool instant)

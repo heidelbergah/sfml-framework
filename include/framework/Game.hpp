@@ -24,7 +24,7 @@ class Game
 private:
     // THIS PRIVATE SECTION MUST REMAIN IN GAME CLASS, DO NOT REMOVE
     sf::Vector2u m_base_resolution = {WINDOW_WIDTH, WINDOW_HEIGHT}; // native resolution
-    sf::Vector2f m_resolution_scale = {1.f, 1.f}; // scale for display resolution
+    sf::Vector2f m_resolution_scale = {static_cast<float>(SCALE), static_cast<float>(SCALE)}; // scale for display resolution
  
     sf::ContextSettings m_context_settings;
     sf::RenderWindow m_window;

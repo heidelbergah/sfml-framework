@@ -14,6 +14,7 @@ void print()
 void Game::initialize_objects()
 {
     sf::Font font("././assets/fonts/Windows-Regular.ttf");
+    font.setSmooth(false);
     sf::Texture texture("././assets/textures/simple_button.png");
 
     /** INITIALIZE GUI WIDGETS **/
@@ -26,9 +27,15 @@ void Game::initialize_objects()
     m_widgets.add_widget("frame", std::make_shared<Frame>(sf::Vector2f(128, 128), sf::Color::Blue, font));
     m_widgets.get_widget<Frame>("frame")->set_position(sf::Vector2f(96, 96), true);
     m_widgets.get_widget<Frame>("frame")->set_outline(sf::Color::Black, 2);
-    m_widgets.get_widget<Frame>("frame")->add_taskbar(10, sf::Color::White, sf::Color::Black, 2, "Big Frame");
+    m_widgets.get_widget<Frame>("frame")->add_taskbar(12, sf::Color::White, sf::Color::Black, 2, "Big Frame");
     m_widgets.get_widget<Frame>("frame")->set_z_value(10);
     m_widgets.get_widget<Frame>("frame")->set_transition_duration(0.5f);
+
+    m_widgets.add_widget("text", std::make_shared<TextBox>(sf::Vector2f(160, 160), sf::Color::White, "This is a text\nIf you see text\nslowly forming\nyou've succeeded.", font, sf::Color::Black));;
+    m_widgets.get_widget<TextBox>("text")->set_position(sf::Vector2f(128, 256), true);
+    m_widgets.get_widget<TextBox>("text")->set_outline(sf::Color::Red, 2);
+    m_widgets.get_widget<TextBox>("text")->set_z_value(20);
+    m_widgets.get_widget<TextBox>("text")->add_text_scroll(20);
 
     /** INITIALIZE PARTICLE SYSTEMS **/
     sf::Vector2f pos = m_widgets.get_widget<Button>("button")->get_position();
@@ -151,8 +158,9 @@ Game::Game() :
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_context_settings.antiAliasingLevel = 0;
-    m_window.create(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), GAME_NAME, sf::Style::Default, sf::State::Windowed, m_context_settings); 
+    m_window.create(sf::VideoMode({WINDOW_WIDTH*SCALE, WINDOW_HEIGHT*SCALE}), GAME_NAME, sf::Style::Default, sf::State::Windowed, m_context_settings); 
     
+    m_whole_screen_texture.setSmooth(false);
     m_whole_screen_sprite.setScale(m_resolution_scale);
     m_whole_screen_sprite.setPosition({0, 0});
     // ======================================== //
