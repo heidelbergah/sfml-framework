@@ -173,11 +173,11 @@ void Game::render()
 Game::Game() :
     m_whole_screen_texture(m_base_resolution), 
     m_whole_screen_sprite(m_whole_screen_texture.getTexture()),
-    m_camera(sf::Vector2f(WINDOW_WIDTH*SCALE, WINDOW_HEIGHT*SCALE), sf::Vector2f(float(WINDOW_WIDTH)*SCALE/2.f, float(WINDOW_HEIGHT)*SCALE/2.f))
+    m_camera(sf::Vector2f(SCALED_WIDTH, SCALED_HEIGHT), sf::Vector2f(float(SCALED_WIDTH)/2.f, float(SCALED_HEIGHT)/2.f))
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_context_settings.antiAliasingLevel = 0;
-    m_window.create(sf::VideoMode({WINDOW_WIDTH*SCALE, WINDOW_HEIGHT*SCALE}), GAME_NAME, sf::Style::Default, sf::State::Windowed, m_context_settings); 
+    m_window.create(sf::VideoMode({SCALED_WIDTH, SCALED_HEIGHT}), GAME_NAME, sf::Style::Default, sf::State::Windowed, m_context_settings); 
     m_camera.set_transition(TransitionFunction::Linear);
     m_camera.set_transition_duration(0.07);
 
