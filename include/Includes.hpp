@@ -59,6 +59,16 @@ struct Interpolated
     {}
 
     [[nodiscard]]
+    bool is_transition_over() const
+    {
+        if(m_transition == TransitionFunction::None) return true;
+        float const elapsed = get_elapsed_seconds();
+        float const t = elapsed * m_speed;
+        if(t >= 1.0) return true;
+        return false;
+    }
+
+    [[nodiscard]]
     float get_current_time() const
     {
         auto const now = std::chrono::steady_clock::now();

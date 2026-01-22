@@ -18,6 +18,7 @@
 
 #include "../framework/ParticleSystemManager.hpp"
 #include "../framework/ShaderManager.hpp"
+#include "../framework/Camera.hpp"
 
 class Game
 {
@@ -40,6 +41,7 @@ private:
 
 private:
     // ADD YOUR DATA HERE
+    Camera m_camera;
     WidgetManager m_widgets;
     ParticleSystemManager m_particle_system_manager;
     ShaderManager m_shader_manager;

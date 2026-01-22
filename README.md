@@ -10,6 +10,7 @@ SFML 3.0 Framework designed to make game development much more organized and eas
 [] - Add a scene management system
 [] - Add cutscene support
 [] - Add camera effects: shake, movement, movie black bars
+    [] - Needs refining, mouse location needs to be relative to view
 [] - Tilemap manager
     [] - Create WFC algorithm for map generation
     [] - Make JSON load/save manager
