@@ -57,10 +57,10 @@ void Button::update(sf::Time delta_time)
 void Button::handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos)
 {
     sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
-    sf::Vector2f world_pos(
-        pixel_pos.x / m_mouse_scale,
-        pixel_pos.y / m_mouse_scale
-    );
+    
+    sf::Vector2f world_pos = window.mapPixelToCoords(pixel_pos);
+    world_pos.x /= m_mouse_scale;
+    world_pos.y /= m_mouse_scale;
 
     if(local_mouse_pos.has_value())
     {

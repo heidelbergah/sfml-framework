@@ -37,12 +37,15 @@ void Game::initialize_objects()
     m_widgets.get_widget<TextBox>("text")->set_z_value(20);
     m_widgets.get_widget<TextBox>("text")->add_text_scroll(20);
 
+    m_widgets.add_widget("slider", std::make_shared<Slider>(sf::Vector2f(100, 10), sf::Color::Yellow));
+    m_widgets.get_widget<Slider>("slider")->set_position(sf::Vector2f(256, 32));
+
     /** INITIALIZE PARTICLE SYSTEMS **/
     sf::Vector2f pos = m_widgets.get_widget<Button>("button")->get_position();
     ParticleSystem ps1(pos);
     //ps1.toggle_gravity();
     ps1.toggle_fade();
-    ps1.set_drag(0.98f);
+    ps1.set_drag(0.96f);
     ps1.set_lifespan(sf::seconds(4));
 
     ParticleSystem bullets(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT/2));
@@ -115,11 +118,11 @@ void Game::process_events()
             if(m_widgets.get_widget<Button>("button")->is_pressed())
             {
                 m_camera.shake(50);
-                m_particle_system_manager.get_particle_system("bp")->add_particles(30, sf::Color(203, 53, 61), Vector{6, sf::degrees(0)}, 180);
-                m_particle_system_manager.get_particle_system("bp")->add_particles(30, sf::Color(249, 182, 78), Vector{5, sf::degrees(0)}, 180);
-                m_particle_system_manager.get_particle_system("bp")->add_particles(30, sf::Color(237, 98, 64), Vector{7, sf::degrees(0)}, 180);
-                m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color(86, 61, 67), Vector{3, sf::degrees(0)}, 180);
-                m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color(106, 74, 87), Vector{4, sf::degrees(0)}, 180);
+                m_particle_system_manager.get_particle_system("bp")->add_particles(30, sf::Color(203, 53, 61), Vector{4, sf::degrees(0)}, 180);
+                m_particle_system_manager.get_particle_system("bp")->add_particles(30, sf::Color(249, 182, 78), Vector{3, sf::degrees(0)}, 180);
+                m_particle_system_manager.get_particle_system("bp")->add_particles(30, sf::Color(237, 98, 64), Vector{5, sf::degrees(0)}, 180);
+                m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color(86, 61, 67), Vector{1, sf::degrees(0)}, 180);
+                m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color(106, 74, 87), Vector{2, sf::degrees(0)}, 180);
             }
         }
     }
@@ -150,9 +153,8 @@ void Game::update(sf::Time delta_time)
 
 void Game::render()
 {
-    m_window.setView(m_camera.get_view());
-    
     m_window.clear(sf::Color(50, 50, 50));
+    m_whole_screen_texture.setView(m_camera.get_view());
     m_whole_screen_texture.clear(sf::Color(50, 50, 50));
 
     // Render all widgets
@@ -165,6 +167,9 @@ void Game::render()
     m_whole_screen_texture.draw(m_particle_system_manager, m_shader_manager.get_shader("bloom").get());
     
     m_whole_screen_texture.display();
+
+    m_window.setView(m_window.getDefaultView());
+
     m_whole_screen_sprite.setTexture(m_whole_screen_texture.getTexture());
     m_window.draw(m_whole_screen_sprite);
     m_window.display();
@@ -173,11 +178,13 @@ void Game::render()
 Game::Game() :
     m_whole_screen_texture(m_base_resolution), 
     m_whole_screen_sprite(m_whole_screen_texture.getTexture()),
-    m_camera(sf::Vector2f(SCALED_WIDTH, SCALED_HEIGHT), sf::Vector2f(float(SCALED_WIDTH)/2.f, float(SCALED_HEIGHT)/2.f))
+    m_camera(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT), sf::Vector2f(float(WINDOW_WIDTH)/2.f, float(WINDOW_HEIGHT)/2.f))
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_context_settings.antiAliasingLevel = 0;
     m_window.create(sf::VideoMode({SCALED_WIDTH, SCALED_HEIGHT}), GAME_NAME, sf::Style::Default, sf::State::Windowed, m_context_settings); 
+    
+    m_whole_screen_texture.setView(m_camera.get_view());
     m_camera.set_transition(TransitionFunction::Linear);
     m_camera.set_transition_duration(0.07);
 

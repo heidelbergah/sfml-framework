@@ -8,9 +8,6 @@ Camera::Camera(sf::Vector2f size, sf::Vector2f center)
 
     m_view.setSize(m_size);
     m_view.setCenter(m_pos);
-
-    std::cout << m_view.getSize().x << ", " << m_view.getSize().y << std::endl;
-    std::cout << m_view.getCenter().x << ", " << m_view.getCenter().y << std::endl;
 }
 
 void Camera::move(sf::Vector2f displacement)
