@@ -17,8 +17,8 @@ SFML 3.0 Framework designed to make game development much more organized and eas
 
 ## BUGS
 
-[X] - Update whole screen texture to ensure eveyrthing is displayed properly when
-      moving the camera.
-
-[] - Particles despawn based on window resolution, not the cameras view.
+[] - RenderTexture stays in the same place, so when camera moves, it's obvious where
+     the texture boundaries are. This is not what we want.
+[] - When moving the camera, the mouse coordinate system starts being janky and no longer
+     matches with what's actually being hovered over.
 

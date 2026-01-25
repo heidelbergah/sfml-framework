@@ -99,11 +99,29 @@ void Game::process_events()
             {
                 m_widgets.get_widget<Button>("button")->set_position({900, 400});
             }
+
+            // Camera movements
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
+            {
+                m_camera.move(sf::Vector2f(-1, 0));
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
+            {
+                m_camera.move(sf::Vector2f(1, 0));
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
+            {
+                m_camera.move(sf::Vector2f(0, -1));
+            }
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
+            {
+                m_camera.move(sf::Vector2f(0, 1));
+            }
             
             // Sample of firing a machine gun
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
             {
-                m_camera.shake(5);
+                m_camera.shake(2);
                 m_particle_system_manager.get_particle_system("bullets")->add_particles(1, sf::Color(255, 255, 255), Vector{30, sf::degrees(180)}, 3);
             }
 
@@ -137,14 +155,11 @@ void Game::update(sf::Time delta_time)
         widget->update(delta_time);
     }
 
+    /*              In case ever needed
     sf::Vector2i pixelPos = sf::Mouse::getPosition(m_window);
-    //sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
-    sf::Vector2f worldPos(
-        pixelPos.x / m_resolution_scale.x,
-        pixelPos.y / m_resolution_scale.y
-    );
+    sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
+    */
 
-    
     m_particle_system_manager.get_particle_system("bp")->set_position(m_widgets.get_widget<Button>("button")->get_position());
     m_particle_system_manager.update(delta_time);
     m_camera.update();
