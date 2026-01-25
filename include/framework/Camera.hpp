@@ -27,6 +27,12 @@ public:
     void set_transition_duration(float duration);
 
     sf::View& get_view();
+
+    // Gets the position of the camera as if its origin was in the top left corner
+    sf::Vector2f get_position();
+
+    // Gets the center of the camera
+    sf::Vector2f get_center() const;
 };
 
 #endif

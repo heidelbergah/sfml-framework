@@ -25,7 +25,7 @@ public:
     Button(sf::Vector2f size, sf::Color color);
 
     void update(sf::Time delta_time) override;
-    void handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) override;
+    void handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) override;
 
     bool is_hovered();
     bool is_pressed();

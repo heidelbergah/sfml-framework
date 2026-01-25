@@ -35,7 +35,7 @@ public:
     Frame(sf::Vector2f size, sf::Color color, sf::Font &font);
 
     void update(sf::Time delta_time) override;
-    void handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) override;
+    void handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) override;
 
     void add_taskbar(int height, sf::Color color, sf::Color outline_color, int thickness, std::string string="");
     void toggle_moveability();

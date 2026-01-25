@@ -44,6 +44,8 @@ public:
     void apply_force(Vector force);
     void set_lifespan(sf::Time lifespan);
 
+    sf::Vector2f get_position() const;
+
     /**
      * Add whole bunch of attribute changing functions
      * Be fun and creative, let the user change a whole lot

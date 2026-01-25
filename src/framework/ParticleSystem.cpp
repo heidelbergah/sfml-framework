@@ -113,3 +113,8 @@ void ParticleSystem::set_lifespan(sf::Time lifespan)
 {
     m_lifespans = lifespan;
 }
+
+sf::Vector2f ParticleSystem::get_position() const
+{
+    return m_pos;
+}

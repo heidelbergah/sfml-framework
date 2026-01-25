@@ -6,11 +6,12 @@
 
 #include "../../include/framework/ParticleSystemManager.hpp"
 
-ParticleSystemManager::ParticleSystemManager() :
+ParticleSystemManager::ParticleSystemManager(sf::Vector2f camera_pos) :
     m_render_texture({WINDOW_WIDTH, WINDOW_HEIGHT}),
     m_sprite(m_render_texture.getTexture())
 {
-    m_sprite.setPosition({0, 0});
+    m_pos = camera_pos;
+    m_sprite.setPosition(m_pos);
 }
 
 void ParticleSystemManager::draw(sf::RenderTarget &target, sf::RenderStates states) const
@@ -25,11 +26,22 @@ void ParticleSystemManager::draw(sf::RenderTarget &target, sf::RenderStates stat
     target.draw(m_sprite, states);
 }
 
-void ParticleSystemManager::update(sf::Time delta_time)
+void ParticleSystemManager::update(sf::Time delta_time, sf::Vector2f camera_pos)
 {
     for(auto& [id, ps] : m_particle_systems)
     {
         ps->update(delta_time);
+    }
+
+    if(camera_pos != m_pos)
+    {
+        sf::Vector2f displacement = m_pos - camera_pos;
+        m_pos = camera_pos;
+        for(auto& [id, ps] : m_particle_systems)
+        {
+            ps->set_position(ps->get_position() + displacement);
+        }
+        m_sprite.setPosition(m_pos);
     }
 }
 
@@ -42,6 +54,12 @@ void ParticleSystemManager::add_particle_system(std::string key, ParticleSystem 
 void ParticleSystemManager::remove_particle_system(std::string key)
 {
     m_particle_systems.erase(key);
+}
+
+void ParticleSystemManager::set_particle_system_position(std::string key, sf::Vector2f pos)
+{
+    sf::Vector2f actual_position = pos - m_pos;
+    m_particle_systems[key]->set_position(actual_position);
 }
 
 std::shared_ptr<ParticleSystem> ParticleSystemManager::get_particle_system(std::string key)

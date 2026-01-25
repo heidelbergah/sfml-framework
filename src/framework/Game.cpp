@@ -41,8 +41,7 @@ void Game::initialize_objects()
     m_widgets.get_widget<Slider>("slider")->set_position(sf::Vector2f(256, 32));
 
     /** INITIALIZE PARTICLE SYSTEMS **/
-    sf::Vector2f pos = m_widgets.get_widget<Button>("button")->get_position();
-    ParticleSystem ps1(pos);
+    ParticleSystem ps1(m_widgets.get_widget<Button>("button")->get_position());
     //ps1.toggle_gravity();
     ps1.toggle_fade();
     ps1.set_drag(0.96f);
@@ -73,6 +72,15 @@ void Game::initialize_objects()
 
 void Game::process_events()
 {
+    // Using the mouse position relative to the window, scale it to the resolution scale, then
+    // convert it to pixel coordinates relative to the RenderTexture gotten from the camera view
+    sf::Vector2i pixel_pos = sf::Mouse::getPosition(m_window);
+    sf::Vector2f scaled_pos = {
+        static_cast<float>(pixel_pos.x) / m_resolution_scale.x,
+        static_cast<float>(pixel_pos.y) / m_resolution_scale.y
+    };
+    sf::Vector2f world_pos = m_whole_screen_texture.mapPixelToCoords(sf::Vector2i(scaled_pos), m_camera.get_view());
+    
     while(const std::optional event = m_window.pollEvent())
     {
         if(event->is<sf::Event::Closed>())
@@ -82,8 +90,9 @@ void Game::process_events()
 
         for(const auto& widget : m_widgets.get_widgets())
         {
-            widget->handle_event(m_window);
+            widget->handle_event(m_window, world_pos);
         }
+        
         if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>())
         {
             // Put whatever you want in here
@@ -103,19 +112,27 @@ void Game::process_events()
             // Camera movements
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
             {
+                m_camera.set_transition(TransitionFunction::None);
                 m_camera.move(sf::Vector2f(-1, 0));
+                m_camera.set_transition(TransitionFunction::Linear);
             }
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
             {
+                m_camera.set_transition(TransitionFunction::None);
                 m_camera.move(sf::Vector2f(1, 0));
+                m_camera.set_transition(TransitionFunction::Linear);
             }
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
             {
+                m_camera.set_transition(TransitionFunction::None);
                 m_camera.move(sf::Vector2f(0, -1));
+                m_camera.set_transition(TransitionFunction::Linear);
             }
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
             {
+                m_camera.set_transition(TransitionFunction::None);
                 m_camera.move(sf::Vector2f(0, 1));
+                m_camera.set_transition(TransitionFunction::Linear);
             }
             
             // Sample of firing a machine gun
@@ -126,6 +143,7 @@ void Game::process_events()
             }
 
         }
+
         if(m_widgets.get_widget<Frame>("frame")->get_widget<Button>("exit")->is_pressed())
         {
             m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color::White, Vector{2, sf::degrees(0)}, 180);
@@ -155,22 +173,17 @@ void Game::update(sf::Time delta_time)
         widget->update(delta_time);
     }
 
-    /*              In case ever needed
-    sf::Vector2i pixelPos = sf::Mouse::getPosition(m_window);
-    sf::Vector2f worldPos = m_window.mapPixelToCoords(pixelPos);
-    */
-
-    m_particle_system_manager.get_particle_system("bp")->set_position(m_widgets.get_widget<Button>("button")->get_position());
-    m_particle_system_manager.update(delta_time);
+    m_particle_system_manager.set_particle_system_position("bp", m_widgets.get_widget<Button>("button")->get_position());
+    m_particle_system_manager.update(delta_time, m_camera.get_position());
     m_camera.update();
 
 }
 
 void Game::render()
 {
-    m_window.clear(sf::Color(50, 50, 50));
-    m_whole_screen_texture.setView(m_camera.get_view());
+    m_window.clear(sf::Color(0, 0, 0));
     m_whole_screen_texture.clear(sf::Color(50, 50, 50));
+    m_whole_screen_texture.setView(m_camera.get_view());
 
     // Render all widgets
     for(const auto& widget : m_widgets.get_widgets())
@@ -183,8 +196,6 @@ void Game::render()
     
     m_whole_screen_texture.display();
 
-    m_window.setView(m_window.getDefaultView());
-
     m_whole_screen_sprite.setTexture(m_whole_screen_texture.getTexture());
     m_window.draw(m_whole_screen_sprite);
     m_window.display();
@@ -193,7 +204,8 @@ void Game::render()
 Game::Game() :
     m_whole_screen_texture(m_base_resolution), 
     m_whole_screen_sprite(m_whole_screen_texture.getTexture()),
-    m_camera(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT), sf::Vector2f(float(WINDOW_WIDTH)/2.f, float(WINDOW_HEIGHT)/2.f))
+    m_camera(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT), sf::Vector2f(float(WINDOW_WIDTH)/2.f, float(WINDOW_HEIGHT)/2.f)),
+    m_particle_system_manager(m_camera.get_position())
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_context_settings.antiAliasingLevel = 0;

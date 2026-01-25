@@ -28,7 +28,7 @@ private:
 public:
     Slider(sf::Vector2f size, sf::Color color);
 
-    void handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos) override;
+    void handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos) override;
 
     float get_percentage();
 

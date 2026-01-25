@@ -66,17 +66,11 @@ void Frame::update(sf::Time delta_time)
     m_sprite.setPosition(m_pos);
 }
 
-void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos)
+void Frame::handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos)
 {
     int start_index = 2;
     if(m_show_taskbar)
         start_index = 0;
-    
-    sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
-    
-    sf::Vector2f world_pos = window.mapPixelToCoords(pixel_pos);
-    world_pos.x /= m_mouse_scale;
-    world_pos.y /= m_mouse_scale;
     
     sf::Vector2f local_mouse = world_pos - m_sprite.getPosition();
 
@@ -85,12 +79,6 @@ void Frame::handle_event(const sf::RenderWindow& window, std::optional<sf::Vecto
 
     if(m_show_taskbar)
     {
-        pixel_pos = sf::Mouse::getPosition(window);
-        
-        sf::Vector2f world_pos = window.mapPixelToCoords(pixel_pos);
-        world_pos.x /= m_mouse_scale;
-        world_pos.y /= m_mouse_scale;
-
         // Need to localize position
         sf::Vector2f local_pos = world_pos - m_sprite.getPosition();
 

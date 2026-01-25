@@ -69,3 +69,15 @@ sf::View& Camera::get_view()
     return m_view;
 }
 
+sf::Vector2f Camera::get_position()
+{
+    int x = m_size.x / 2;
+    int y = m_size.y / 2;
+
+    return {m_pos.get_value().x - x, m_pos.get_value().y - y};
+}
+
+sf::Vector2f Camera::get_center() const
+{
+    return m_pos;
+}

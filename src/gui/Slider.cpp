@@ -48,14 +48,8 @@ Slider::Slider(sf::Vector2f size, sf::Color color) :
     m_body.setPosition(sf::Vector2f(m_size.x/2, m_size.y/2));
 }
 
-void Slider::handle_event(const sf::RenderWindow& window, std::optional<sf::Vector2f> local_mouse_pos)
+void Slider::handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos)
 {
-    sf::Vector2i pixel_pos = sf::Mouse::getPosition(window);
-    
-    sf::Vector2f world_pos = window.mapPixelToCoords(pixel_pos);
-    world_pos.x /= m_mouse_scale;
-    world_pos.y /= m_mouse_scale;
-
     if(local_mouse_pos.has_value())
     {
         world_pos = local_mouse_pos.value();
