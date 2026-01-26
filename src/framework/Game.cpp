@@ -41,10 +41,10 @@ void Game::initialize_objects()
     m_widgets.get_widget<Slider>("slider")->set_position(sf::Vector2f(256, 32));
 
     /** INITIALIZE PARTICLE SYSTEMS **/
-    ParticleSystem ps1(m_widgets.get_widget<Button>("button")->get_position());
+    ParticleSystem ps1({32, 32});
     //ps1.toggle_gravity();
     ps1.toggle_fade();
-    ps1.set_drag(0.96f);
+    ps1.set_drag(0.92f);
     ps1.set_lifespan(sf::seconds(4));
 
     ParticleSystem bullets(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT/2));
@@ -67,7 +67,6 @@ void Game::initialize_objects()
     bloom.setUniform("intensity", intensity);
 
     m_shader_manager.add_shader("bloom", std::move(bloom));
-
 }
 
 void Game::process_events()
@@ -102,10 +101,14 @@ void Game::process_events()
             }
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1))
             {
+                m_particle_system_manager.set_particle_system_position("bp", {256, 128});
+                m_particle_system_manager.set_particle_system_position("bullets", {256, 128});
                 m_widgets.get_widget<Button>("button")->set_position({256, 128});
             }
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2))
             {
+                m_particle_system_manager.set_particle_system_position("bp", {900, 400});
+                m_particle_system_manager.set_particle_system_position("bullets", {900, 400});
                 m_widgets.get_widget<Button>("button")->set_position({900, 400});
             }
 
@@ -160,6 +163,23 @@ void Game::process_events()
                 m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color(86, 61, 67), Vector{1, sf::degrees(0)}, 180);
                 m_particle_system_manager.get_particle_system("bp")->add_particles(20, sf::Color(106, 74, 87), Vector{2, sf::degrees(0)}, 180);
             }
+
+            if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Right))
+            {
+                m_particle_system_manager.get_particle_system("bp")->set_position(world_pos);
+                m_camera.shake(150);
+                
+                int num_particles = 200;
+
+                std::vector<sf::Color> colors = {sf::Color(203, 53, 61), sf::Color::Red, sf::Color(237, 98, 64), sf::Color(86, 61, 67), sf::Color(255, 255, 255)};
+                for(int i = 0; i < num_particles; ++i)
+                {
+                    int rand_color = rand() % colors.size();
+                    std::normal_distribution rand_speed{3.0, 5.0};
+                    float speed = rand_speed(random_gen);
+                    m_particle_system_manager.get_particle_system("bp")->add_particles(1, colors[rand_color], Vector{speed, sf::degrees(0)}, 180);
+                }
+            }
         }
     }
 }
@@ -173,8 +193,8 @@ void Game::update(sf::Time delta_time)
         widget->update(delta_time);
     }
 
-    m_particle_system_manager.set_particle_system_position("bp", m_widgets.get_widget<Button>("button")->get_position());
-    m_particle_system_manager.update(delta_time, m_camera.get_position());
+    m_particle_system_manager.update(delta_time);
+    m_particle_system_manager.sync_with_view(m_camera.get_position());
     m_camera.update();
 
 }

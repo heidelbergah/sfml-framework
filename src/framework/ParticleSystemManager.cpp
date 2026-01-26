@@ -12,6 +12,7 @@ ParticleSystemManager::ParticleSystemManager(sf::Vector2f camera_pos) :
 {
     m_pos = camera_pos;
     m_sprite.setPosition(m_pos);
+    original_pos = m_pos;
 }
 
 void ParticleSystemManager::draw(sf::RenderTarget &target, sf::RenderStates states) const
@@ -26,20 +27,23 @@ void ParticleSystemManager::draw(sf::RenderTarget &target, sf::RenderStates stat
     target.draw(m_sprite, states);
 }
 
-void ParticleSystemManager::update(sf::Time delta_time, sf::Vector2f camera_pos)
+void ParticleSystemManager::update(sf::Time delta_time)
 {
     for(auto& [id, ps] : m_particle_systems)
     {
         ps->update(delta_time);
     }
+}
 
+void ParticleSystemManager::sync_with_view(sf::Vector2f camera_pos)
+{
     if(camera_pos != m_pos)
     {
-        sf::Vector2f displacement = m_pos - camera_pos;
+        sf::Vector2f d = m_pos - camera_pos;
         m_pos = camera_pos;
         for(auto& [id, ps] : m_particle_systems)
         {
-            ps->set_position(ps->get_position() + displacement);
+            ps->set_position(ps->get_position() + d);
         }
         m_sprite.setPosition(m_pos);
     }
@@ -58,8 +62,7 @@ void ParticleSystemManager::remove_particle_system(std::string key)
 
 void ParticleSystemManager::set_particle_system_position(std::string key, sf::Vector2f pos)
 {
-    sf::Vector2f actual_position = pos - m_pos;
-    m_particle_systems[key]->set_position(actual_position);
+    m_particle_systems[key]->set_position(pos + (m_pos - original_pos));
 }
 
 std::shared_ptr<ParticleSystem> ParticleSystemManager::get_particle_system(std::string key)
@@ -77,4 +80,17 @@ std::vector<std::shared_ptr<ParticleSystem>> ParticleSystemManager::get_particle
     }
 
     return particle_systems;
+}
+
+
+std::vector<sf::Vector2f> ParticleSystemManager::get_global_particle_positions(std::string key)
+{
+    std::vector<sf::Vector2f> positions;
+
+    for(Particle &p : m_particle_systems[key]->get_particles())
+    {
+        positions.push_back(p.get_position() - (m_pos - original_pos));
+    }
+
+    return positions;
 }

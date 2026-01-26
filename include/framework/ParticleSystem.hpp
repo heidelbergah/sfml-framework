@@ -45,6 +45,7 @@ public:
     void set_lifespan(sf::Time lifespan);
 
     sf::Vector2f get_position() const;
+    std::vector<Particle> get_particles() const;
 
     /**
      * Add whole bunch of attribute changing functions

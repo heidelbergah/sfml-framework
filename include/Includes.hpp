@@ -15,12 +15,15 @@
 #include <iostream>
 #include <algorithm>
 #include <optional>
+#include <random>
 #include <cmath>
 
 inline unsigned WINDOW_WIDTH = 960, WINDOW_HEIGHT = 540;
 inline unsigned SCALE = 2;
 inline unsigned SCALED_WIDTH = WINDOW_WIDTH * SCALE;
 inline unsigned SCALED_HEIGHT = WINDOW_HEIGHT * SCALE;
+inline std::random_device rd{};
+inline std::mt19937 random_gen{rd()};
 
 float ease_in_out_exponential(float t);
 float ease_out_back(float t);

@@ -118,3 +118,9 @@ sf::Vector2f ParticleSystem::get_position() const
 {
     return m_pos;
 }
+
+std::vector<Particle> ParticleSystem::get_particles() const
+{
+    return m_particles;
+}
+
