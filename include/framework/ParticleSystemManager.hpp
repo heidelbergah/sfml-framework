@@ -17,12 +17,13 @@ private:
     mutable sf::Sprite m_sprite;
     std::unordered_map<std::string, std::shared_ptr<ParticleSystem>> m_particle_systems;
     
-    sf::Vector2f m_pos;
-    sf::Vector2f original_pos;
+    sf::Vector2f m_pos = {0, 0};
+    sf::Vector2f original_pos = {0, 0};
 
     void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
 
 public:
+    ParticleSystemManager();
     ParticleSystemManager(sf::Vector2f camera_pos);
 
     void update(sf::Time delta_time);

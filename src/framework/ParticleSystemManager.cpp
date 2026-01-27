@@ -6,7 +6,16 @@
 
 #include "../../include/framework/ParticleSystemManager.hpp"
 
-ParticleSystemManager::ParticleSystemManager(sf::Vector2f camera_pos) :
+ParticleSystemManager::ParticleSystemManager() :
+    m_render_texture({WINDOW_WIDTH, WINDOW_HEIGHT}),
+    m_sprite(m_render_texture.getTexture())
+{
+    m_pos = {0, 0};
+    m_sprite.setPosition(m_pos);
+    original_pos = m_pos;
+}
+
+    ParticleSystemManager::ParticleSystemManager(sf::Vector2f camera_pos) :
     m_render_texture({WINDOW_WIDTH, WINDOW_HEIGHT}),
     m_sprite(m_render_texture.getTexture())
 {
