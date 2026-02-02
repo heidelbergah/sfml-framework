@@ -166,7 +166,7 @@ void Game::process_events()
 
             if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Right))
             {
-                m_particle_system_manager.get_particle_system("bp")->set_position(world_pos);
+                m_particle_system_manager.set_particle_system_position("bp", world_pos);
                 m_camera.shake(150);
                 
                 int num_particles = 200;

@@ -62,7 +62,8 @@ void ParticleSystemManager::remove_particle_system(std::string key)
 
 void ParticleSystemManager::set_particle_system_position(std::string key, sf::Vector2f pos)
 {
-    m_particle_systems[key]->set_position(pos + (m_pos - original_pos));
+    sf::Vector2f local_pos = pos - m_pos;
+    m_particle_systems[key]->set_position(local_pos);
 }
 
 std::shared_ptr<ParticleSystem> ParticleSystemManager::get_particle_system(std::string key)
