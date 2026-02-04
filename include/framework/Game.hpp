@@ -19,6 +19,7 @@
 #include "../framework/ParticleSystemManager.hpp"
 #include "../framework/ShaderManager.hpp"
 #include "../framework/Camera.hpp"
+#include "../framework/EventBus.hpp"
 
 class Game
 {
@@ -45,6 +46,8 @@ private:
     WidgetManager m_widgets;
     ParticleSystemManager m_particle_system_manager;
     ShaderManager m_shader_manager;
+
+    ListenerHandle m_pause_handle;
 
 public:
     Game();

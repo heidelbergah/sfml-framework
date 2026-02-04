@@ -12,6 +12,7 @@
 //#include <SFML/Network.hpp>
 
 #include <functional>
+#include <map>
 #include <iostream>
 #include <algorithm>
 #include <optional>

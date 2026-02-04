@@ -13,6 +13,11 @@ void print()
 
 void Game::initialize_objects()
 {
+    m_pause_handle = EventBus::subscribe(EventType::TOGGLE_PAUSE, [this](const Event& e)
+            {
+                std::cout << e.m_data << std::endl;               
+            });
+
     sf::Font font("././assets/fonts/Windows-Regular.ttf");
     font.setSmooth(false);
     sf::Texture texture("././assets/textures/simple_button.png");
@@ -98,7 +103,9 @@ void Game::process_events()
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Enter))
             {
                 m_widgets.get_widget<Frame>("frame")->toggle_moveability();
+                EventBus::publish(Event(EventType::TOGGLE_PAUSE, "pause game"));
             }
+
             if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1))
             {
                 m_particle_system_manager.set_particle_system_position("bp", {256, 128});
