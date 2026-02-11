@@ -17,6 +17,7 @@ LDFLAGS = -lsfml-system -lsfml-window -lsfml-graphics
 SOURCES = $(wildcard src/*.cpp) \
           $(wildcard src/gui/*.cpp) \
           $(wildcard src/framework/*.cpp) \
+          $(wildcard src/scenes/*.cpp) \
           $(wildcard src/utilities/*.cpp)
 
 # Object files (one per source)

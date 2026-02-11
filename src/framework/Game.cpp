@@ -236,7 +236,7 @@ Game::Game() :
 {
     // ===== DO NOT REMOVE FUNCTION CALLS ===== //
     m_context_settings.antiAliasingLevel = 0;
-    m_window.create(sf::VideoMode({SCALED_WIDTH, SCALED_HEIGHT}), GAME_NAME, sf::Style::Default, sf::State::Windowed, m_context_settings); 
+    m_window.create(sf::VideoMode({SCALED_WIDTH, SCALED_HEIGHT}), GAME_NAME, sf::Style::Default, sf::State::Fullscreen, m_context_settings); 
     
     m_whole_screen_texture.setView(m_camera.get_view());
     m_camera.set_transition(TransitionFunction::Linear);

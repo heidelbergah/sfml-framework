@@ -6,13 +6,13 @@
 class Scene
 {
 protected:
-    std::shared_ptr<sf::RenderWindow> m_render_window;
-    std::shared_ptr<sf::RenderTexture> m_render_texture;
-    std::shared_ptr<sf::Sprite> m_render_sprite;
+    sf::RenderWindow* m_render_window;
+    sf::RenderTexture* m_render_texture;
+    sf::Sprite* m_render_sprite;
 
-    void load_manager_resources(sf::RenderWindow& rw,
-                                sf::RenderTexture& rt,
-                                sf::Sprite rs);
+    void set_render_resources(sf::RenderWindow* rw,
+                                sf::RenderTexture* rt,
+                                sf::Sprite* rs);
 
 public:
     virtual ~Scene() = default;
@@ -22,6 +22,8 @@ public:
     virtual void process_events();
     virtual void update(sf::Time delta_time);
     virtual void render();
+
+    friend class SceneManager;
 };
 
 #endif // SCENE_HPP
