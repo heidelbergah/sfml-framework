@@ -27,8 +27,6 @@ private:
     sf::Sprite m_render_sprite;
     sf::Clock m_clock;
 
-    Camera m_camera;
-
     std::unordered_map<std::string, std::shared_ptr<Scene>> m_scenes;
     std::shared_ptr<Scene> m_current_scene;
 
@@ -44,6 +42,7 @@ private:
     void setup_event_listeners();
     void cleanup_event_listeners();
     void perform_fade_transition(std::shared_ptr<Scene> next_scene);
+    void display_texture_to_window();
 
 public:
     SceneManager();

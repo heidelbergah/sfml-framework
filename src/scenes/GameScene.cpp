@@ -25,10 +25,6 @@ void GameScene::process_events()
         {
             m_render_window->close();
         }
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1))
-        {
-            EventBus::publish(Event(EventType::SWITCH_TO_MAIN_MENU, ""));
-        }
     }
 }
 

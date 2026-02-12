@@ -2,17 +2,10 @@
 
 SceneManager::SceneManager() :
     m_render_texture(m_base_resolution),
-    m_render_sprite(m_render_texture.getTexture()),
-    m_camera(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT),
-             sf::Vector2f(float(WINDOW_WIDTH)/2.f, float(WINDOW_HEIGHT)/2.f))
-    
+    m_render_sprite(m_render_texture.getTexture())
 {
     m_render_window.create(sf::VideoMode({SCALED_WIDTH, SCALED_HEIGHT}), GAME_NAME,
             sf::Style::Default, sf::State::Windowed);
-    m_render_texture.setView(m_camera.get_view());
-    m_camera.set_transition(TransitionFunction::Linear);
-    m_camera.set_transition_duration(0.07);
-
     m_render_texture.setSmooth(false);
     m_render_sprite.setScale(m_resolution_scale);
     m_render_sprite.setPosition({0, 0});
@@ -83,10 +76,7 @@ void SceneManager::run_scene(int frame_per_seconds)
         if(repaint)
         {
             m_current_scene->render();
-            
-            m_render_window.clear();
-            m_render_window.draw(m_render_sprite);
-            m_render_window.display();
+            display_texture_to_window();
         }
 
         if(m_pending_scene_switch)
@@ -127,6 +117,7 @@ void SceneManager::swap_scene(std::string key, SceneTransitionType transition_ty
         if(m_current_scene)
         {
             m_current_scene->on_enter();
+            display_texture_to_window();
         }
     }
 }
@@ -152,11 +143,7 @@ void SceneManager::perform_fade_transition(std::shared_ptr<Scene> next_scene)
             
             black_overlay.setFillColor(sf::Color(0, 0, 0, alpha));
             m_render_texture.draw(black_overlay);
-            
-            m_render_texture.display();
-            m_render_window.clear();
-            m_render_window.draw(m_render_sprite);
-            m_render_window.display();
+            display_texture_to_window();
         }
     }
     
@@ -186,11 +173,7 @@ void SceneManager::perform_fade_transition(std::shared_ptr<Scene> next_scene)
             
             black_overlay.setFillColor(sf::Color(0, 0, 0, alpha));
             m_render_texture.draw(black_overlay);
-            
-            m_render_texture.display();
-            m_render_window.clear();
-            m_render_window.draw(m_render_sprite);
-            m_render_window.display();
+            display_texture_to_window();
         }
     }
 }
@@ -200,5 +183,14 @@ void SceneManager::request_scene_switch(std::string key, SceneTransitionType tra
     m_pending_scene_switch = true;
     m_next_scene_key = key;
     m_next_transition_type = transition_type;
+}
+
+void SceneManager::display_texture_to_window()
+{
+    m_render_texture.display();
+    m_render_sprite.setTexture(m_render_sprite.getTexture());
+    m_render_window.clear();
+    m_render_window.draw(m_render_sprite);
+    m_render_window.display();
 }
 
