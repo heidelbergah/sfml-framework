@@ -15,6 +15,9 @@ private:
     ShaderManager m_shader_manager;
 
     ListenerHandle m_pause_handle;
+    
+    sf::Vector2u m_base_resolution = {WINDOW_WIDTH, WINDOW_HEIGHT}; // native resolution
+    sf::Vector2f m_resolution_scale = {static_cast<float>(SCALE), static_cast<float>(SCALE)}; // scale for display resolution
 
 public:
     GameScene();

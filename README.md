@@ -9,20 +9,21 @@ SFML 3.0 Framework designed to make game development much more organized and eas
 [X] - Add shader supprt + shader manager
 [X] - Add camera effects: shake, movement
 [X] - Add Event system (EventBus)
-
-[o] - Add a scene management system
-    - Add pause overlay
+[X] - Add a scene management system
 
 [] - Add cutscene support; movie black bars too!
-[] - Tilemap manager
-    [] - Create WFC algorithm for map generation
-    [] - Make JSON load/save manager
 [] - Sound/music manager
+[] - Asset manager
 
 ## BUGS
 
 [] - Shaking mechanics could use a little love
-[] - Better interpolation for camera following needs implementation
 [] - Shaking needs to stack when multiple sources are shaking the camera... needs to look natural
-[X] - Impossible to create render texture error using scene management system...
+
+## Things to consider
+
+[] - Better interpolation for camera following needs implementation
+[] - Particle system needs optimization
+[] - TextWidgets are making deep-copies of fonts. May not be a huge issue, but should probably
+     take in a reference.
 

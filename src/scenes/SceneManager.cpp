@@ -124,7 +124,7 @@ void SceneManager::swap_scene(std::string key, SceneTransitionType transition_ty
 
 void SceneManager::perform_fade_transition(std::shared_ptr<Scene> next_scene)
 {
-    const float fade_duration = 0.4f; // 0.4 seconds for each phase (0.8s total)
+    const float fade_duration = 1.4f; // 0.4 seconds for each phase (0.8s total)
     sf::Clock fade_clock;
     
     sf::RectangleShape black_overlay(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
@@ -188,7 +188,7 @@ void SceneManager::request_scene_switch(std::string key, SceneTransitionType tra
 void SceneManager::display_texture_to_window()
 {
     m_render_texture.display();
-    m_render_sprite.setTexture(m_render_sprite.getTexture());
+    m_render_sprite.setTexture(m_render_texture.getTexture());
     m_render_window.clear();
     m_render_window.draw(m_render_sprite);
     m_render_window.display();

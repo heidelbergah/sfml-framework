@@ -26,11 +26,15 @@ void ParticleSystem::update(sf::Time delta_time)
         p.set_velocity(new_vel);
         
         p.update(delta_time);
-        if(p.get_elapsed_time().asMilliseconds() > p.get_lifespan().asMilliseconds())
-        {
-            m_particles.erase(m_particles.begin() + index);
-        }
-        index++;
+        
+        m_particles.erase(
+            std::remove_if(m_particles.begin(), m_particles.end(), [](const Particle& p)
+            {
+                return p.get_elapsed_time() > p.get_lifespan();
+            }),
+            m_particles.end()
+        );
+    
     }
 
     int index_count = 0;
