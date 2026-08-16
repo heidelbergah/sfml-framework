@@ -1,62 +1,89 @@
+/**
+ * Particle.cpp
+ *
+ * Written by James Bouchat
+ */
+
 #include "../../include/framework/Particle.hpp"
 
 Particle::Particle(sf::Vector2f position, sf::Color color, sf::Time lifespan)
-{
-    m_pos = position;
-    m_prev_pos = position;
-    m_color = color;
-
-    Vector v;
-    v.magnitude = 0;
-    v.direction = sf::degrees(0);
-
-    m_vel = v;
-    m_acc = v;
-
-    m_lifespan = lifespan;
-    m_elapsed_time = sf::milliseconds(0);
-}
+    : m_pos(position),
+      m_prev_pos(position),
+      m_color(color),
+      m_base_color(color),
+      m_lifespan(lifespan),
+      m_elapsed_time(sf::Time::Zero)
+{}
 
 void Particle::update(sf::Time delta_time)
 {
-    // Note previous position
+    float const dt = delta_time.asSeconds();
+
     m_prev_pos = m_pos;
 
-    // Add acceleration to velocity
-    add_velocity(m_acc);
+    // Semi-implicit Euler. Everything is scaled by dt, so speeds are in
+    // units per second and behave identically at 30, 60 or 144 fps --
+    // the old version added raw magnitudes per frame, which made every
+    // tuned value silently framerate-dependent.
+    m_vel += m_acc * dt;
+    m_pos += m_vel * dt;
 
-    // Update position with velocity
-    m_pos.x += cos(m_vel.direction.asRadians()) * m_vel.magnitude;
-    m_pos.y -= sin(m_vel.direction.asRadians()) * m_vel.magnitude;
-
-    m_elapsed_time = sf::milliseconds(m_elapsed_time.asMilliseconds() + delta_time.asMilliseconds());
+    // Accumulated as sf::Time, which is microsecond-resolution. The old
+    // code round-tripped through asMilliseconds(), truncating a 16.67ms
+    // frame to 16 and making particles outlive their lifespan by ~4%.
+    m_elapsed_time += delta_time;
 
     if(m_fade)
     {
-        float time_diff = m_lifespan.asMilliseconds() - m_elapsed_time.asMilliseconds();
-        float ratio = time_diff / m_lifespan.asMilliseconds();
-        m_color.a = 255 * ratio;
+        float const ratio = std::clamp(1.0f - get_life_ratio(), 0.0f, 1.0f);
+        m_color.a = static_cast<std::uint8_t>(m_base_color.a * ratio);
     }
+}
+
+void Particle::set_fade(bool fade)
+{
+    m_fade = fade;
+    if(!m_fade) m_color.a = m_base_color.a;
 }
 
 void Particle::toggle_fade()
 {
-    m_fade = !m_fade;
+    set_fade(!m_fade);
+}
+
+void Particle::add_velocity(sf::Vector2f velocity)
+{
+    m_vel += velocity;
 }
 
 void Particle::add_velocity(Vector velocity)
 {
-    m_vel = add_vectors(m_vel, velocity);
+    m_vel += to_cartesian(velocity);
+}
+
+void Particle::set_velocity(sf::Vector2f velocity)
+{
+    m_vel = velocity;
+}
+
+void Particle::set_velocity(Vector velocity)
+{
+    m_vel = to_cartesian(velocity);
+}
+
+void Particle::add_acceleration(sf::Vector2f acceleration)
+{
+    m_acc += acceleration;
 }
 
 void Particle::add_acceleration(Vector acceleration)
 {
-    m_acc = add_vectors(m_acc, acceleration);
+    m_acc += to_cartesian(acceleration);
 }
 
-void Particle::set_velocity(Vector v)
+void Particle::set_acceleration(sf::Vector2f acceleration)
 {
-    m_vel = v;
+    m_acc = acceleration;
 }
 
 void Particle::set_lifespan(sf::Time lifespan)
@@ -64,43 +91,33 @@ void Particle::set_lifespan(sf::Time lifespan)
     m_lifespan = lifespan;
 }
 
-sf::Vector2f Particle::get_position() const
+void Particle::set_position(sf::Vector2f position)
 {
-    return m_pos;
+    m_pos      = position;
+    m_prev_pos = position;
 }
 
-sf::Vector2f Particle::get_prev_position() const
+void Particle::scale_velocity(float factor)
 {
-    return m_prev_pos;
+    m_vel *= factor;
 }
 
-Vector Particle::get_velocity() const
+bool Particle::is_expired() const
 {
-    return m_vel;
+    return m_elapsed_time >= m_lifespan;
 }
 
-Vector Particle::get_acceleration() const
+float Particle::get_life_ratio() const
 {
-    return m_acc;
+    if(m_lifespan <= sf::Time::Zero) return 1.0f;
+    return m_elapsed_time.asSeconds() / m_lifespan.asSeconds();
 }
 
-sf::Color Particle::get_color() const
-{
-    return m_color;
-}
-
-sf::Time Particle::get_lifespan() const
-{
-    return m_lifespan;
-}
-
-sf::Time Particle::get_elapsed_time() const
-{
-    return m_elapsed_time;
-}
-
-bool Particle::fades() const
-{
-    return m_fade;
-}
-
+sf::Vector2f Particle::get_position() const      { return m_pos; }
+sf::Vector2f Particle::get_prev_position() const { return m_prev_pos; }
+sf::Vector2f Particle::get_velocity() const      { return m_vel; }
+sf::Vector2f Particle::get_acceleration() const  { return m_acc; }
+sf::Color    Particle::get_color() const         { return m_color; }
+sf::Time     Particle::get_lifespan() const      { return m_lifespan; }
+sf::Time     Particle::get_elapsed_time() const  { return m_elapsed_time; }
+bool         Particle::fades() const             { return m_fade; }

@@ -1,7 +1,12 @@
 /**
  * TextWidget.hpp
  *
- * Written by James Bouchat
+ * Base for widgets that display text. Factors font handling and
+ * alignment out of Button and TextBox.
+ *
+ * The font is borrowed, not copied. Copying an sf::Font duplicates its
+ * glyph atlas in VRAM, so ten buttons sharing one typeface used to mean
+ * ten atlases. Pass a reference from Assets::fonts().
  */
 
 #ifndef TEXTWIDGET_HPP
@@ -11,28 +16,39 @@
 
 class TextWidget : public Widget
 {
-private:
-    void virtual draw(sf::RenderTarget &target, sf::RenderStates states) const = 0;
-
 protected:
-    std::unique_ptr<sf::Font> m_font;
-    std::unique_ptr<sf::Text> m_text;
-    std::string m_string;
-    Alignment m_alignment;
-    sf::Color m_text_color;
-    int m_character_size;
+    // Borrowed. Must outlive this widget.
+    const sf::Font* m_font{nullptr};
 
-    void set_text(std::string string, sf::Color color);
+    std::unique_ptr<sf::Text> m_text;
+    std::string               m_string;
+    Alignment                 m_alignment{Alignment::CENTER};
+    sf::Color                 m_text_color{sf::Color::Black};
+    unsigned int              m_character_size{12};
+
+    /*
+     * Updates the displayed string in place. sf::Text is created once
+     * and reused -- rebuilding it per change meant a heap allocation
+     * and a fresh layout for every character of a scrolling line.
+     */
+    void set_text(const std::string& string, sf::Color color);
+
+    void refresh_alignment();
 
 public:
-    TextWidget(sf::Vector2f size);
-    virtual void update(sf::Time delta_time) {};
-    virtual void handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos = std::nullopt) {};
-    
-    void set_alignment(Alignment alignment);
-    void set_character_size(int size);
-    void add_text(std::string text, sf::Font& font, sf::Color color);
+    explicit TextWidget(sf::Vector2f size);
 
+    /*
+     * Borrows `font`; it must outlive this widget.
+     */
+    void add_text(const std::string& text, const sf::Font& font, sf::Color color);
+
+    void set_alignment(Alignment alignment);
+    void set_character_size(unsigned int size);
+    void set_text_color(sf::Color color);
+
+    [[nodiscard]] const std::string& get_string() const;
+    [[nodiscard]] bool               has_text() const;
 };
 
 #endif

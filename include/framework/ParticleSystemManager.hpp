@@ -1,7 +1,13 @@
 /**
  * ParticleSystemManager.hpp
  *
- * Written by James Bouchat
+ * Keyed collection of particle systems.
+ *
+ * Everything is world space now. The manager no longer owns a
+ * RenderTexture, no longer positions a sprite in the world, and no
+ * longer shifts emitters to compensate for camera movement -- sf::View
+ * already does all of that. Bloom moved to a post-process over the
+ * finished frame, which is where a full-screen effect belongs.
  */
 
 #ifndef PARTICLE_SYSTEM_MANAGER_HPP
@@ -12,33 +18,45 @@
 class ParticleSystemManager : public sf::Drawable
 {
 private:
-
-    mutable sf::RenderTexture m_render_texture;
-    mutable sf::Sprite m_sprite;
     std::unordered_map<std::string, std::shared_ptr<ParticleSystem>> m_particle_systems;
-    
-    sf::Vector2f m_pos;
-    sf::Vector2f original_pos;
 
-    void draw(sf::RenderTarget &target, sf::RenderStates states) const override;
+    void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
 public:
-    ParticleSystemManager(sf::Vector2f camera_pos);
+    ParticleSystemManager() = default;
 
     void update(sf::Time delta_time);
 
-    void sync_with_view(sf::Vector2f camera_pos);
+    void add_particle_system(const std::string& key, ParticleSystem system);
+    void add_particle_system(const std::string& key,
+                             std::shared_ptr<ParticleSystem> system);
+    void remove_particle_system(const std::string& key);
+    void clear();
 
-    void add_particle_system(std::string key, ParticleSystem ps);
-    void remove_particle_system(std::string key);
+    /*
+     * Returns nullptr for an unknown key. The old version used
+     * map::operator[], which inserted a null shared_ptr on a typo and
+     * then handed it back to be dereferenced.
+     */
+    [[nodiscard]] std::shared_ptr<ParticleSystem>
+        get_particle_system(const std::string& key) const;
 
-    void set_particle_system_position(std::string key, sf::Vector2f pos);
+    [[nodiscard]] bool has_particle_system(const std::string& key) const;
 
-    std::shared_ptr<ParticleSystem> get_particle_system(std::string key);
+    /*
+     * No-ops if the key is unknown.
+     */
+    void set_particle_system_position(const std::string& key, sf::Vector2f pos);
 
-    std::vector<std::shared_ptr<ParticleSystem>> get_particle_systems();
+    /*
+     * World-space positions of every particle in a system. Empty if the
+     * key is unknown.
+     */
+    [[nodiscard]] std::vector<sf::Vector2f>
+        get_particle_positions(const std::string& key) const;
 
-    std::vector<sf::Vector2f> get_global_particle_positions(std::string key);
+    [[nodiscard]] std::size_t total_particle_count() const;
+    [[nodiscard]] std::size_t size() const;
 };
 
 #endif
