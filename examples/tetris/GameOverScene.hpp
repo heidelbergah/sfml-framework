@@ -1,5 +1,5 @@
 /**
- * GameOverScene.hpp  -  Cascade
+ * GameOverScene.hpp  -  Tetris
  *
  * Run summary. Reads GameState, which the play scene filled in on its
  * way out.

@@ -70,7 +70,7 @@ public:
     void set_thumb_color(sf::Color color);
 
     /*
-     * Borrowed textures -- must outlive this widget.
+     * Borrowed textures, must outlive this widget.
      */
     void set_thumb_texture(const sf::Texture& texture, bool reset_rect = false);
     void set_body_texture(const sf::Texture& texture, bool reset_rect = false);

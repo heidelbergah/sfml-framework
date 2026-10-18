@@ -8,8 +8,8 @@
  * map::operator[], so a mistyped key silently inserted a null
  * shared_ptr and grew the map on every miss.
  *
- * A null return is safe to hand straight to SFML -- sf::RenderTarget::draw
- * treats a null shader as "no shader" -- but check it if the effect is
+ * A null return is safe to hand straight to SFML, sf::RenderTarget::draw
+ * treats a null shader as "no shader", but check it if the effect is
  * required rather than optional.
  */
 

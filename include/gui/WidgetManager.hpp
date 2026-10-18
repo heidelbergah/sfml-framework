@@ -30,7 +30,7 @@ public:
 
     /*
      * Returns nullptr if the key is absent or the widget is not a T.
-     * Never inserts -- the old version used map::operator[], so a
+     * Never inserts. the old version used map::operator[], so a
      * mistyped key silently created a null entry that was then
      * dereferenced.
      */
@@ -38,7 +38,7 @@ public:
     [[nodiscard]] std::shared_ptr<T> get_widget(const std::string& key) const;
 
     /*
-     * Z-ordered, back to front. Returned by reference -- copying meant
+     * Z-ordered, back to front. Returned by reference. Copying meant
      * a heap allocation plus an atomic refcount bump per widget, three
      * times per frame.
      */
@@ -48,6 +48,20 @@ public:
      * Re-sorts after a widget's z value changed.
      */
     void refresh_z_order();
+
+    /*
+     * Raises a widget above every other one in this manager, basically what a
+     * window should do when it is clicked. No-op for an unknown key.
+     */
+    void bring_to_front(const std::string& key);
+    void bring_to_front(const std::shared_ptr<Widget>& widget);
+
+    /*
+     * The front-most visible widget containing `point`, or nullptr.
+     * Use it to send input only to the widget under the cursor, so
+     * overlapping windows do not all react to the same click.
+     */
+    [[nodiscard]] std::shared_ptr<Widget> widget_at(sf::Vector2f point) const;
 
     void begin_frame();
     void update(sf::Time delta_time);
@@ -70,3 +84,4 @@ std::shared_ptr<T> WidgetManager::get_widget(const std::string& key) const
 }
 
 #endif
+

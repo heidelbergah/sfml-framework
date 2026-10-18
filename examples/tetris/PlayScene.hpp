@@ -1,5 +1,5 @@
 /**
- * PlayScene.hpp  -  Cascade
+ * PlayScene.hpp  -  Tetris
  *
  * The game. Guideline Tetris: seven-bag, SRS with wall kicks, hold,
  * five-piece preview, ghost, hard drop, lock delay with move resets,
@@ -11,7 +11,7 @@
  *   Camera        shakes on lock, hard drop and line clears; the board
  *                 is drawn through get_ui_view() so the whole playfield
  *                 jolts together.
- *   Particles     four systems -- lock dust, hard-drop trail, line
+ *   Particles     four systems, lock dust, hard-drop trail, line
  *                 clear burst, and level-up motes.
  *   Interpolated  board glow, danger pulse, hold flash, row collapse.
  *   GameTime      pause freezes everything; the game-over sequence uses

@@ -13,7 +13,7 @@
  * and that decays on its own. Offset scales with trauma squared, which
  * makes a big hit read as violent and a small one as a nudge. Because
  * trauma accumulates, overlapping sources combine instead of
- * overwriting -- explosions during machine-gun fire feel right.
+ * overwriting, explosions during machine-gun fire feel right.
  *
  * The offset is sampled from smooth value noise rather than fresh
  * randomness per frame, so the camera sweeps rather than vibrating.
@@ -70,7 +70,7 @@ public:
     void set_center(sf::Vector2f center, bool instant = false);
 
     /*
-     * Eases toward a target -- use for following a player.
+     * Eases toward a target, use for following a player.
      * `smoothing` is the fraction of the remaining distance covered per
      * second, roughly; higher is snappier.
      */
@@ -84,7 +84,7 @@ public:
     void shake(float amount);
 
     /*
-     * Holds a shake floor for as long as you keep calling it -- an
+     * Holds a shake floor for as long as you keep calling it, an
      * engine rumble, a minigun, a collapsing building. Call it every
      * frame while the source is active; it falls away on its own once
      * you stop.
@@ -92,7 +92,7 @@ public:
      * This exists because impulses alone cannot model continuous fire.
      * Trauma decays linearly, so a stream of small impulses either
      * fades to nothing between shots or, if they come faster than the
-     * decay, climbs to maximum and stays pinned -- there is no stable
+     * decay, climbs to maximum and stays pinned, there is no stable
      * middle. A floor gives you the middle, and impulses still spike
      * above it and settle back down to it.
      *
@@ -136,7 +136,7 @@ public:
     /*
      * A screen-space view carrying the shake but NOT the world
      * position. Draw your HUD through this and it shakes with the
-     * world while staying pinned to the screen -- the tank cannon
+     * world while staying pinned to the screen, the tank cannon
      * firing and the whole display jolting, rather than only the
      * world layer moving under a rock-steady HUD.
      *
@@ -171,8 +171,8 @@ public:
      *
      * Without it, a sub-pixel shake offset produces a strange effect:
      * solid shapes sit on exact pixel boundaries and do not appear to
-     * move at all, while text and textures -- which are sampled from an
-     * atlas -- shift visibly. The result is that a gentle shake looks
+     * move at all, while text and textures, which are sampled from an
+     * atlas, shift visibly. The result is that a gentle shake looks
      * like only the text is wobbling. Snapping makes everything move
      * together in whole-pixel steps, or not at all.
      */

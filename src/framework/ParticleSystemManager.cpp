@@ -63,7 +63,7 @@ bool ParticleSystemManager::has_particle_system(const std::string& key) const
 void ParticleSystemManager::set_particle_system_position(const std::string& key,
                                                          sf::Vector2f pos)
 {
-    // World space directly -- no translation between the manager's own
+    // World space directly, no translation between the manager's own
     // origin and the camera, because there no longer is one.
     if(auto system = get_particle_system(key)) system->set_position(pos);
 }

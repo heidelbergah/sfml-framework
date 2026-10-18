@@ -1,5 +1,5 @@
 /**
- * GameState.cpp  -  Cascade
+ * GameState.cpp  -  Tetris
  */
 
 #include "GameState.hpp"
@@ -17,7 +17,7 @@ ClearResult GameState::apply(int cleared_lines, SpinResult spin, bool perfect_cl
     ++pieces_placed;
 
     // A lock that clears nothing breaks the combo chain but leaves the
-    // back-to-back chain alone -- only a non-difficult *clear* breaks that.
+    // back-to-back chain alone, only a non-difficult *clear* breaks that.
     if(cleared_lines == 0 && spin == SpinResult::NONE)
     {
         combo = -1;

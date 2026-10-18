@@ -102,25 +102,38 @@ void Frame::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
     }
 }
 
-void Frame::add_taskbar(float height, sf::Color color, sf::Color outline_color,
-                        float thickness, const std::string& title)
+void Frame::add_taskbar(float height, const std::string& title, const TaskbarStyle& style)
 {
     if(!m_font) return;
 
     m_show_taskbar   = true;
     m_taskbar_height = height;
 
-    m_taskbar = std::make_shared<TextBox>(sf::Vector2f{m_size.x, height},
-                                          color, title, *m_font, sf::Color::Black);
+    // The title bar spans the frame minus the close button, so the two
+    // never overlap and the title centres in the space it actually has.
+    m_taskbar = std::make_shared<TextBox>(sf::Vector2f{m_size.x - height, height},
+                                          style.color, title, *m_font, style.text_color);
+    m_taskbar->set_character_size(style.character_size);
+    m_taskbar->set_alignment(style.title_alignment);
     m_taskbar->set_transition(TransitionFunction::None);
     m_taskbar->set_position({0.0f, 0.0f}, true);
-    m_taskbar->set_outline(outline_color, thickness);
+    m_taskbar->set_outline(style.outline_color, style.outline_thickness);
 
-    m_exit = std::make_shared<Button>(sf::Vector2f{height, height}, sf::Color::Red);
+    m_exit = std::make_shared<Button>(sf::Vector2f{height, height}, style.close_color);
     m_exit->set_transition(TransitionFunction::None);
     m_exit->set_position({m_size.x - height, 0.0f}, true);
-    m_exit->set_outline(outline_color, thickness);
-    m_exit->add_text("X", *m_font, sf::Color::Black);
+    m_exit->set_outline(style.outline_color, style.outline_thickness);
+    m_exit->add_text(style.close_label, *m_font, style.close_text_color);
+    m_exit->set_character_size(style.character_size);
+
+    // Brighten on hover rather than darken: a dark bar has little room
+    // to go darker, so the default tint would be nearly invisible.
+    m_exit->set_state_tints(-24, 12);
+}
+
+float Frame::get_taskbar_height() const
+{
+    return m_taskbar ? m_taskbar_height : 0.0f;
 }
 
 bool Frame::has_taskbar() const
@@ -163,3 +176,9 @@ bool Frame::close_requested() const
 {
     return m_close_requested;
 }
+
+bool Frame::is_being_dragged() const
+{
+    return m_being_dragged;
+}
+

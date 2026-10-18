@@ -34,7 +34,7 @@ Button::Button(sf::Vector2f size, sf::Color color)
 
 void Button::create_color_variants()
 {
-    // Both variants darken -- hovering slightly, pressing more. The old
+    // Both variants darken, hovering slightly, pressing more. The old
     // names said "light" and "dark" but both subtracted, so the light
     // one was in fact darker than the base colour.
     m_hover_color = shade(m_color, -40);

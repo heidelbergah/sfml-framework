@@ -1,5 +1,5 @@
 /**
- * Effects.cpp  -  Cascade
+ * Effects.cpp  -  Tetris
  */
 
 #include "Effects.hpp"

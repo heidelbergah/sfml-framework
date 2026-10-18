@@ -1,10 +1,10 @@
 /**
- * main.cpp  -  Cascade
+ * main.cpp  -  Tetris
  *
  * A Tetris clone built entirely on top of the framework: no engine
  * changes, only scenes, assets and a shader.
  *
- * Guideline rules -- seven-bag, SRS with wall kicks, hold, five-piece
+ * Guideline rules, seven-bag, SRS with wall kicks, hold, five-piece
  * preview, ghost, hard drop, lock delay with move resets, T-spins,
  * back-to-back and combos.
  */
@@ -17,7 +17,7 @@
 
 int main()
 {
-    SceneManager sm("Cascade");
+    SceneManager sm("Tetris");
 
     // Restrained: the gruvbox palette is already fairly bright, so the
     // threshold sits high and only the clear flashes really bloom.

@@ -4,7 +4,7 @@
  * One shared generator for the whole framework.
  *
  * Replaces rand()/srand(). Seeding the global C generator inside a
- * constructor -- which the old ParticleSystem and Markov both did --
+ * constructor, which the old ParticleSystem and Markov both did --
  * means two objects built in the same second produce identical
  * sequences, and it silently resets any seed the caller had chosen.
  *

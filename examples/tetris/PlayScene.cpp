@@ -1,5 +1,5 @@
 /**
- * PlayScene.cpp  -  Cascade
+ * PlayScene.cpp  -  Tetris
  */
 
 #include "PlayScene.hpp"
@@ -222,7 +222,7 @@ void PlayScene::spawn(PieceType type)
      */
     if(!m_board.fits(m_piece))
     {
-        // Nudge up once -- standard behaviour is to try one row higher
+        // Nudge up once, standard behaviour is to try one row higher
         // before declaring the game over.
         m_piece.y -= 1;
         if(!m_board.fits(m_piece))
@@ -1109,14 +1109,14 @@ void PlayScene::draw_text(sf::RenderTarget& target)
 
 void PlayScene::render(sf::RenderTarget& target)
 {
-    // Ambient field sits behind everything and does not shake -- it is
+    // Ambient field sits behind everything and does not shake, it is
     // the backdrop, not part of the board.
     target.setView(target.getDefaultView());
     m_ambient.draw(target);
 
     /*
      * Everything else goes through the camera's UI view, so the whole
-     * playfield -- well, stack, panels and text together -- jolts as one
+     * playfield, well, stack, panels and text together, jolts as one
      * on a hard drop or a clear. Shaking only the blocks would look like
      * a rendering bug.
      */

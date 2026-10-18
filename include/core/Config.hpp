@@ -10,7 +10,7 @@
  *
  * The game renders at WINDOW_WIDTH x WINDOW_HEIGHT and is blitted to a
  * window SCALE times larger. Keeping SCALE a whole number is what keeps
- * pixel art crisp -- fractional scaling resamples and blurs it.
+ * pixel art crisp, fractional scaling resamples and blurs it.
  */
 
 #ifndef CONFIG_HPP

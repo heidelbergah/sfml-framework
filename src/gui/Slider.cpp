@@ -89,7 +89,7 @@ void Slider::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
     }
     else if(const auto* released = event.getIf<sf::Event::MouseButtonReleased>())
     {
-        // Released anywhere, not just over the slider -- otherwise
+        // Released anywhere, not just over the slider, otherwise
         // dragging off the widget leaves it stuck in the dragged state.
         if(released->button == sf::Mouse::Button::Left) m_being_dragged = false;
     }

@@ -18,7 +18,7 @@
 
 /*
  * Polar vector. Convenient for describing emission ("30 units/sec, due
- * left"), but stored velocities are Cartesian -- adding two polar
+ * left"), but stored velocities are Cartesian, adding two polar
  * vectors costs a sqrt and an atan2, and that adds up fast across
  * thousands of particles.
  */

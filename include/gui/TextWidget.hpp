@@ -28,7 +28,7 @@ protected:
 
     /*
      * Updates the displayed string in place. sf::Text is created once
-     * and reused -- rebuilding it per change meant a heap allocation
+     * and reused, rebuilding it per change meant a heap allocation
      * and a fresh layout for every character of a scrolling line.
      */
     void set_text(const std::string& string, sf::Color color);

@@ -15,7 +15,7 @@ SceneManager::SceneManager(const std::string& title, bool fullscreen)
      * Pick the largest whole-number upscale that actually fits on this
      * display, rather than always demanding WINDOW * SCALE.
      *
-     * Asking for 1920x1080 on a 1920x1080 desktop does not fail --
+     * Asking for 1920x1080 on a 1920x1080 desktop does not fail,
      * the window manager quietly shrinks the window to make room for
      * the title bar, and everything downstream inherits a size nobody
      * asked for. Better to ask for something that fits.
@@ -48,7 +48,7 @@ SceneManager::SceneManager(const std::string& title, bool fullscreen)
     m_window.setVerticalSyncEnabled(true);
 
     // Held keys should not machine-gun KeyPressed events at the OS
-    // repeat rate -- anything that accumulates per press runs away.
+    // repeat rate, anything that accumulates per press runs away.
     m_window.setKeyRepeatEnabled(false);
 
     m_render_texture.setSmooth(false);
@@ -225,7 +225,7 @@ void SceneManager::update_presentation()
      *
      * This is what the mouse bug came down to. The window's default view
      * is fixed at whatever size the window had when it was created, and
-     * SFML does not update it on a resize -- it stretches the old view
+     * SFML does not update it on a resize and instead stretches the old view
      * to fill the new framebuffer instead. Ask for a 1920x1080 window on
      * a 1920x1080 display and the window manager shrinks it to fit the
      * title bar, so 1080 rows of content were being squashed into ~1000
@@ -253,8 +253,10 @@ void SceneManager::process_window_events()
 {
     sf::Vector2f const mouse_pos = current_mouse_position();
 
-    // Reset per-frame widget flags before this frame's events arrive.
-    if(m_current_scene) m_current_scene->begin_frame();
+    // Per-frame widget flags are NOT reset here. This runs on every pass
+    // of the loop, and most passes run no update at all, so clearing
+    // here wiped flags like value_changed() before update() could see
+    // them. run() clears them after an update has consumed them instead.
 
     while(const std::optional event = m_window.pollEvent())
     {
@@ -287,7 +289,7 @@ void SceneManager::render_current(std::uint8_t fade_alpha)
     if(m_current_scene) m_current_scene->render(m_render_texture);
 
     // Bloom reads the frame so far, so it has to run before the fade
-    // overlay -- otherwise the black overlay would be blurred too.
+    // overlay, otherwise the black overlay would be blurred too.
     if(m_bloom_enabled && m_bloom.is_ready())
     {
         m_render_texture.display();
@@ -331,8 +333,8 @@ void SceneManager::run(int frames_per_second)
 
         time_since_last_update += m_clock.restart();
 
-        // Clamp the accumulator. Without this, a long stall -- dragging
-        // the window, a breakpoint, the machine sleeping -- queues up
+        // Clamp the accumulator. Without this, a long stall, dragging
+        // the window, a breakpoint, the machine sleeping, queues up
         // hundreds of updates that all run at once, and the game either
         // teleports or locks up trying to catch up.
         sf::Time const max_accumulated = time_per_frame * 5.0f;
@@ -359,7 +361,7 @@ void SceneManager::run(int frames_per_second)
                 /*
                  * Scenes get a scaled delta. Without this, a scene that
                  * accumulates raw dt keeps advancing its own logic while
-                 * paused, while every Interpolated it drives is frozen --
+                 * paused, while every Interpolated it drives is frozen,
                  * so on unpause the tween finds its target has moved far
                  * away and races to catch up.
                  */
@@ -367,6 +369,18 @@ void SceneManager::run(int frames_per_second)
 
                 m_current_scene->update(scaled);
                 m_current_scene->update_realtime(time_per_frame);
+
+                /*
+                 * The input gathered since the last update has now been
+                 * seen, so reset the per-frame flags ("clicked this
+                 * frame", "value changed this frame") ready for the next.
+                 *
+                 * Clearing at the top of every loop pass instead lost
+                 * them: the loop runs far faster than the fixed step,
+                 * so a flag set by an event was usually cleared again
+                 * on a pass that never reached update().
+                 */
+                m_current_scene->begin_frame();
             }
         }
 
@@ -455,3 +469,4 @@ sf::RenderWindow& SceneManager::get_window()
 {
     return m_window;
 }
+

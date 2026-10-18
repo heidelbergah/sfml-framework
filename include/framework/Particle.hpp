@@ -6,7 +6,7 @@
  * Velocity and acceleration are Cartesian and expressed in units per
  * second. The old version stored them in polar form, so every velocity
  * change cost a sqrt and an atan2, and then update() converted back to
- * Cartesian with a cos and a sin to move -- converting in a loop, both
+ * Cartesian with a cos and a sin to move, converting in a loop, both
  * ways, thousands of times a frame. Construction still accepts polar
  * Vectors, because that is the natural way to describe emission.
  */

@@ -5,8 +5,8 @@
  * between scenes.
  *
  * This is the single entry point for the framework. The old Game class
- * duplicated all of this -- its own window, render texture, sprite,
- * clock and fixed-timestep loop -- which meant two competing owners of
+ * duplicated all of this, its own window, render texture, sprite,
+ * clock and fixed-timestep loop, which meant two competing owners of
  * the same responsibilities.
  *
  * Scene transitions are a state machine advanced by the main loop, not

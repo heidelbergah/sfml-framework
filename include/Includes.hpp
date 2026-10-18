@@ -6,7 +6,7 @@
  * Every standard header used anywhere in the framework is included
  * explicitly here. Previously the code relied on SFML pulling in
  * <vector>, <string>, <memory> and friends transitively, which happens
- * to work today but is not guaranteed -- an SFML point release that
+ * to work today but is not guaranteed, an SFML point release that
  * tidies its own includes would break the build.
  */
 

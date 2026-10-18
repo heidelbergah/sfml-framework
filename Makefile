@@ -1,11 +1,15 @@
 # SFML 3 Framework
 #
 #   make              Build (incremental, header-aware)
-#   make debug        Build with -g -O0 and sanitizers
-#   make release      Build with -O2 -DNDEBUG
-#   make run          Build and run
+#   make debug        Build with -g -O0 and sanitizers, into build/debug
+#   make release      Build with -O2 -DNDEBUG, into build/release
+#   make run          Build and run (also run-debug, run-release)
 #   make clean        Remove build artefacts
 #   make rebuild      Clean and build from scratch
+#
+# Pick which example to build with EXAMPLE (tetris by default):
+#
+#   make EXAMPLE=showcase run
 #
 # Works on Linux, macOS and Windows (MSYS2/MinGW). The platform block
 # below picks the right include paths and link flags; everything else is
@@ -14,13 +18,26 @@
 # ---------------------------------------------------------------- setup
 
 CXX      ?= g++
-TARGET   := game
-BUILD    := build
+
+# MODE is set by `make debug` and `make release`. Each mode builds into
+# its own folder, so debug objects (compiled with sanitizers) can never
+# end up linked into a normal build, and switching modes needs no clean.
+MODE     ?=
+BUILD    := build$(if $(MODE),/$(MODE))
+
+# Which folder under examples/ to build. Each example gets its own
+# binary, so switching back and forth never runs a stale one.
+EXAMPLE  ?= tetris
+TARGET   := $(BUILD)/bin/$(EXAMPLE)
+
+ifeq ($(wildcard examples/$(EXAMPLE)/*.cpp),)
+    $(error No example called "$(EXAMPLE)". Available: $(notdir $(wildcard examples/*)))
+endif
 
 # Objects live under build/ instead of next to their sources, so the
 # tree stays clean and `make clean` cannot miss one.
 SRC_DIRS := src src/core src/framework src/gui src/scenes src/utilities \
-            examples/tetris
+            examples/$(EXAMPLE)
 
 SOURCES  := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.cpp))
 
@@ -36,8 +53,19 @@ OBJECTS  := $(patsubst %.cpp,$(BUILD)/%.o,$(SOURCES))
 DEPS     := $(OBJECTS:.o=.d)
 
 WARNINGS := -Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor
-CXXFLAGS ?= -std=c++20 -O2
-CXXFLAGS += $(WARNINGS) -MMD -MP
+# The mode's flags are added to everything else rather than replacing
+# it, so the platform include paths below survive into every mode.
+ifeq ($(MODE),debug)
+    OPT     := -O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+    LDFLAGS += -fsanitize=address,undefined
+else ifeq ($(MODE),release)
+    OPT     := -O2 -DNDEBUG
+else
+    OPT     := -O2
+endif
+
+CXXFLAGS ?= -std=c++20
+CXXFLAGS += $(OPT) $(WARNINGS) -MMD -MP
 
 # ------------------------------------------------------------- platform
 
@@ -72,7 +100,7 @@ ifeq ($(PLATFORM),macOS)
 endif
 
 ifeq ($(PLATFORM),Windows)
-    TARGET := game.exe
+    TARGET := $(TARGET).exe
     # SFML_ROOT lets you point at an extracted SFML archive:
     #     mingw32-make SFML_ROOT=C:/SFML-3.0.0
     ifneq ($(SFML_ROOT),)
@@ -89,11 +117,12 @@ endif
 
 # --------------------------------------------------------------- rules
 
-.PHONY: all debug release run clean rebuild info
+.PHONY: all debug release run run-debug run-release clean rebuild info
 
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
+	@mkdir -p $(dir $@)
 	@echo "  LINK    $@"
 	@$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
 
@@ -107,24 +136,28 @@ $(BUILD)/%.o: %.cpp | $(BUILD)
 $(BUILD):
 	@mkdir -p $(BUILD)
 
-debug: CXXFLAGS := -std=c++20 -O0 -g $(WARNINGS) -MMD -MP \
-                   -fsanitize=address,undefined -fno-omit-frame-pointer
-debug: LDFLAGS  += -fsanitize=address,undefined
-debug: clean $(TARGET)
-
-release: CXXFLAGS := -std=c++20 -O2 -DNDEBUG $(WARNINGS) -MMD -MP
-release: clean $(TARGET)
+# Each mode has its own folder, so these never need a clean first.
+# (They used to list clean as a prerequisite, which let `make -j` run
+# it alongside the compile and delete objects mid-build.)
+debug release:
+	@$(MAKE) --no-print-directory all MODE=$@ EXAMPLE=$(EXAMPLE)
 
 run: $(TARGET)
 	@./$(TARGET)
 
+run-debug run-release:
+	@$(MAKE) --no-print-directory run MODE=$(@:run-%=%) EXAMPLE=$(EXAMPLE)
+
 clean:
-	@rm -rf $(BUILD) $(TARGET) game game.exe
+	@rm -rf build game game.exe
 	@echo "  CLEAN   done"
 
-rebuild: clean all
+rebuild:
+	@$(MAKE) --no-print-directory clean
+	@$(MAKE) --no-print-directory all EXAMPLE=$(EXAMPLE)
 
 info:
+	@echo "example  : $(EXAMPLE)  (available: $(notdir $(wildcard examples/*)))"
 	@echo "platform : $(PLATFORM)"
 	@echo "compiler : $(CXX)"
 	@echo "sources  : $(words $(SOURCES)) files"
@@ -144,6 +177,10 @@ TEST_SOURCES := tests/test_framework.cpp \
                 src/framework/EventBus.cpp \
                 src/framework/Particle.cpp \
                 src/framework/ParticleSystem.cpp \
+                src/gui/Widget.cpp \
+                src/gui/TextWidget.cpp \
+                src/gui/Button.cpp \
+                src/gui/WidgetManager.cpp \
                 src/utilities/markov.cpp
 
 .PHONY: test

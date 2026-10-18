@@ -105,7 +105,7 @@ void Widget::set_transition_duration(float duration)
 
 void Widget::set_background_texture(const sf::Texture& texture, bool reset_rect)
 {
-    // Borrowed. No copy is made -- an sf::Texture copy is a fresh GPU
+    // Borrowed. No copy is made, an sf::Texture copy is a fresh GPU
     // allocation plus a blit, and the old code did two of them per call.
     m_background_texture = &texture;
     m_background.setTexture(m_background_texture, reset_rect);

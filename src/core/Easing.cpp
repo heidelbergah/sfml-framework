@@ -106,7 +106,7 @@ float ease_out_bounce(float t)
 
 float get_ratio(float t, TransitionFunction transition)
 {
-    // None means "no interpolation" -- jump straight to the end value.
+    // None means "no interpolation", jump straight to the end value.
     if(transition == TransitionFunction::None) return 1.0f;
 
     t = std::clamp(t, 0.0f, 1.0f);

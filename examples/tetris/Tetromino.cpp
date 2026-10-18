@@ -1,5 +1,5 @@
 /**
- * Tetromino.cpp  -  Cascade
+ * Tetromino.cpp  -  Tetris
  */
 
 #include "Tetromino.hpp"

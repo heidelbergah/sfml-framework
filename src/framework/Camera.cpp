@@ -67,7 +67,7 @@ void Camera::update(sf::Time delta_time)
      *
      * Decaying unconditionally and letting the request top it back up
      * makes the level sawtooth between the requested value and one
-     * frame's worth of decay below it -- and since the visible offset
+     * frame's worth of decay below it, and since the visible offset
      * is the square, that reads as a flutter rather than a steady
      * rumble.
      */
@@ -184,7 +184,7 @@ void Camera::shake(float amount)
 void Camera::set_sustained_shake(float amount)
 {
     // Take the strongest source asking this frame, rather than summing
-    // -- two rumbling engines should not shake twice as hard.
+    //, two rumbling engines should not shake twice as hard.
     m_sustained_request = std::clamp(std::max(m_sustained_request, amount),
                                      0.0f, 1.0f);
 }
@@ -319,7 +319,7 @@ sf::FloatRect Camera::get_viewport_bounds() const
 
 float Camera::get_trauma() const
 {
-    // The effective level, floor included -- this is what actually
+    // The effective level, floor included, this is what actually
     // drives the visible offset.
     return std::clamp(m_trauma + m_sustained, 0.0f, 1.0f);
 }

@@ -84,7 +84,7 @@ public:
 
     /*
      * Invokes every listener for this event type. Safe to subscribe or
-     * unsubscribe from inside a callback -- the listener list is
+     * unsubscribe from inside a callback, the listener list is
      * snapshotted first, and handles removed mid-dispatch are skipped
      * rather than called after the fact.
      */

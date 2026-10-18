@@ -1,5 +1,5 @@
 /**
- * tests.cpp  -  Cascade
+ * tests.cpp  -  Tetris
  *
  * Rule tests. None of this needs a window, so it runs in CI:
  *
@@ -163,7 +163,7 @@ void test_bag()
 
     /*
      * A piece can be first in one bag and last in the next, so the most
-     * you ever wait is twelve other pieces -- an index gap of thirteen.
+     * you ever wait is twelve other pieces, an index gap of thirteen.
      */
     check(worst_gap <= 13, "at most twelve other pieces between repeats");
 }
@@ -257,8 +257,8 @@ void test_kicks()
 
     /*
      * A J against the left wall. In spawn orientation it cannot rotate
-     * counter-clockwise in place -- the rotation would push it through
-     * the wall -- so SRS must kick it right by one.
+     * counter-clockwise in place, the rotation would push it through
+     * the wall, so SRS must kick it right by one.
      */
     {
         Board board;
@@ -287,7 +287,7 @@ void test_kicks()
     /*
      * Kick tables are published y-up; ours are y-down, so every y is
      * negated on the way in. Check the sign against the reference in
-     * both directions -- getting this backwards is the classic SRS bug,
+     * both directions, getting this backwards is the classic SRS bug,
      * and it only shows up against a wall or a floor.
      *
      * Reference J 0->R test 4 is (0,-2), meaning two cells DOWN in a
@@ -650,7 +650,7 @@ void test_simulated_game()
 
 int main()
 {
-    std::printf("\n\033[1mCascade rule tests\033[0m\n");
+    std::printf("\n\033[1mTetris rule tests\033[0m\n");
 
     test_shapes();
     test_bag();

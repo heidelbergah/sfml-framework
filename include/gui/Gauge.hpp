@@ -1,7 +1,7 @@
 /**
  * Gauge.hpp
  *
- * Dial with a rotating arm -- speedometer, fuel gauge, boss health.
+ * Dial with a rotating arm, speedometer, fuel gauge, boss health.
  *
  * Maps a value in [range.x, range.y] onto an angle in
  * [boundary.x, boundary.y] degrees. The old mapping was
@@ -61,7 +61,7 @@ public:
     void set_boundary(sf::Vector2f boundary_degrees);
 
     /*
-     * Borrowed textures -- must outlive this widget.
+     * Borrowed textures, must outlive this widget.
      */
     void set_dial_texture(const sf::Texture& texture, bool reset_rect = false);
     void set_arm_texture(const sf::Texture& texture, bool reset_rect = false);

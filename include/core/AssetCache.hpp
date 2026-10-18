@@ -140,7 +140,7 @@ namespace Assets
      *
      * This matters more than it sounds. sf::Font smooths its glyph
      * atlas out of the box, which is right for large vector type and
-     * badly wrong for small or pixel fonts -- at 12px, on a target that
+     * badly wrong for small or pixel fonts, at 12px, on a target that
      * is then scaled up 2x, smoothing is what makes text look muddy.
      *
      * Always prefer this over fonts().get() for in-game text. Pass

@@ -1,102 +1,134 @@
-# SFML 3 Framework
+# sfml-framework
 
-A 2D game framework built on SFML 3.0, scenes, GUI widgets, particles,
-camera effects, shaders and tweening, organised so a game can be built
-on top rather than around it.
+A small 2D game framework on top of SFML 3. It's the stuff I got tired of
+rewriting for every game: scenes and transitions, a fixed timestep loop, UI
+widgets, tweening, particles, camera shake, shaders and asset loading. You
+write scenes, the framework handles the rest.
+
+It's a spare-time project and it's still changing, but it's at the point
+where you can build some really fun things with it.
+
+![Shader windows demo](docs/media/shaders.gif)
+
+## Trying it
+
+You'll need SFML 3.0 and a C++20 compiler.
 
 ```
-make && make run
+git clone https://github.com/heidelbergah/sfml-framework
+cd sfml-framework
+make EXAMPLE=showcase run
 ```
 
-Requires SFML 3.0 and a C++20 compiler. See [Building](#building).
+On macOS, `brew install sfml` and the Makefile finds Homebrew on its own.
+On Windows (MSYS2/MinGW), point it at SFML with
+`mingw32-make SFML_ROOT=C:/SFML-3.0.0`. More in [Building](#building).
 
----
+## The showcase
 
-## What's here
+`examples/showcase` is a menu with five small demos, each one there to show
+off a different part of the framework. Number keys open them, escape goes
+back.
 
-```
-include/
-  core/         GameTime, Interpolated, AssetCache, Easing, Math, Random, Config
-  framework/    Camera, EventBus, Particle(System)(Manager), Shader/BloomEffect
-  gui/          Widget, TextWidget, Button, TextBox, Frame, Slider, Gauge, WidgetManager
-  scenes/       Scene, SceneManager
-  utilities/    Markov name generator
-src/            implementations, mirroring include/
-examples/
-  tetris/       Cascade, a full Tetris clone (built by default)
-shaders/        bloom_extract.frag, bloom_blur_v.frag
-tests/          logic tests, no window required
-```
+| | |
+|---|---|
+| ![Easing playground](docs/media/easing.gif) | ![Particle sandbox](docs/media/particles.gif) |
+| **Easing playground.** All eleven easing curves racing each other. Click anywhere to retarget them mid-flight and watch the back and elastic curves overshoot. | **Particle sandbox.** Hold the mouse to paint. Right click anywhere for a panel that tunes the emitter while it runs. |
+| ![Shake lab](docs/media/shake.gif) | ![Name forge](docs/media/names.gif) |
+| **Shake lab.** Impulses, a held rumble, and a live graph of the trauma behind them. You can also flip the HUD between shaking with the world and staying put. | **Name forge.** Markov chain names from English, German and callsign lists. Dim names already exist in the list, so you can see what the order slider actually does. |
 
----
+The GIF at the top is the fifth one, **shader windows**. It's five draggable
+windows, each running its own fragment shader: plasma, a rippling pool, a
+CRT with three channels, fire, and an oscilloscope tracing a little
+chiptune (or your mic, if you want). Only the window under the mouse reacts
+to it.
 
-## The five things worth knowing
+There's also a proper Tetris clone with seven-bag, SRS wall
+kicks, hold, T-spins and combos. It's the default example, so a plain
+`make run` gets you that one.
 
-### 1. SceneManager owns the loop
+![Tetris](docs/media/tetris.gif)
 
-It creates the window, runs a fixed timestep, advances `GameTime`,
-handles transitions and presents the frame. A `Scene` only says what
-happens inside it.
+## Your first scene
+
+`SceneManager` owns the window and the game loop, and a `Scene` just
+describes what happens on its screen. This is the whole of
+`examples/hello`, a square that springs to wherever you click:
 
 ```cpp
-#include "scenes/SceneManager.hpp"
+#include "../../include/scenes/SceneManager.hpp"
+
+class HelloScene : public Scene
+{
+    sf::RectangleShape         m_square{{24.0f, 24.0f}};
+    Interpolated<sf::Vector2f> m_position{{480.0f, 270.0f}};
+
+public:
+    HelloScene()
+    {
+        m_square.setOrigin({12.0f, 12.0f});
+        m_square.setFillColor(sf::Color(240, 170, 78));
+
+        m_position.set_transition(TransitionFunction::EaseOutElastic);
+        m_position.set_duration(0.8f);
+    }
+
+    void handle_event(const sf::Event& event, sf::Vector2f mouse) override
+    {
+        // Assigning starts a tween from wherever the square is right now.
+        if(event.is<sf::Event::MouseButtonPressed>())
+            m_position = mouse;
+    }
+
+    void render(sf::RenderTarget& target) override
+    {
+        m_square.setPosition(m_position);
+        target.draw(m_square);
+    }
+};
 
 int main()
 {
-    SceneManager sm("Void Drift");
-    sm.enable_bloom("shaders");
-
-    sm.add_scene("menu",     std::make_shared<MenuScene>());
-    sm.add_scene("game",     std::make_shared<GameScene>());
-    sm.add_scene("perks",    std::make_shared<PerkScene>());
-    sm.add_scene("gameover", std::make_shared<GameOverScene>());
-
-    sm.swap_scene("menu", SceneTransitionType::INSTANT);
-    sm.run(60);
+    SceneManager scenes("hello");
+    scenes.add_scene("hello", std::make_shared<HelloScene>());
+    scenes.swap_scene("hello", SceneTransitionType::INSTANT);
+    scenes.run(60);
 }
 ```
 
-A scene overrides what it needs:
+```
+make EXAMPLE=hello run
+```
+
+To start something of your own, copy that folder, rename it and build it
+with `make EXAMPLE=<your folder>`.
+
+## How it fits together
+
+A few things that'll save you some time.
+
+### Scenes
+
+A scene overrides only what it needs:
 
 ```cpp
 class GameScene : public Scene
 {
-    void begin_frame() override                 { m_widgets.begin_frame(); }
+    void on_enter() override;                                   // each time it becomes active
     void handle_event(const sf::Event& e, sf::Vector2f mouse) override;
-    void update(sf::Time dt) override;
+    void update(sf::Time dt) override;                          // fixed step, scaled by GameTime
     void render(sf::RenderTarget& target) override;
-    sf::Color get_clear_color() const override  { return sf::Color::Black; }
+    void begin_frame() override { m_widgets.begin_frame(); }    // clears "clicked this frame" flags
 };
 ```
 
-Switch scenes from anywhere by publishing an event:
+The mouse position you get is already mapped to the game's 960x540
+resolution, however big the window is. Switch scenes from inside one with
+`m_manager->request_scene_switch("menu", SceneTransitionType::FADE)`. The
+switch happens between frames, so nothing gets swapped out from under its
+own update.
 
-```cpp
-EventBus::publish(Event(EventType::SWITCH_TO_GAME_OVER));
-```
-
-`SWITCH_TO_MAIN_MENU`, `SWITCH_TO_GAME`, `SWITCH_TO_SETTINGS`,
-`SWITCH_TO_GAME_OVER` and `SWITCH_TO_PERK_SELECT` map to the scene keys
-`"menu"`, `"game"`, `"settings"`, `"gameover"` and `"perks"`.
-
-### 2. Load assets through the cache
-
-Fonts and textures are shared, never copied. Widgets borrow them.
-
-```cpp
-const sf::Font* font = Assets::font("assets/fonts/main.ttf");
-if(font) button->add_text("Play", *font, sf::Color::Black);
-```
-
-Use `Assets::font()` and `Assets::texture()` rather than the raw caches:
-they disable smoothing, which is what keeps small text and pixel art
-sharp. `sf::Font` smooths its glyph atlas by default and it turns 12px
-text to mush once the frame is scaled up.
-
-The cache outlives every scene, and both return `nullptr` rather than
-throwing so a missing asset degrades instead of crashing.
-
-### 3. One clock drives everything
+### One clock for everything
 
 ```cpp
 GameTime::pause();            // every tween, particle and camera move freezes
@@ -104,10 +136,10 @@ GameTime::set_scale(0.2f);    // slow motion
 GameTime::resume();
 ```
 
-`SceneManager` advances it. Tweens that must survive a pause, pause
-menus, UI, opt out with `set_unscaled(true)`.
+`SceneManager` advances it once per fixed step. Anything that should keep
+going while paused, like a pause menu, can opt out with `set_unscaled(true)`.
 
-### 4. Assign to a value and it tweens
+### Assign to a value and it tweens
 
 ```cpp
 Interpolated<sf::Vector2f> pos;
@@ -115,217 +147,156 @@ pos.set_transition(TransitionFunction::EaseOutBack);
 pos.set_duration(0.4f);
 
 pos = {200.f, 100.f};          // starts the tween
-sprite.setPosition(pos);       // implicitly converts to the current value
+sprite.setPosition(pos);       // converts to the current value
 ```
 
-Twelve curves, including the `back`, `elastic` and `bounce` families.
-Retargeting mid-flight starts from wherever the value currently is.
+Retargeting mid-flight starts from wherever the value is at that moment,
+so interrupting a tween never jumps. Widget positions are built on this
+too, which is why everything in the showcase slides around for free.
 
-### 5. Camera shake stacks
+### Camera shake that stacks
 
 ```cpp
-m_camera.shake(0.1f);    // a tap
-m_camera.shake(0.5f);    // an explosion
-m_camera.update(dt);
+m_camera.shake(0.2f);                         // a light hit
+m_camera.shake(0.8f);                         // an explosion
+if(firing) m_camera.set_sustained_shake(0.3f); // every frame something rumbles
 ```
 
-Shake is trauma that accumulates and decays, with the visible offset
-scaling as trauma squared and sampled from smooth noise. Overlapping
-sources combine instead of overwriting, so an explosion during
-machine-gun fire reads correctly.
-
-Impulses are for hits. Anything continuous, a held trigger, an engine,
-a collapsing building, uses the sustained channel instead:
+Shake is "trauma" that builds up and decays, and the actual offset is
+trauma squared, sampled from smooth noise. Hits add together instead of
+replacing each other, and a held rumble gives you a steady floor that hits
+spike above and settle back down to. Then you pick what each layer gets:
 
 ```cpp
-if(firing) camera.set_sustained_shake(0.26f);   // every frame it's active
+target.setView(m_camera.get_view());        // world: pans and shakes
+target.setView(m_camera.get_ui_view());     // HUD that shakes with it
+target.setView(target.getDefaultView());    // HUD that stays still
 ```
 
-The floor holds while you keep asking and releases when you stop, and
-impulses spike above it and settle back down *to it*. Trauma decays
-linearly, so a stream of impulses has no stable middle: it either dies
-between shots or saturates at the cap and never recovers.
-
-Choose per layer what the shake reaches:
+### Assets
 
 ```cpp
-target.setView(m_camera.get_view());       // world: pans and shakes
-target.draw(m_particles);
-
-target.setView(m_camera.get_ui_view());    // HUD: shakes, doesn't pan
-target.draw(m_widgets);                    //  <- the tank-cannon option
-
-target.setView(target.getDefaultView());   // HUD: ignores shake entirely
-target.draw(m_widgets);
+const sf::Font* font = Assets::font("assets/fonts/default.ttf");
+if(font) button->add_text("Play", *font, sf::Color::Black);
 ```
 
----
+Fonts and textures load once and get shared. `Assets::font()` and
+`Assets::texture()` also turn smoothing off, which matters more than you'd
+think: SFML smooths fonts by default and small text turns to mush once the
+frame is scaled up. Missing files come back as `nullptr` instead of
+crashing.
 
-## Quick reference
+### Widgets
 
-**Widgets**, `Button`, `TextBox`, `Frame`, `Slider`, `Gauge`, held in a
-`WidgetManager` that z-orders them.
+`Button`, `TextBox`, `Slider`, `Gauge` and `Frame`, kept in a
+`WidgetManager` that handles drawing order.
 
 ```cpp
-auto button = std::make_shared<Button>(sf::Vector2f{96, 48}, sf::Color::Blue);
-button->add_text("Play", font, sf::Color::Black);
-button->set_transition(TransitionFunction::EaseOutElastic);
-button->set_callback([this]{ EventBus::publish(Event(EventType::SWITCH_TO_GAME)); });
-m_widgets.add_widget("play", button);
+auto play = std::make_shared<Button>(sf::Vector2f{96, 32}, sf::Color(46, 42, 54));
+play->add_text("Play", *font, sf::Color::White);
+play->set_callback([this]{ m_manager->request_scene_switch("game", SceneTransitionType::FADE); });
+m_widgets.add_widget("play", play);
 ```
 
-Callbacks fire once per completed click. `was_clicked()` is true for the
-single frame a click landed; `is_pressed()` is true while held.
-
-`Frame` is a container, children live in its local coordinate space and
-it can be dragged by an optional taskbar.
-
-**Particles**, speeds are units per second, angles are degrees with 0
-right and 90 up.
+A `Frame` is a container with an optional title bar you can drag it by,
+styled however you like:
 
 ```cpp
-ParticleSystem sparks({0.f, 0.f});
-sparks.set_lifespan(sf::seconds(2.f));
-sparks.set_drag(0.4f);                       // fraction of speed kept per second
-sparks.set_gravity(sf::Vector2f{0.f, 260.f});
-sparks.set_gravity_enabled(true);
-sparks.set_fade(true);
-m_particles.add_particle_system("sparks", std::move(sparks));
-
-// count, colour, velocity, spread in degrees
-system->add_particles(30, sf::Color::White, Vector{240.f, sf::degrees(90.f)}, 45.f);
+TaskbarStyle style;
+style.color       = sf::Color(46, 42, 54);
+style.text_color  = sf::Color(214, 203, 182);
+style.close_color = style.color;
+style.close_label = "x";
+frame->add_taskbar(20.0f, "settings", style);
 ```
 
-Particles are world space, draw them through the camera view:
+For overlapping windows, `widget_at(point)` gives you the front-most one
+under the cursor and `bring_to_front()` raises it. That's all the shader
+demo does to keep its windows separate.
 
-```cpp
-target.setView(m_camera.get_view());
-target.draw(m_particles);
+### And the rest
 
-target.setView(target.getDefaultView());   // UI in screen space
-target.draw(m_widgets);
-```
-
-**Events**, store the subscription and it cleans up after itself:
-
-```cpp
-class MenuScene : public Scene {
-    Subscription m_sub;
-public:
-    void on_enter() override {
-        m_sub = subscribe_scoped(EventType::PLAYER_DIED,
-            [this](const Event& e){ /* ... */ });
-    }
-};
-```
-
-**Names**, `Markov` generates names in the style of a corpus:
-
-```cpp
-Markov names("assets/names.txt", 3);
-std::string name = names.generate_name(4, 12);   // min and max length
-```
-
----
-
-## Example: Cascade, Tetris
-
-`examples/tetris`. Guideline rules: seven-bag, SRS with wall kicks,
-hold, five-piece preview, ghost, hard drop, lock delay with move
-resets, T-spins, back-to-back and combos. Gruvbox dark throughout.
-
-```
-make && make run
-make test-tetris     # 63 rule tests, no window needed
-```
-
-Arrows or A/D move, up/X/Z rotate, down soft drops, space hard drops,
-C or shift holds, P pauses, escape quits.
-
-It was written without touching the framework, only scenes, assets and
-the existing shaders. What it leans on:
-
-| Feature | Where you see it |
-|---|---|
-| Scenes + fades | menu → play → game over, switched by publishing an `EventType` |
-| Shake | a tap on lock, scaled with distance on hard drop, harder per line cleared |
-| `get_ui_view()` | the whole playfield jolts as one, well, stack, panels and text together |
-| Particles | lock dust, hard-drop trails, line-clear bursts, level-up shimmer |
-| `Interpolated` | board rim glow, hold flash, piece fade-in, clear collapse |
-| `GameTime` | P freezes the board while the backdrop keeps breathing; topping out drops into slow motion |
-| Bloom | the line-clear flash, kept restrained so the palette stays gruvbox |
-
-To build your own game, point `SRC_DIRS` in the Makefile at your
-scenes instead of `examples/tetris`.
-
-Note that a `tests.cpp` inside an example directory is filtered out of
-the game build, so an example can carry its own test suite without
-colliding with `main()`.
-
----
+- **Particles** are in world space, with speeds in units per second and
+  angles in degrees (0 is right, 90 is up).
+- **ShaderManager and BloomEffect.** Load a fragment shader by key, or
+  switch on bloom with `enable_bloom()`.
+- **EventBus** lets parts of a game talk without holding pointers to each
+  other. Use `subscribe_scoped()` and the subscription cleans up after
+  itself.
+- **Markov** makes up names in the style of a word list.
+- **Random** is one shared generator, so you can seed it for repeatable runs.
 
 ## Building
 
 ```
-make            # incremental; rebuilds when a header changes
-make debug      # -O0 -g with AddressSanitizer + UBSan
-make release    # -O2 -DNDEBUG
+make                  # incremental, rebuilds when a header changes
 make run
-make test       # logic tests, no window, safe for CI
-make info       # detected platform and link flags
+make debug            # -O0 -g with AddressSanitizer and UBSan
+make release          # -O2 -DNDEBUG
+make run-debug        # or run-release
+make test             # framework tests, no window needed
+make test-tetris      # Tetris' rule tests
+make info             # platform, flags and the examples you can build
 make clean
 ```
 
-One Makefile covers all three platforms.
+Everything takes `EXAMPLE=<folder>` to pick what to build. Binaries go in
+`build/bin/`, and debug and release get their own `build/debug/` and
+`build/release/`, so you can switch between them without cleaning.
 
-| Platform | Notes |
+| Platform | |
 |---|---|
-| **Linux** | Install SFML 3.0 dev packages, or build from source. |
-| **macOS** | `brew install sfml`, Homebrew's prefix is detected automatically on both Apple Silicon and Intel. |
-| **Windows** | MSYS2/MinGW: `mingw32-make SFML_ROOT=C:/SFML-3.0.0`. Add `WINDOWED=1` to a release build to drop the console window. |
+| Linux | Install the SFML 3 dev packages, or build SFML from source. |
+| macOS | `brew install sfml`. Apple Silicon and Intel Homebrew are both found automatically. |
+| Windows | MSYS2/MinGW with `mingw32-make SFML_ROOT=C:/SFML-3.0.0`. Add `WINDOWED=1` to a release build to drop the console window. |
 
----
+## Layout
 
-## Roadmap
+```
+include/, src/
+  core/         GameTime, Interpolated, Easing, AssetCache, Math, Random, Config
+  framework/    Camera, EventBus, particles, ShaderManager, BloomEffect
+  gui/          Widget, Button, TextBox, Slider, Gauge, Frame, WidgetManager
+  scenes/       Scene, SceneManager
+  utilities/    Markov
+examples/
+  hello/        the scene above
+  showcase/     the five demos
+  tetris/       Cascade
+shaders/        bloom, plus the showcase's shaders
+tests/          framework tests
+```
 
-Done:
+## What's next
 
-- [x] Particles and particle managers
-- [x] Interpolated template for smooth transitional movement
-- [x] GUI elements with uploadable textures
-- [x] Frame element with the new widget handling
-- [x] Shader support + shader manager
-- [x] Camera effects: shake, movement
-- [x] Event system (EventBus)
-- [x] Scene management system
-- [x] Pause, `GameTime::pause()` freezes every tween at once
-- [x] Asset manager (fonts, textures, sound buffers)
-- [x] Bloom as a separable post-process
-- [x] Resolution-independent presentation with correct mouse mapping
+Roughly in the order I want to get to them:
 
-Next:
+- Sprites and animation: spritesheet slicing, frame timing, animation states
+- Input mapping, so "jump" is an action and not `Key::Space`.
+- Collision: AABB and circle tests, and a spatial hash once there are lots
+  of things
+- Tilemaps, with JSON save/load and **maybe** wave function collapse for
+  generating them
+- A sound and music manager (`Assets::sounds()` already caches buffers)
+- Cutscenes, letterbox bars included
+- Some kind of light entity setup once a game has more than a few types of
+  thing
 
-- [ ] Sprite + animation system, spritesheet slicing, frame timing,
-      animation states. Arguably more fundamental to a 2D game than the
-      particle system already here.
-- [ ] Collision primitives, AABB and circle tests, plus a spatial hash
-      for broad phase. Naive n² is fine for twenty asteroids and falls
-      over at two hundred.
-- [ ] Input abstraction, map `"jump"` to a key or pad button rather
-      than hardcoding `Key::Space`. Buys rebinding and gamepad support;
-      painful to retrofit later.
-- [ ] Tilemap manager
-  - [ ] WFC map generation
-  - [ ] JSON load/save
-- [ ] Sound/music manager (`Assets::sounds()` already caches buffers)
-- [ ] Cutscene support, with letterbox bars
-- [ ] Entity base or light ECS, parallel `std::vector<Asteroid>`,
-      `std::vector<Bullet>` lists stop scaling around the fourth type
-- [ ] State machine helper for entity AI
+Known rough edges:
 
-Known limitations:
+- `Frame` doesn't clip its children, so anything placed outside it draws
+  outside it.
+- Text centring in buttons goes by each string's own glyph bounds, so
+  labels can sit a pixel or two differently depending on the letters.
+- Particle gravity builds up over a particle's life instead of staying
+  constant. It's a one-line fix, it just changes how existing effects feel.
 
-- `Frame` does not clip children to its bounds. A child positioned
-  outside the frame draws outside it. Clipping needs a render texture,
-  which is worth adding for `Frame` specifically once something needs it.
-- Shake is omnidirectional; there is no directional variant.
+## Credits
+
+- [SFML](https://www.sfml-dev.org/) does all the actual heavy lifting.
+- Pixel Operator by Jayvee Enaguas (CC0) is the showcase's font.
+- DejaVu Sans is Tetris' font, under its own free license.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

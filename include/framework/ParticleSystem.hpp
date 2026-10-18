@@ -75,7 +75,7 @@ public:
     /*
      * Fraction of speed retained per second, in (0, 1]. 0.5 halves a
      * particle's speed every second. Note this is per second, not per
-     * frame -- the old 0.99-per-frame default worked out to roughly
+     * frame, the old 0.99-per-frame default worked out to roughly
      * 0.55 per second at 60fps.
      */
     void set_drag(float retained_per_second);
@@ -92,7 +92,7 @@ public:
     [[nodiscard]] sf::Vector2f get_position() const;
 
     /*
-     * By reference -- the old version returned a copy of the whole
+     * By reference, the old version returned a copy of the whole
      * vector, so asking for particle positions duplicated every
      * particle in the system.
      */

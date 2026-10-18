@@ -1,5 +1,5 @@
 /**
- * Effects.hpp  -  Cascade
+ * Effects.hpp  -  Tetris
  *
  * Drawing helpers and the floating-text pop-ups.
  *
@@ -90,7 +90,7 @@ namespace tetris
     };
 
     /*
-     * Slow drifting motes behind the board. Deliberately dim -- this is
+     * Slow drifting motes behind the board. Deliberately dim, this is
      * the one effect that is on screen constantly, so it has to sit
      * well below everything else in contrast.
      */

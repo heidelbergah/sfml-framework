@@ -64,6 +64,33 @@ void WidgetManager::refresh_z_order()
     update_z_order();
 }
 
+void WidgetManager::bring_to_front(const std::string& key)
+{
+    auto it = m_widgets.find(key);
+    if(it != m_widgets.end()) bring_to_front(it->second);
+}
+
+void WidgetManager::bring_to_front(const std::shared_ptr<Widget>& widget)
+{
+    if(!widget || m_z_ordered_widgets.empty()) return;
+
+    // Already in front: leave z values alone rather than creeping them
+    // upward on every click.
+    if(m_z_ordered_widgets.back() == widget) return;
+
+    widget->set_z_value(m_z_ordered_widgets.back()->get_z_value() + 1);
+    update_z_order();
+}
+
+std::shared_ptr<Widget> WidgetManager::widget_at(sf::Vector2f point) const
+{
+    for(auto it = m_z_ordered_widgets.rbegin(); it != m_z_ordered_widgets.rend(); ++it)
+    {
+        if((*it)->is_visible() && (*it)->contains(point)) return *it;
+    }
+    return nullptr;
+}
+
 void WidgetManager::begin_frame()
 {
     for(const auto& widget : m_z_ordered_widgets)
@@ -87,3 +114,4 @@ std::size_t WidgetManager::size() const
 {
     return m_widgets.size();
 }
+

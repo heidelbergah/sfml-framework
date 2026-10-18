@@ -1,5 +1,5 @@
 /**
- * GameOverScene.cpp  -  Cascade
+ * GameOverScene.cpp  -  Tetris
  */
 
 #include "GameOverScene.hpp"

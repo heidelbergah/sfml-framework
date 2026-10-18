@@ -3,7 +3,7 @@
  *
  * Easing curves for Interpolated<T>. Each takes t in [0, 1] and returns
  * a ratio, which may overshoot outside [0, 1] for the "back" and
- * "elastic" families -- that overshoot is the point.
+ * "elastic" families, that overshoot is the point.
  */
 
 #ifndef EASING_HPP

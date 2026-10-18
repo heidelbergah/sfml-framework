@@ -1,5 +1,5 @@
 /**
- * Board.hpp  -  Cascade
+ * Board.hpp  -  Tetris
  *
  * The playfield grid and the rules that read it.
  *
@@ -69,7 +69,7 @@ namespace tetris
         [[nodiscard]] int drop_distance(const Piece& piece) const;
 
         /*
-         * The piece dropped as far as it will go -- the ghost.
+         * The piece dropped as far as it will go, the ghost.
          */
         [[nodiscard]] Piece ghost_of(const Piece& piece) const;
 

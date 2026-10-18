@@ -42,10 +42,13 @@ public:
     virtual void on_exit() {}
 
     /*
-     * Called once per frame, before any events are delivered. Clear
-     * per-frame flags here -- typically by forwarding to your
-     * WidgetManager's begin_frame(), which resets things like "this
-     * button was clicked this frame".
+     * Called after each fixed update, once that update has seen the
+     * input gathered since the previous one. Clear per-frame flags here,
+     * typically by forwarding to your WidgetManager's begin_frame(),
+     * which resets things like "this button was clicked this frame".
+     *
+     * So a flag set by an event stays true for exactly one update(),
+     * however many times the loop spins between updates.
      */
     virtual void begin_frame() {}
 
@@ -61,10 +64,8 @@ public:
     }
 
     /*
-     * Fixed timestep, SCALED by GameTime.
-     *
      * While the game is paused this is called with zero, so gameplay
-     * written the obvious way -- accumulating dt, integrating positions --
+     * written the obvious way, accumulating dt, integrating positions,
      * freezes without needing to check a pause flag. Under slow motion it
      * shrinks proportionally.
      */
@@ -95,3 +96,4 @@ public:
 };
 
 #endif
+

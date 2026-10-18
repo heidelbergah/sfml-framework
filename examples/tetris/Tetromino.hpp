@@ -1,5 +1,5 @@
 /**
- * Tetromino.hpp  -  Cascade
+ * Tetromino.hpp  -  Tetris
  *
  * Piece shapes and Super Rotation System data.
  *
@@ -47,7 +47,7 @@ namespace tetris
 
     /*
      * The five offsets to try when rotating, in order. The first is
-     * always (0,0) -- the rotation in place.
+     * always (0,0), the rotation in place.
      */
     using KickTable = std::array<sf::Vector2i, 5>;
 

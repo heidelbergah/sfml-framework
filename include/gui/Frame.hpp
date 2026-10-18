@@ -17,6 +17,26 @@
 class Button;
 class TextBox;
 
+/*
+ * How a Frame's title bar looks. Every colour is yours to choose, so
+ * the bar can match the rest of the game rather than forcing a grey
+ * bar and a pure red close button on it.
+ */
+struct TaskbarStyle
+{
+    sf::Color    color{sf::Color(200, 200, 200)};
+    sf::Color    text_color{sf::Color::Black};
+    sf::Color    outline_color{sf::Color::Transparent};
+    float        outline_thickness{0.0f};
+
+    sf::Color    close_color{sf::Color(200, 60, 60)};
+    sf::Color    close_text_color{sf::Color::Black};
+    std::string  close_label{"X"};
+
+    unsigned int character_size{12};
+    Alignment    title_alignment{Alignment::CENTER};
+};
+
 class Frame : public Widget
 {
 private:
@@ -54,10 +74,18 @@ public:
 
     /*
      * Adds a title bar the frame can be dragged by, plus a close button
-     * on its right. Safe to call more than once.
+     * on its right. Calling it again restyles the bar in place.
+     *
+     *     TaskbarStyle style;
+     *     style.color       = sf::Color(46, 42, 54);
+     *     style.text_color  = sf::Color(214, 203, 182);
+     *     style.close_color = style.color;
+     *     frame->add_taskbar(20.0f, "settings", style);
      */
-    void add_taskbar(float height, sf::Color color, sf::Color outline_color,
-                     float thickness, const std::string& title = "");
+    void add_taskbar(float height, const std::string& title,
+                     const TaskbarStyle& style = {});
+
+    [[nodiscard]] float get_taskbar_height() const;
 
     [[nodiscard]] bool has_taskbar() const;
 
@@ -68,7 +96,7 @@ public:
     void remove_widget(const std::string& key);
 
     /*
-     * Borrowed textures -- must outlive this frame. No-ops if
+     * Borrowed textures, must outlive this frame. No-ops if
      * add_taskbar has not been called.
      */
     void add_taskbar_texture(const sf::Texture& texture, bool reset_rect = false);
@@ -78,6 +106,11 @@ public:
      * True for the frame in which the close button was clicked.
      */
     [[nodiscard]] bool close_requested() const;
+
+    /*
+     * True while the frame is being dragged by its taskbar.
+     */
+    [[nodiscard]] bool is_being_dragged() const;
 
     template<typename T = Widget>
     [[nodiscard]] std::shared_ptr<T> get_widget(const std::string& key) const;
@@ -90,3 +123,4 @@ std::shared_ptr<T> Frame::get_widget(const std::string& key) const
 }
 
 #endif
+

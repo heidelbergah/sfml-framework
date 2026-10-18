@@ -3,7 +3,7 @@
  *
  * Tests for the parts of the framework that need no window: easing,
  * vector maths, the event bus, particle lifetimes, the Markov chain,
- * and GameTime-driven tweening.
+ * GameTime-driven tweening and widget ordering.
  *
  * Every bug fixed in this pass has a regression test here, named after
  * what used to go wrong.
@@ -21,6 +21,8 @@
 #include "../include/framework/EventBus.hpp"
 #include "../include/framework/Particle.hpp"
 #include "../include/framework/ParticleSystem.hpp"
+#include "../include/gui/Button.hpp"
+#include "../include/gui/WidgetManager.hpp"
 #include "../include/utilities/markov.hpp"
 
 #include <cmath>
@@ -99,7 +101,7 @@ void test_easing()
     }
     check(all_anchored, "all curves start at 0 and end at 1");
 
-    // "back" and "elastic" are supposed to overshoot -- that is the
+    // "back" and "elastic" are supposed to overshoot, that is the
     // whole point of them.
     check(get_ratio(0.75f, TransitionFunction::EaseOutBack) > 1.0f,
           "ease_out_back overshoots past 1");
@@ -265,7 +267,7 @@ void test_event_bus()
     check(outer == 1, "subscribing during dispatch does not fire the new listener early");
 
     // A listener that removes another must stop that one firing in the
-    // same dispatch -- the snapshot alone would have called it anyway.
+    // same dispatch, the snapshot alone would have called it anyway.
     EventBus::clear_all_listeners();
     bool second_fired = false;
     ListenerHandle second = EventBus::subscribe(EventType::CUSTOM,
@@ -327,7 +329,7 @@ void test_particles()
      * sf::Time stores integer microseconds, so sf::seconds(1.f/60.f) is
      * 16666us rather than 16666.67us. Sixty of those is 0.99996s, which
      * is why the fine-grained result lands at 99.996 rather than exactly
-     * 100. That 0.004% is the storage format, not the physics -- the
+     * 100. That 0.004% is the storage format, not the physics, the
      * point of the test is that the two step sizes agree, which they now
      * do to four decimal places. Under the old per-frame integration
      * they would have differed by a factor of 60.
@@ -339,7 +341,7 @@ void test_particles()
      * Lifespan accounting.
      *
      * A 16666us step reaches 1s in 60.002 steps, so 61 is the correct
-     * answer -- you cannot run a fraction of a step. The old code
+     * answer, you cannot run a fraction of a step. The old code
      * round-tripped elapsed time through asMilliseconds(), truncating
      * each frame from 16.67ms to 16ms, and took 63 steps: about 5% of
      * extra life on every particle in the game.
@@ -374,7 +376,7 @@ void test_particles()
     check(system.particle_count() == 0,
           "regression: a whole batch expiring at once is fully removed (no erase-during-iteration)");
 
-    // spread of 0 is legitimate -- rand() % (0 * 2) used to trap.
+    // spread of 0 is legitimate, rand() % (0 * 2) used to trap.
     ParticleSystem straight({0.0f, 0.0f});
     straight.add_particles(10, sf::Color::White, Vector{10.0f, sf::degrees(0.0f)}, 0.0f);
     check(straight.particle_count() == 10,
@@ -445,7 +447,7 @@ void test_markov()
     std::string const from_short = short_names.generate_name();
     check(from_short.size() <= 64, "short-corpus generation stays bounded");
 
-    // Retraining a second time must work -- the old member ifstream was
+    // Retraining a second time must work, the old member ifstream was
     // never closed, so the second open failed silently.
     Markov reloaded(path, 2);
     bool const second_load = reloaded.update_base_names(path);
@@ -483,7 +485,7 @@ void test_letterbox()
      *
      * A window manager shrinks a requested 1920x1080 window to 1920x1000
      * to fit a title bar. Dividing the cursor by a hard-coded SCALE of 2
-     * gave 500 at the bottom edge where the answer is 540 -- correct
+     * gave 500 at the bottom edge where the answer is 540, correct
      * along the top edge, drifting further wrong the lower you clicked.
      */
     {
@@ -693,7 +695,7 @@ void test_camera()
      *
      * Holding the trigger should settle at a moderate, steady level,
      * and a big hit on top of it should spike and then come back down
-     * to that level -- not to zero, and not stay pinned at maximum.
+     * to that level, not to zero, and not stay pinned at maximum.
      *
      * Impulses alone cannot express this. Trauma decays linearly, so a
      * stream of small impulses either dies between shots or, if they
@@ -748,6 +750,52 @@ void test_camera()
 
 // --------------------------------------------------------------- Random
 
+void test_widget_manager()
+{
+    section("WidgetManager ordering");
+
+    auto make = [](sf::Vector2f pos)
+    {
+        auto button = std::make_shared<Button>(sf::Vector2f{100.0f, 100.0f}, sf::Color::White);
+        button->set_transition(TransitionFunction::None);
+        button->set_position(pos, true);
+        return button;
+    };
+
+    WidgetManager widgets;
+    auto back  = make({0.0f, 0.0f});
+    auto front = make({50.0f, 50.0f});
+    back->set_z_value(1);
+    front->set_z_value(2);
+    widgets.add_widget("back", back);
+    widgets.add_widget("front", front);
+
+    check(widgets.widget_at({75.0f, 75.0f}) == front,
+          "widget_at returns the front-most widget where two overlap");
+    check(widgets.widget_at({10.0f, 10.0f}) == back,
+          "widget_at finds a widget that is only partly covered");
+    check(widgets.widget_at({400.0f, 400.0f}) == nullptr,
+          "widget_at returns nullptr over empty space");
+
+    widgets.bring_to_front("back");
+    check(widgets.widget_at({75.0f, 75.0f}) == back,
+          "bring_to_front puts a widget on top of the overlap");
+    check(widgets.get_widgets().back() == back,
+          "bring_to_front moves it to the end of the draw order");
+
+    unsigned const z = back->get_z_value();
+    widgets.bring_to_front(back);
+    check(back->get_z_value() == z,
+          "raising the front widget again leaves its z value alone");
+
+    back->set_visible(false);
+    check(widgets.widget_at({75.0f, 75.0f}) == front,
+          "widget_at skips hidden widgets");
+
+    widgets.bring_to_front("no such widget");
+    check(widgets.size() == 2, "bring_to_front with an unknown key changes nothing");
+}
+
 void test_random()
 {
     section("Random");
@@ -790,6 +838,7 @@ int main()
     test_particles();
     test_markov();
     test_random();
+    test_widget_manager();
 
     std::printf("\n%d checks, \033[%sm%d failures\033[0m\n\n",
                 g_checks, g_failures == 0 ? "32" : "31", g_failures);

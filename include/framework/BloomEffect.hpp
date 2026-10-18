@@ -11,7 +11,7 @@
  * Two things this fixes versus the old single-pass shader. The 9x9
  * kernel is separable, so running it as 9 + 9 taps instead of 81 costs
  * about a fifth as much. And the composite adds only the blurred
- * result -- the old `original + bloom` double-counted the centre tap,
+ * result, the old `original + bloom` double-counted the centre tap,
  * because the blur already included the source pixel at full weight,
  * which is why bright areas blew out and the threshold had to be set
  * unusually low to compensate.

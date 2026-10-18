@@ -24,7 +24,7 @@ enum class ScalingMode
     /*
      * Fill the window completely, allowing the two axes to scale by
      * different amounts. No bars ever. Distortion equals the difference
-     * between the window's aspect ratio and the game's -- for a 16:9
+     * between the window's aspect ratio and the game's, for a 16:9
      * game in a maximised window that is typically 2-4%, which nobody
      * can see. On a very differently shaped window (ultrawide, portrait)
      * it becomes obvious, so prefer FIT there.
@@ -42,7 +42,7 @@ enum class ScalingMode
 
     /*
      * FIT, but snapped to a whole-number scale. Gives a perfectly even
-     * pixel grid at the cost of much larger bars -- a 1920x1000 window
+     * pixel grid at the cost of much larger bars, a 1920x1000 window
      * drops from 1.85x to 1x, using a quarter of the area.
      */
     INTEGER

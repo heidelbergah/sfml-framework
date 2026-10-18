@@ -1,5 +1,5 @@
 /**
- * MenuScene.cpp  -  Cascade
+ * MenuScene.cpp  -  Tetris
  */
 
 #include "MenuScene.hpp"

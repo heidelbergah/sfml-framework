@@ -4,7 +4,7 @@
  * Base class for every GUI element.
  *
  * Widgets draw directly into the target through an accumulated
- * transform. They no longer each own an sf::RenderTexture -- that meant
+ * transform. They no longer each own an sf::RenderTexture, that meant
  * an FBO bind, a clear, several draws and a texture rebind per widget
  * per frame, whether or not anything had changed, and it made draw()
  * mutate state so the same widget could not be drawn to two targets.
@@ -94,7 +94,7 @@ public:
     void set_transition_duration(float duration);
 
     /*
-     * Borrows the texture -- it must outlive this widget. Pass one from
+     * Borrows the texture, it must outlive this widget. Pass one from
      * Assets::textures(), never a local.
      */
     void set_background_texture(const sf::Texture& texture, bool reset_rect = false);

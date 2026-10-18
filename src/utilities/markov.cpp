@@ -30,7 +30,7 @@ namespace
 Markov::Markov(const std::string& input_file_name, unsigned order)
     : m_order(std::max(1u, order))
 {
-    // No srand() here -- see Random.hpp.
+    // No srand() here, see Random.hpp.
     update_base_names(input_file_name);
 }
 
@@ -117,7 +117,7 @@ std::string Markov::generate_name()
         std::string const prefix = name.substr(name.size() - m_order, m_order);
 
         // find() rather than operator[], and a reference rather than a
-        // copy -- the old version copied the whole candidate vector for
+        // copy, the old version copied the whole candidate vector for
         // every single character generated, and inserted an empty entry
         // into the map for every prefix it had never seen.
         auto it = m_map.find(prefix);

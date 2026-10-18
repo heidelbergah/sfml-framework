@@ -47,7 +47,7 @@ void ParticleSystem::update(sf::Time delta_time)
      *
      * The old code called m_particles.erase() from inside a range-for
      * over m_particles. That invalidates the iterator the loop is
-     * holding -- undefined behaviour -- and it also skipped whichever
+     * holding, undefined behaviour, and it also skipped whichever
      * particle shifted down into the freed slot.
      */
     std::erase_if(m_particles, [](const Particle& p) { return p.is_expired(); });

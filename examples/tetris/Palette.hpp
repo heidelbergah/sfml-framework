@@ -1,5 +1,5 @@
 /**
- * Palette.hpp  -  Cascade
+ * Palette.hpp  -  Tetris
  *
  * Gruvbox dark. The neutrals carry the layout and the seven bright
  * accents are reserved exclusively for the tetrominoes, so a piece

@@ -1,5 +1,5 @@
 /**
- * MenuScene.hpp  -  Cascade
+ * MenuScene.hpp  -  Tetris
  *
  * Title screen. Tetrominoes drift slowly behind the panel, and the
  * widgets fly in on a stagger.

@@ -1,5 +1,5 @@
 /**
- * Board.cpp  -  Cascade
+ * Board.cpp  -  Tetris
  */
 
 #include "Board.hpp"
@@ -199,7 +199,7 @@ SpinResult Board::detect_spin(const Piece& piece, bool last_move_was_rotation,
                             corner_filled[static_cast<std::size_t>(fb)];
 
     // Both front corners filled is a full T-spin. Only one means a mini,
-    // unless the rotation needed the last, largest kick -- that kick is
+    // unless the rotation needed the last, largest kick, that kick is
     // only reachable by a genuine spin, so it upgrades to full.
     if(both_front) return SpinResult::FULL;
 

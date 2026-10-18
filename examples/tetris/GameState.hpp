@@ -1,5 +1,5 @@
 /**
- * GameState.hpp  -  Cascade
+ * GameState.hpp  -  Tetris
  *
  * Scoring, levels and the run summary that outlives the play scene.
  *
@@ -32,7 +32,7 @@ namespace tetris
         [[nodiscard]] bool scored() const { return points > 0; }
 
         /*
-         * Difficult clears -- tetrises and T-spins -- are what keep a
+         * Difficult clears, tetrises and T-spins, are what keep a
          * back-to-back chain alive.
          */
         [[nodiscard]] bool is_difficult() const
