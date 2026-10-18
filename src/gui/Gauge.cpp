@@ -6,69 +6,86 @@
 
 #include "../../include/gui/Gauge.hpp"
 
-void Gauge::draw(sf::RenderTarget &target, sf::RenderStates states) const
-{
-    m_render_texture.clear(sf::Color::Transparent);
-    m_render_texture.draw(m_outline);
-    m_render_texture.draw(m_background);
-    m_render_texture.draw(m_dial);
-    m_render_texture.draw(m_arm);
-    m_render_texture.display();
-    m_sprite.setTexture(m_render_texture.getTexture());
-    target.draw(m_sprite, states);
-}
-
 Gauge::Gauge(sf::Vector2f size, sf::Color color, sf::Vector2f range,
-        sf::Vector2f boundary) : Widget(size)
+             sf::Vector2f boundary)
+    : Widget(size),
+      m_arm_color(color),
+      m_range(range),
+      m_boundary_degrees(boundary)
 {
     m_color = color;
-    m_size = size;
-    m_arm_color = m_color;
-    m_dial_color = sf::Color::Transparent;
-
-    m_range = range;
-    m_boundary_degrees = boundary;
-
-    float radius = m_size.x/2;
-    m_dial.setFillColor(m_dial_color);
-    m_dial.setRadius(radius);
-    m_dial.setOrigin(sf::Vector2f(radius, radius));
-    m_dial.setPosition(sf::Vector2f(m_size.x/2, m_size.y/2));
-
-    m_arm.setFillColor(m_arm_color);
-    m_arm.setSize(sf::Vector2f(m_size.x/15, radius));
-    m_arm.setOrigin(sf::Vector2f(m_arm.getSize().x/2, radius));
-    m_arm.setPosition(sf::Vector2f(m_size.x/2, m_size.y/2));
-
-    set_arm_angle_based_on_value(m_range.y / 2);
-
-    m_sprite.setPosition(sf::Vector2f(0, 0));
-    m_background.setPosition(sf::Vector2f(0, 0));
-    m_background.setSize(m_size);
     m_background.setFillColor(sf::Color::Transparent);
+    m_outline.setFillColor(sf::Color::Transparent);
+
+    float const radius = m_size.x / 2.0f;
+
+    m_dial.setRadius(radius);
+    m_dial.setFillColor(m_dial_color);
+    m_dial.setOrigin({radius, radius});
+    m_dial.setPosition({m_size.x / 2.0f, m_size.y / 2.0f});
+
+    m_arm.setSize({std::max(1.0f, m_size.x / 15.0f), radius});
+    m_arm.setFillColor(m_arm_color);
+    m_arm.setOrigin({m_arm.getSize().x / 2.0f, radius});
+    m_arm.setPosition({m_size.x / 2.0f, m_size.y / 2.0f});
+
+    // Start at the midpoint of the range, not half the upper bound --
+    // those are only the same thing when the range starts at zero.
+    set_value((m_range.x + m_range.y) / 2.0f, true);
+}
+
+void Gauge::on_draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    if(m_outline_color != sf::Color::Transparent)
+        target.draw(m_outline, states);
+
+    if(m_color != sf::Color::Transparent && m_background_texture)
+        target.draw(m_background, states);
+
+    target.draw(m_dial, states);
+    target.draw(m_arm, states);
 }
 
 void Gauge::update(sf::Time delta_time)
 {
-    m_arm.setRotation(m_arm_angle);
+    (void)delta_time;
+
+    m_arm.setRotation(sf::degrees(m_arm_degrees.get_value()));
 }
 
-void Gauge::set_arm_angle_based_on_value(float value)
+void Gauge::set_value(float value, bool instant)
 {
-    value = std::min(value, m_range.y);
-    value = std::max(value, m_range.x);
+    float const span = m_range.y - m_range.x;
+    if(span == 0.0f)
+    {
+        set_arm_degrees(m_boundary_degrees.x, instant);
+        return;
+    }
 
-    float boundary_difference = m_boundary_degrees.y - m_boundary_degrees.x;
-    float range_difference = m_range.y - m_range.x;
+    value = std::clamp(value, std::min(m_range.x, m_range.y),
+                              std::max(m_range.x, m_range.y));
 
-    float degree_ratio = boundary_difference / range_difference;
+    float const ratio = (value - m_range.x) / span;
+    float const degrees =
+        m_boundary_degrees.x + ratio * (m_boundary_degrees.y - m_boundary_degrees.x);
 
-    m_arm_angle = sf::degrees(degree_ratio * value);
+    set_arm_degrees(degrees, instant);
 }
 
-void Gauge::set_arm_angle_based_on_degrees(float degrees)
+void Gauge::set_arm_degrees(float degrees, bool instant)
 {
-    m_arm_angle = sf::degrees(degrees);
+    if(instant) m_arm_degrees.set_instant(degrees);
+    else        m_arm_degrees.set_value(degrees);
+}
+
+void Gauge::set_arm_transition(TransitionFunction transition)
+{
+    m_arm_degrees.set_transition(transition);
+}
+
+void Gauge::set_arm_transition_duration(float duration)
+{
+    m_arm_degrees.set_duration(duration);
 }
 
 void Gauge::set_dial_color(sf::Color color)
@@ -77,20 +94,35 @@ void Gauge::set_dial_color(sf::Color color)
     m_dial.setFillColor(m_dial_color);
 }
 
-void Gauge::set_rotation(sf::Angle angle)
+void Gauge::set_arm_color(sf::Color color)
 {
-    m_sprite.setRotation(angle);
+    m_arm_color = color;
+    m_arm.setFillColor(m_arm_color);
 }
 
-void Gauge::set_dial_texture(sf::Texture texture, bool reset_rect)
+void Gauge::set_range(sf::Vector2f range)
 {
-    m_dial_texture = std::make_unique<sf::Texture>(texture);
-    m_dial.setTexture(m_dial_texture.get(), reset_rect);
+    m_range = range;
 }
 
-void Gauge::set_arm_texture(sf::Texture texture, bool reset_rect)
+void Gauge::set_boundary(sf::Vector2f boundary_degrees)
 {
-    m_arm_texture = std::make_unique<sf::Texture>(texture);
-    m_arm.setTexture(m_arm_texture.get(), reset_rect);
+    m_boundary_degrees = boundary_degrees;
 }
 
+void Gauge::set_dial_texture(const sf::Texture& texture, bool reset_rect)
+{
+    m_dial_texture = &texture;
+    m_dial.setTexture(m_dial_texture, reset_rect);
+}
+
+void Gauge::set_arm_texture(const sf::Texture& texture, bool reset_rect)
+{
+    m_arm_texture = &texture;
+    m_arm.setTexture(m_arm_texture, reset_rect);
+}
+
+float Gauge::get_arm_degrees() const
+{
+    return m_arm_degrees.get_value();
+}

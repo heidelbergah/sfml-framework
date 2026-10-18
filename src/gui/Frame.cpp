@@ -8,145 +8,158 @@
 #include "../../include/gui/Button.hpp"
 #include "../../include/gui/TextBox.hpp"
 
-void Frame::draw(sf::RenderTarget &target, sf::RenderStates states) const
-{
-    m_render_texture.clear(sf::Color::Transparent);
-    m_render_texture.draw(m_outline);
-    m_render_texture.draw(m_background);
-    if(m_show_taskbar)
-    {
-        auto taskbar = m_widgets.get_widget<TextBox>("taskbar");
-        auto button = m_widgets.get_widget<Button>("exit");
-        if (taskbar && button) {
-            m_render_texture.draw(*taskbar);
-            m_render_texture.draw(*button);
-        }
-    }
-    m_render_texture.display();
-    m_sprite.setTexture(m_render_texture.getTexture());
-    target.draw(m_sprite, states);
-}
-
-Frame::Frame(sf::Vector2f size, sf::Color color, sf::Font& font) :
-    Widget(size), m_font(font)
+Frame::Frame(sf::Vector2f size, sf::Color color, const sf::Font& font)
+    : Widget(size), m_font(&font)
 {
     m_color = color;
-    m_size = size;
-
-    m_base_transition = get_transition();
-    m_skip_transition = true;
-
-    m_show_taskbar = false;
-
-    m_sprite.setPosition(sf::Vector2f(0, 0));
-    m_background.setPosition(sf::Vector2f(0, 0));
-    m_background.setSize(m_size);
     m_background.setFillColor(m_color);
+}
+
+void Frame::on_draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    if(m_outline_color != sf::Color::Transparent)
+        target.draw(m_outline, states);
+
+    target.draw(m_background, states);
+
+    // Children inherit the frame's transform, so they draw at their own
+    // local positions without any manual offsetting.
+    target.draw(m_widgets, states);
+
+    if(m_show_taskbar)
+    {
+        if(m_taskbar) target.draw(*m_taskbar, states);
+        if(m_exit)    target.draw(*m_exit, states);
+    }
+}
+
+sf::Vector2f Frame::to_local(sf::Vector2f parent_pos) const
+{
+    return parent_pos - floor_vector(m_pos.get_value());
+}
+
+void Frame::begin_frame()
+{
+    m_close_requested = false;
+    m_widgets.begin_frame();
+
+    if(m_taskbar) m_taskbar->begin_frame();
+    if(m_exit)    m_exit->begin_frame();
 }
 
 void Frame::update(sf::Time delta_time)
 {
-    int start_index = 2;
-    if(m_show_taskbar)
-        start_index = 0;
+    // Guarded throughout. The old version dereferenced the taskbar and
+    // exit button unconditionally, so a Frame created without
+    // add_taskbar() crashed on its first update.
+    m_widgets.update(delta_time);
 
-    if(m_skip_transition)
+    if(!m_show_taskbar) return;
+
+    if(m_taskbar) m_taskbar->update(delta_time);
+    if(m_exit)
     {
-        set_transition(TransitionFunction::None);
-        m_skip_transition = false;
-    }
-    else
-    {
-        set_transition(m_base_transition);
-    }
-
-    m_widgets.get_widget<TextBox>("taskbar")->update(delta_time);
-    m_widgets.get_widget<Button>("exit")->update(delta_time);
-
-    m_sprite.setPosition(m_pos);
-}
-
-void Frame::handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos)
-{
-    int start_index = 2;
-    if(m_show_taskbar)
-        start_index = 0;
-    
-    sf::Vector2f local_mouse = world_pos - m_sprite.getPosition();
-
-    m_widgets.get_widget<TextBox>("taskbar")->handle_event(window, local_mouse);
-    m_widgets.get_widget<Button>("exit")->handle_event(window, local_mouse);
-
-    if(m_show_taskbar)
-    {
-        // Need to localize position
-        sf::Vector2f local_pos = world_pos - m_sprite.getPosition();
-
-        if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-        {
-            if(m_widgets.get_widget<TextBox>("taskbar")->get_global_bounds().contains(local_pos) && !m_being_dragged)
-            {
-                m_being_dragged = true;
-                m_drag_offset = world_pos - m_pos.get_value();
-            }
-        }
-        else if(m_being_dragged)
-        {
-            m_being_dragged = false;
-        }
-
-        if(m_being_dragged)
-        {
-            set_position(world_pos - m_drag_offset);
-        }
+        m_exit->update(delta_time);
+        if(m_exit->was_clicked()) m_close_requested = true;
     }
 }
 
-void Frame::add_taskbar(int height, sf::Color color, sf::Color outline_color, int thickness, std::string string)
+void Frame::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 {
-    m_show_taskbar = true;
+    if(!m_enabled || !m_visible) return;
 
-    // Add the taskbar
-    m_widgets.add_widget("taskbar", std::make_shared<TextBox>(sf::Vector2f(m_size.x, height),
-                color, string, m_font, sf::Color::Black));
-    m_widgets.get_widget<TextBox>("taskbar")->set_transition(TransitionFunction::None);
-    m_widgets.get_widget<TextBox>("taskbar")->set_position(sf::Vector2f(0, 0));
-    m_widgets.get_widget<TextBox>("taskbar")->set_outline(outline_color, thickness);
+    sf::Vector2f const local_pos = to_local(mouse_pos);
 
-    // Add the exit button
-    m_widgets.add_widget("exit", std::make_shared<Button>(sf::Vector2f(height, height),
-                sf::Color::Red));
-    m_widgets.get_widget<Button>("exit")->set_transition(TransitionFunction::None);
-    m_widgets.get_widget<Button>("exit")->set_position(sf::Vector2f(m_size.x-height, 0));
-    m_widgets.get_widget<Button>("exit")->set_outline(outline_color, thickness);
-    m_widgets.get_widget<Button>("exit")->add_text("X", m_font, sf::Color::Black);
+    m_widgets.handle_event(event, local_pos);
 
+    if(!m_show_taskbar) return;
+
+    if(m_exit)    m_exit->handle_event(event, local_pos);
+    if(!m_taskbar) return;
+    m_taskbar->handle_event(event, local_pos);
+
+    if(const auto* pressed = event.getIf<sf::Event::MouseButtonPressed>())
+    {
+        // Pressing the close button should not also start a drag.
+        bool const on_exit = m_exit && m_exit->contains(local_pos);
+
+        if(pressed->button == sf::Mouse::Button::Left &&
+           m_taskbar->contains(local_pos) && !on_exit && !m_being_dragged)
+        {
+            m_being_dragged = true;
+            m_drag_offset   = mouse_pos - m_pos.get_value();
+        }
+    }
+    else if(const auto* released = event.getIf<sf::Event::MouseButtonReleased>())
+    {
+        if(released->button == sf::Mouse::Button::Left) m_being_dragged = false;
+    }
+    else if(event.is<sf::Event::MouseMoved>() && m_being_dragged)
+    {
+        // Instant, so the frame tracks the cursor rather than easing
+        // toward it a frame behind.
+        set_position(mouse_pos - m_drag_offset, true);
+    }
+}
+
+void Frame::add_taskbar(float height, sf::Color color, sf::Color outline_color,
+                        float thickness, const std::string& title)
+{
+    if(!m_font) return;
+
+    m_show_taskbar   = true;
+    m_taskbar_height = height;
+
+    m_taskbar = std::make_shared<TextBox>(sf::Vector2f{m_size.x, height},
+                                          color, title, *m_font, sf::Color::Black);
+    m_taskbar->set_transition(TransitionFunction::None);
+    m_taskbar->set_position({0.0f, 0.0f}, true);
+    m_taskbar->set_outline(outline_color, thickness);
+
+    m_exit = std::make_shared<Button>(sf::Vector2f{height, height}, sf::Color::Red);
+    m_exit->set_transition(TransitionFunction::None);
+    m_exit->set_position({m_size.x - height, 0.0f}, true);
+    m_exit->set_outline(outline_color, thickness);
+    m_exit->add_text("X", *m_font, sf::Color::Black);
+}
+
+bool Frame::has_taskbar() const
+{
+    return m_taskbar != nullptr;
 }
 
 void Frame::toggle_moveability()
 {
-    m_show_taskbar = !m_show_taskbar;
+    set_moveable(!m_show_taskbar);
 }
 
-void Frame::add_widget(std::string key, std::shared_ptr<Widget> widget)
+void Frame::set_moveable(bool moveable)
 {
-    m_widgets.add_widget(key, widget);
+    m_show_taskbar = moveable && has_taskbar();
+    if(!m_show_taskbar) m_being_dragged = false;
 }
 
-void Frame::remove_widget(std::string key)
+void Frame::add_widget(const std::string& key, std::shared_ptr<Widget> widget)
+{
+    m_widgets.add_widget(key, std::move(widget));
+}
+
+void Frame::remove_widget(const std::string& key)
 {
     m_widgets.remove_widget(key);
 }
 
-void Frame::add_taskbar_texture(sf::Texture texture, bool reset_rect)
+void Frame::add_taskbar_texture(const sf::Texture& texture, bool reset_rect)
 {
-    m_taskbar_texture = std::make_unique<sf::Texture>(texture);
-    m_widgets.get_widget<TextBox>("taskbar")->set_background_texture(*m_taskbar_texture, reset_rect);
+    if(m_taskbar) m_taskbar->set_background_texture(texture, reset_rect);
 }
 
-void Frame::add_taskbar_exit(sf::Texture texture, bool reset_rect)
+void Frame::add_taskbar_exit_texture(const sf::Texture& texture, bool reset_rect)
 {
-    m_exit_texture = std::make_unique<sf::Texture>(texture);
-    m_widgets.get_widget<Button>("exit")->set_background_texture(*m_exit_texture, reset_rect);
+    if(m_exit) m_exit->set_background_texture(texture, reset_rect);
 }
 
+bool Frame::close_requested() const
+{
+    return m_close_requested;
+}

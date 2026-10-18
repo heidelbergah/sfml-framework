@@ -6,88 +6,123 @@
 
 #include "../../include/gui/Button.hpp"
 
-void Button::draw(sf::RenderTarget &target, sf::RenderStates states) const
+namespace
 {
-    // Render everything to a render texture, then DRAW that render texture
-    m_render_texture.clear(sf::Color::Transparent);
-    m_render_texture.draw(m_outline);
-    m_render_texture.draw(m_background);
-    if(m_text) // If m_text is not null
-        m_render_texture.draw(*m_text);
-    m_render_texture.display();
-    m_sprite.setTexture(m_render_texture.getTexture());
-    target.draw(m_sprite, states);
+    /*
+     * Shifts a colour by `amount`, clamped. Positive lightens.
+     */
+    sf::Color shade(sf::Color color, int amount)
+    {
+        auto adjust = [amount](std::uint8_t channel)
+        {
+            return static_cast<std::uint8_t>(
+                std::clamp(static_cast<int>(channel) + amount, 0, 255));
+        };
+
+        return sf::Color{adjust(color.r), adjust(color.g), adjust(color.b), color.a};
+    }
+}
+
+Button::Button(sf::Vector2f size, sf::Color color)
+    : TextWidget(size)
+{
+    m_color = color;
+    m_background.setFillColor(m_color);
+
+    create_color_variants();
 }
 
 void Button::create_color_variants()
 {
-    int pressing_factor = 120;
-    int hovering_factor = 80;
-
-    m_dark_color.r = std::max(0, m_color.r - pressing_factor);
-    m_dark_color.g = std::max(0, m_color.g - pressing_factor);
-    m_dark_color.b = std::max(0, m_color.b - pressing_factor);
-    m_dark_color.a = 255;
-
-    m_light_color.r = std::max(0, m_color.r - hovering_factor);
-    m_light_color.g = std::max(0, m_color.g - hovering_factor);
-    m_light_color.b = std::max(0, m_color.b - hovering_factor);
-    m_light_color.a = 255; 
+    // Both variants darken -- hovering slightly, pressing more. The old
+    // names said "light" and "dark" but both subtracted, so the light
+    // one was in fact darker than the base colour.
+    m_hover_color = shade(m_color, -40);
+    m_press_color = shade(m_color, -80);
 }
 
-Button::Button(sf::Vector2f size, sf::Color color) :
-    TextWidget(size)
+void Button::set_state_tints(int hover_amount, int press_amount)
 {
-    m_color = color;
-    m_size = size;
+    m_hover_color = shade(m_color, -hover_amount);
+    m_press_color = shade(m_color, -press_amount);
+}
 
-    create_color_variants();
+void Button::on_draw(sf::RenderTarget& target, sf::RenderStates states) const
+{
+    if(m_outline_color != sf::Color::Transparent)
+        target.draw(m_outline, states);
 
-    m_sprite.setPosition(sf::Vector2f(0, 0));
-    m_background.setPosition(sf::Vector2f(0, 0));
-    m_background.setSize(m_size);
-    m_background.setFillColor(m_color);
+    target.draw(m_background, states);
+
+    if(m_text) target.draw(*m_text, states);
+}
+
+void Button::begin_frame()
+{
+    m_clicked = false;
 }
 
 void Button::update(sf::Time delta_time)
 {
-    m_sprite.setPosition(m_pos);
+    (void)delta_time;
+
+    sf::Color const target = m_held    ? m_press_color
+                           : m_hovered ? m_hover_color
+                                       : m_color;
+
+    m_background.setFillColor(m_enabled ? target : shade(m_color, -110));
 }
 
-void Button::handle_event(const sf::RenderWindow& window, sf::Vector2f world_pos, std::optional<sf::Vector2f> local_mouse_pos)
+void Button::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 {
-    if(local_mouse_pos.has_value())
+    if(!m_enabled || !m_visible) return;
+
+    if(const auto* moved = event.getIf<sf::Event::MouseMoved>())
     {
-        world_pos = local_mouse_pos.value();
+        (void)moved;
+        m_hovered = contains(mouse_pos);
+        return;
     }
 
-    m_background.setFillColor(m_color);
-
-    m_hovered = false;
-    m_pressed = false;
-    if (m_sprite.getGlobalBounds().contains(world_pos))
+    if(const auto* pressed = event.getIf<sf::Event::MouseButtonPressed>())
     {
-        // If hovering, lighten the background
-        m_hovered = true;
-        m_background.setFillColor(m_light_color);
-        if(sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+        if(pressed->button != sf::Mouse::Button::Left) return;
+
+        m_hovered = contains(mouse_pos);
+        if(m_hovered) m_held = true;
+        return;
+    }
+
+    if(const auto* released = event.getIf<sf::Event::MouseButtonReleased>())
+    {
+        if(released->button != sf::Mouse::Button::Left) return;
+
+        m_hovered = contains(mouse_pos);
+
+        // A click is press-inside followed by release-inside. Dragging
+        // off the button before releasing cancels it, which is what
+        // every other UI toolkit does.
+        if(m_held && m_hovered)
         {
-            m_pressed = true;
-            // If clicking, darken the background
-            m_background.setFillColor(m_dark_color);
-            if(m_callback)
-                m_callback.value()();
+            m_clicked = true;
+            if(m_callback) (*m_callback)();
         }
+
+        m_held = false;
     }
 }
 
-bool Button::is_hovered()
+bool Button::is_hovered() const
 {
     return m_hovered;
 }
 
-bool Button::is_pressed()
+bool Button::is_pressed() const
 {
-    return m_pressed;
+    return m_held;
 }
 
+bool Button::was_clicked() const
+{
+    return m_clicked;
+}
