@@ -7,8 +7,7 @@
  * This is the single entry point for the framework. The old Game class
  * duplicated all of this -- its own window, render texture, sprite,
  * clock and fixed-timestep loop -- which meant two competing owners of
- * the same responsibilities. Its feature showcase now lives in
- * examples/demo as an ordinary Scene.
+ * the same responsibilities.
  *
  * Scene transitions are a state machine advanced by the main loop, not
  * a blocking while loop. The old fade ran its own inner loop that never

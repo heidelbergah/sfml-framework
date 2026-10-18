@@ -24,8 +24,6 @@ include/
 src/            implementations, mirroring include/
 examples/
   tetris/       Cascade, a full Tetris clone (built by default)
-  arena/        Ironvale Arena, a top-down tank demo
-  voiddrift/    your game's scenes, quarantined (see its README)
 shaders/        bloom_extract.frag, bloom_blur_v.frag
 tests/          logic tests, no window required
 ```
@@ -230,13 +228,7 @@ std::string name = names.generate_name(4, 12);   // min and max length
 
 ---
 
-## The demos
-
-Two complete games ship with the framework. `SRC_DIRS` in the Makefile
-picks which one builds, it points at `examples/tetris` by default.
-Swap it to `examples/arena` for the other.
-
-### Cascade, Tetris
+## Example: Cascade, Tetris
 
 `examples/tetris`. Guideline rules: seven-bag, SRS with wall kicks,
 hold, five-piece preview, ghost, hard drop, lock delay with move
@@ -263,35 +255,8 @@ the existing shaders. What it leans on:
 | `GameTime` | P freezes the board while the backdrop keeps breathing; topping out drops into slow motion |
 | Bloom | the line-clear flash, kept restrained so the palette stays gruvbox |
 
-### Ironvale Arena, top-down tank
-
-`examples/arena` is a playable top-down tank fight,
-built to exercise everything at once.
-
-```
-make && make run
-```
-
-WASD drives and turns the hull, the mouse aims the turret independently,
-LMB fires, P pauses, ESC returns to the menu. The gun overheats if you
-hold the trigger.
-
-What each part is demonstrating:
-
-| Feature | Where you see it |
-|---|---|
-| Scenes + fade transitions | menu → arena → game over, all switched by publishing an `EventType` |
-| Camera | follows the tank with look-ahead toward the cursor, clamped to the arena |
-| Shake | sustained rumble while firing, impulses on hits and kills, HUD shaking with the world |
-| Particles | five systems: muzzle flash, sparks, debris, tread dust, ambient embers |
-| Widgets | health and heat `Gauge`s, `TextBox` HUD, `Button` menus, all tweened in |
-| `Interpolated` | turret easing, enemy spawn pops, HUD slide-in |
-| `GameTime` | P pauses everything; dying drops into slow motion |
-| `Markov` | a fresh callsign per run |
-| Bloom | muzzle flashes and debris |
-
-Delete whichever folder you do not want, and point `SRC_DIRS` in the
-Makefile at your own scenes.
+To build your own game, point `SRC_DIRS` in the Makefile at your
+scenes instead of `examples/tetris`.
 
 Note that a `tests.cpp` inside an example directory is filtered out of
 the game build, so an example can carry its own test suite without

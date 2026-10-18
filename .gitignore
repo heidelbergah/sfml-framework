@@ -1,0 +1,21 @@
+# Build output
+build/
+*.o
+*.d
+
+# Binaries
+/game
+/game.exe
+/run_tests
+/run_tetris_tests
+*.exe
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS clutter
+.DS_Store
+Thumbs.db
