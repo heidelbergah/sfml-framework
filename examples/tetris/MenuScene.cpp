@@ -50,7 +50,7 @@ void MenuScene::build_widgets()
 
     m_title = std::make_shared<TextBox>(
         sf::Vector2f{VIEW_W, 58.0f}, sf::Color::Transparent,
-        "C A S C A D E", *m_font, FG0);
+        "T E T R I S", *m_font, FG0);
     m_title->set_character_size(30);
     m_widgets.add_widget("title", m_title);
 

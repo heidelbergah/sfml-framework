@@ -5,7 +5,7 @@
  *
  * Everything is world space now. The manager no longer owns a
  * RenderTexture, no longer positions a sprite in the world, and no
- * longer shifts emitters to compensate for camera movement -- sf::View
+ * longer shifts emitters to compensate for camera movement. sf::View
  * already does all of that. Bloom moved to a post-process over the
  * finished frame, which is where a full-screen effect belongs.
  */
