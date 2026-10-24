@@ -9,6 +9,14 @@
  * Cartesian with a cos and a sin to move, converting in a loop, both
  * ways, thousands of times a frame. Construction still accepts polar
  * Vectors, because that is the natural way to describe emission.
+ *
+ * Optional extras, all off by default so a plain particle behaves exactly
+ * as before:
+ *
+ *   size         grows or shrinks from a start size to an end size
+ *   end colour   blends from the spawn colour to another over its life
+ *   height       a z above the ground with its own vertical speed, for
+ *                top-down games: sparks arc up and fall back, blood lands
  */
 
 #ifndef PARTICLE_HPP
@@ -32,6 +40,17 @@ private:
     sf::Time m_elapsed_time;
 
     bool m_fade{false};
+
+    float     m_size{1.0f};
+    float     m_end_size{1.0f};
+    sf::Color m_end_color;
+    bool      m_blend_color{false};
+
+    float m_height{0.0f};         // above the ground
+    float m_vz{0.0f};             // units per second, up is positive
+    bool  m_landed{false};
+
+    void refresh_color();
 
 public:
     Particle(sf::Vector2f position, sf::Color color, sf::Time lifespan);
@@ -58,6 +77,25 @@ public:
      */
     void scale_velocity(float factor);
 
+    /*
+     * Size in units, from birth to death. Only drawn by systems whose
+     * shape is SQUARE; LINE particles are always one pixel wide.
+     */
+    void set_size(float start, float end);
+
+    /*
+     * Blends from the spawn colour to `end` over the particle's life.
+     * Fading, if on, still applies on top.
+     */
+    void set_end_color(sf::Color end);
+
+    /*
+     * Height above the ground and vertical speed. Height only moves when
+     * the owning system has height gravity switched on.
+     */
+    void set_height(float height, float vertical_speed);
+    void update_height(float gravity, float dt);
+
     [[nodiscard]] bool is_expired() const;
 
     /*
@@ -73,6 +111,10 @@ public:
     [[nodiscard]] sf::Time     get_lifespan() const;
     [[nodiscard]] sf::Time     get_elapsed_time() const;
     [[nodiscard]] bool         fades() const;
+    [[nodiscard]] float        get_size() const;
+    [[nodiscard]] float        get_height() const;
+    [[nodiscard]] float        get_vertical_speed() const;
+    [[nodiscard]] bool         has_landed() const;
 };
 
 #endif

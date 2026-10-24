@@ -36,10 +36,23 @@ void ParticleSystem::update(sf::Time delta_time)
 
     for(Particle& p : m_particles)
     {
-        if(m_gravity_on) p.add_acceleration(m_gravity * dt);
-
+        /*
+         * Gravity changes velocity at a constant rate.
+         *
+         * It used to be added to each particle's acceleration every frame,
+         * so the pull itself grew the longer a particle lived and falls
+         * curved away faster and faster. Now it is a steady g.
+         */
+        if(m_gravity_on) p.add_velocity(m_gravity * dt);
         p.scale_velocity(drag_factor);
         p.update(delta_time);
+
+        if(m_height_gravity > 0.0f)
+        {
+            bool const was_down = p.has_landed();
+            p.update_height(m_height_gravity, dt);
+            if(!was_down && p.has_landed() && m_on_land) m_on_land(p);
+        }
     }
 
     /*
@@ -50,28 +63,65 @@ void ParticleSystem::update(sf::Time delta_time)
      * holding, undefined behaviour, and it also skipped whichever
      * particle shifted down into the freed slot.
      */
-    std::erase_if(m_particles, [](const Particle& p) { return p.is_expired(); });
+    bool const drop_landed = m_height_gravity > 0.0f && m_remove_on_land;
+    std::erase_if(m_particles, [drop_landed](const Particle& p)
+    {
+        return p.is_expired() || (drop_landed && p.has_landed());
+    });
 
-    // Two vertices per particle: previous position to current, which
-    // gives each one a short motion-blur streak.
-    m_particle_lines.resize(m_particles.size() * 2);
+    rebuild_vertices();
+}
 
+void ParticleSystem::rebuild_vertices()
+{
+    if(m_shape == ParticleShape::LINE)
+    {
+        m_particle_lines.setPrimitiveType(sf::PrimitiveType::Lines);
+
+        // Two vertices per particle: previous position to current, which
+        // gives each one a short motion-blur streak.
+        m_particle_lines.resize(m_particles.size() * 2);
+        std::size_t index = 0;
+        for(const Particle& p : m_particles)
+        {
+            sf::Vector2f const lift{0.0f, -p.get_height()};
+            m_particle_lines[index].position = p.get_prev_position() + lift;
+            m_particle_lines[index].color    = p.get_color();
+            ++index;
+            m_particle_lines[index].position = p.get_position() + lift;
+            m_particle_lines[index].color    = p.get_color();
+            ++index;
+        }
+        return;
+    }
+
+    // Squares: two triangles each.
+    m_particle_lines.setPrimitiveType(sf::PrimitiveType::Triangles);
+    m_particle_lines.resize(m_particles.size() * 6);
     std::size_t index = 0;
     for(const Particle& p : m_particles)
     {
-        m_particle_lines[index].position = p.get_prev_position();
-        m_particle_lines[index].color    = p.get_color();
-        ++index;
-
-        m_particle_lines[index].position = p.get_position();
-        m_particle_lines[index].color    = p.get_color();
-        ++index;
+        float size = std::max(0.0f, p.get_size());
+        sf::Vector2f c = p.get_position() + sf::Vector2f{0.0f, -p.get_height()};
+        if(m_pixel_snap)
+        {
+            size = std::max(1.0f, std::round(size));
+            c = {std::floor(c.x - size * 0.5f) + size * 0.5f, std::floor(c.y - size * 0.5f) + size * 0.5f};
+        }
+        float const h = size * 0.5f;
+        sf::Vector2f const a{c.x - h, c.y - h}, b{c.x + h, c.y - h}, d{c.x + h, c.y + h}, e{c.x - h, c.y + h};
+        sf::Color const col = p.get_color();
+        sf::Vertex* v = &m_particle_lines[index];
+        v[0] = {a, col}; v[1] = {b, col}; v[2] = {d, col};
+        v[3] = {a, col}; v[4] = {d, col}; v[5] = {e, col};
+        index += 6;
     }
 }
 
 void ParticleSystem::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
     if(m_particle_lines.getVertexCount() == 0) return;
+    states.blendMode = m_blend;
     target.draw(m_particle_lines, states);
 }
 
@@ -115,6 +165,63 @@ void ParticleSystem::add_particles_varied(int count, sf::Color color, Vector vel
 
         m_particles.push_back(particle);
     }
+}
+
+bool ParticleSystem::emit(sf::Vector2f position, sf::Vector2f velocity, sf::Time lifespan, sf::Color color,
+                          float size, float end_size, float height, float vertical_speed)
+{
+    if(m_particles.size() >= m_max_particles) return false;
+    Particle particle(position, color, lifespan);
+    particle.set_fade(m_fade);
+    particle.set_velocity(velocity);
+    particle.set_size(size, end_size);
+    particle.set_height(height, vertical_speed);
+    m_particles.push_back(particle);
+    return true;
+}
+
+bool ParticleSystem::emit(sf::Vector2f position, sf::Vector2f velocity, sf::Time lifespan,
+                          sf::Color color, sf::Color end_color,
+                          float size, float end_size, float height, float vertical_speed)
+{
+    if(!emit(position, velocity, lifespan, color, size, end_size, height, vertical_speed)) return false;
+    m_particles.back().set_end_color(end_color);
+    return true;
+}
+
+void ParticleSystem::set_shape(ParticleShape shape)
+{
+    m_shape = shape;
+}
+
+void ParticleSystem::set_blend_mode(sf::BlendMode mode)
+{
+    m_blend = mode;
+}
+
+void ParticleSystem::set_pixel_snap(bool snap)
+{
+    m_pixel_snap = snap;
+}
+
+void ParticleSystem::set_height_gravity(float gravity)
+{
+    m_height_gravity = std::max(0.0f, gravity);
+}
+
+void ParticleSystem::set_on_land(LandCallback callback)
+{
+    m_on_land = std::move(callback);
+}
+
+void ParticleSystem::set_remove_on_land(bool remove)
+{
+    m_remove_on_land = remove;
+}
+
+ParticleShape ParticleSystem::get_shape() const
+{
+    return m_shape;
 }
 
 void ParticleSystem::apply_force(sf::Vector2f force)

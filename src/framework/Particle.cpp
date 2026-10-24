@@ -33,17 +33,13 @@ void Particle::update(sf::Time delta_time)
     // frame to 16 and making particles outlive their lifespan by ~4%.
     m_elapsed_time += delta_time;
 
-    if(m_fade)
-    {
-        float const ratio = std::clamp(1.0f - get_life_ratio(), 0.0f, 1.0f);
-        m_color.a = static_cast<std::uint8_t>(m_base_color.a * ratio);
-    }
+    refresh_color();
 }
 
 void Particle::set_fade(bool fade)
 {
     m_fade = fade;
-    if(!m_fade) m_color.a = m_base_color.a;
+    refresh_color();
 }
 
 void Particle::toggle_fade()
@@ -121,3 +117,63 @@ sf::Color    Particle::get_color() const         { return m_color; }
 sf::Time     Particle::get_lifespan() const      { return m_lifespan; }
 sf::Time     Particle::get_elapsed_time() const  { return m_elapsed_time; }
 bool         Particle::fades() const             { return m_fade; }
+
+void Particle::refresh_color()
+{
+    float const life = std::clamp(get_life_ratio(), 0.0f, 1.0f);
+
+    sf::Color c = m_base_color;
+    if(m_blend_color)
+    {
+        auto mix = [life](std::uint8_t a, std::uint8_t b)
+        {
+            return static_cast<std::uint8_t>(static_cast<float>(a) + (static_cast<float>(b) - static_cast<float>(a)) * life);
+        };
+        c = {mix(m_base_color.r, m_end_color.r), mix(m_base_color.g, m_end_color.g),
+             mix(m_base_color.b, m_end_color.b), mix(m_base_color.a, m_end_color.a)};
+    }
+    if(m_fade) c.a = static_cast<std::uint8_t>(static_cast<float>(c.a) * (1.0f - life));
+    m_color = c;
+}
+
+void Particle::set_size(float start, float end)
+{
+    m_size     = start;
+    m_end_size = end;
+}
+
+void Particle::set_end_color(sf::Color end)
+{
+    m_end_color   = end;
+    m_blend_color = true;
+    refresh_color();
+}
+
+void Particle::set_height(float height, float vertical_speed)
+{
+    m_height = height;
+    m_vz     = vertical_speed;
+    m_landed = false;
+}
+
+void Particle::update_height(float gravity, float dt)
+{
+    if(m_landed) return;
+    m_vz     -= gravity * dt;
+    m_height += m_vz * dt;
+    if(m_height <= 0.0f && m_vz < 0.0f)
+    {
+        m_height = 0.0f;
+        m_landed = true;
+    }
+}
+
+float Particle::get_size() const
+{
+    float const life = std::clamp(get_life_ratio(), 0.0f, 1.0f);
+    return m_size + (m_end_size - m_size) * life;
+}
+
+float Particle::get_height() const         { return m_height; }
+float Particle::get_vertical_speed() const { return m_vz; }
+bool  Particle::has_landed() const         { return m_landed; }

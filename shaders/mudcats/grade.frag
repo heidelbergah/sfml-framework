@@ -5,6 +5,10 @@
 // eyes: the edges close in and colour drains away when rounds are passing
 // close, red creeps in when hurt, a close explosion whites everything out
 // and leaves it doubled for a moment.
+//
+// Weather goes here too. On the fields at dawn a mist hangs everywhere
+// except close around the player, thinning as the morning goes; on the
+// Ochre line the rain makes everything a little darker and colder.
 
 uniform sampler2D texture;
 uniform vec2  resolution;
@@ -14,6 +18,10 @@ uniform float hurt;          // 0..1
 uniform float flash;         // 0..1
 uniform float shock;         // 0..1
 uniform float dying;         // 0..1, when down and bleeding
+uniform float mist;          // 0..1
+uniform vec2  eye;           // the player, in frame pixels (y up)
+uniform float reach;         // how far you can see, in frame pixels
+uniform float rain;          // 0 or 1
 
 float hash(vec2 p)
 {
@@ -31,6 +39,16 @@ void main()
         vec2 off = vec2(sin(time * 23.0), cos(time * 19.0)) * shock * 2.5 / resolution;
         c = mix(c, texture2D(texture, uv + off).rgb, 0.5 * shock);
     }
+
+    // Mist: clear close by, milky toward the edge of what you can see.
+    if(mist > 0.01)
+    {
+        vec2  p   = uv * resolution;
+        float far = smoothstep(reach * 0.3, reach * 1.05, length(p - eye));
+        float drift = 0.85 + 0.15 * sin(p.x * 0.03 + time * 0.2) * sin(p.y * 0.05 - time * 0.13);
+        c = mix(c, vec3(0.62, 0.66, 0.68), clamp(mist * far * drift, 0.0, 0.7));
+    }
+    if(rain > 0.5) c = c * vec3(0.9, 0.93, 1.0);
 
     float lum = dot(c, vec3(0.299, 0.587, 0.114));
 

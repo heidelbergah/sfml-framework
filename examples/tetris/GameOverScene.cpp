@@ -27,7 +27,7 @@ GameOverScene::GameOverScene()
     settle.set_lifespan(sf::seconds(4.5f));
     settle.set_drag(0.75f);
     settle.set_fade(true);
-    settle.set_gravity(sf::Vector2f{0.0f, 16.0f});
+    settle.set_gravity(sf::Vector2f{0.0f, 24.0f});
     settle.set_gravity_enabled(true);
     m_particles.add_particle_system("settle", std::move(settle));
 

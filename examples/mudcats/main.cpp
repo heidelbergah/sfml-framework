@@ -1,8 +1,9 @@
 /**
  * main.cpp  -  Mud Cats infantry demo
  *
- * One attack, top-down: eight Monterans against sixteen Rechivii. Pick
- * one of the eight, walk up to the front, go over the top.
+ * Infantry, top-down: a Monteran platoon of twenty-five against about forty
+ * Rechivii, in the trenches of the Ochre line or the fields at Halvek.
+ * Pick one man, and fight it through.
  *
  *     make EXAMPLE=mudcats run
  *

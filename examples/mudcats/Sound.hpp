@@ -7,8 +7,14 @@
  *                              so repeated shots never sound identical
  *   play_at("mg", pos)         quieter with distance from the listener
  *   set_loop("flamer_loop", v) a loop whose volume eases toward a target
- *   set_intensity(0..1)        crossfades the calm and combat music, which
- *                              run in lockstep so the switch is seamless
+ *   set_intensity(0..1)        how much fighting there is. Past a point the
+ *                              calm music gives way to the combat track, a
+ *                              heavier, darker piece that starts from its
+ *                              top each time the fighting does, and only
+ *                              lets go once things have been quiet a while
+ *   set_dread(true)            the hill: its combat track is Misanthropy
+ *                              (music_hill_loop.ogg, made from the mp3 in
+ *                              assets/music) instead of the usual one
  *   deafen(seconds)            a shell landed close: everything drops away
  *                              under a ringing tone, then slowly returns
  *
@@ -45,14 +51,20 @@ private:
     std::map<std::string, std::vector<std::string>> m_variants;
 
     sf::Music m_calm;
-    sf::Music m_combat;
+    sf::Music m_metal;
     sf::Music m_front;
+    sf::Music m_dread;              // the hill's combat track
+    bool  m_dread_ready{false};
+    bool  m_use_dread{false};
     bool  m_music_ready{false};
     bool  m_front_ready{false};
     bool  m_music_on{true};
     bool  m_playing{false};
     float m_intensity{0.0f};
     float m_intensity_target{0.0f};
+    bool  m_battle{false};          // the combat track is wanted
+    float m_battle_mix{0.0f};       // 0 calm, 1 combat
+    float m_quiet{0.0f};            // seconds the fighting has been light
     float m_front_volume{0.0f};
     float m_front_target{0.0f};
     float m_music_fade{0.0f};
@@ -88,6 +100,7 @@ public:
 
     void start_music();
     void stop_music();
+    void set_dread(bool on);
     void set_intensity(float value) { m_intensity_target = value; }
     void set_front(float volume) { m_front_target = volume; }
     void toggle_music_mute() { m_music_on = !m_music_on; }

@@ -404,6 +404,48 @@ void test_particles()
     dragged.update(sf::seconds(1.0f));
     float const speed = length(dragged.get_particles()[0].get_velocity());
     check_near(speed, 50.0f, 1.0f, "drag of 0.5 halves speed over one second");
+
+    // Gravity is a constant pull: one second at 200 units/s^2 adds 200
+    // units/s, at any step size. It used to pile up in the acceleration.
+    ParticleSystem falling({0.0f, 0.0f});
+    falling.set_lifespan(sf::seconds(100.0f));
+    falling.set_drag(1.0f);
+    falling.set_gravity(sf::Vector2f{0.0f, 200.0f});
+    falling.set_gravity_enabled(true);
+    falling.add_particles(1, sf::Color::White, Vector{0.0f, sf::degrees(0.0f)}, 0.0f);
+    for(int i = 0; i < 60; ++i) falling.update(sf::seconds(1.0f / 60.0f));
+    check_near(falling.get_particles()[0].get_velocity().y, 200.0f, 0.5f,
+               "regression: gravity adds a constant 200 units/s per second (did not accumulate)");
+
+    // Squares: six vertices each.
+    ParticleSystem squares({0.0f, 0.0f});
+    squares.set_shape(ParticleShape::SQUARE);
+    squares.set_lifespan(sf::seconds(10.0f));
+    squares.add_particles(5, sf::Color::White, Vector{10.0f, sf::degrees(0.0f)}, 5.0f);
+    squares.update(sf::seconds(0.016f));
+    check(squares.get_particle_lines().getVertexCount() == 30, "square particles use six vertices each");
+
+    // emit() places a particle anywhere, with size and colour over life.
+    ParticleSystem placed({0.0f, 0.0f});
+    placed.set_drag(1.0f);
+    check(placed.emit({50.0f, 20.0f}, {0.0f, 0.0f}, sf::seconds(2.0f), sf::Color(0, 0, 0), sf::Color(200, 100, 0), 2.0f, 6.0f),
+          "emit() spawns a particle");
+    placed.update(sf::seconds(1.0f));
+    const Particle& half = placed.get_particles()[0];
+    check_near(half.get_position().x, 50.0f, 1e-3f, "emit() spawns at the given position, not the emitter");
+    check_near(half.get_size(), 4.0f, 0.01f, "size is halfway at half its life");
+    check(half.get_color().r == 100 && half.get_color().g == 50, "colour is halfway at half its life");
+
+    // Height: thrown up, falls back, lands exactly once.
+    ParticleSystem thrown({0.0f, 0.0f});
+    thrown.set_lifespan(sf::seconds(10.0f));
+    thrown.set_height_gravity(100.0f);
+    int landings = 0;
+    thrown.set_on_land([&landings](const Particle&) { ++landings; });
+    thrown.emit({0.0f, 0.0f}, {10.0f, 0.0f}, sf::seconds(10.0f), sf::Color::White, 1.0f, 1.0f, 0.0f, 50.0f);
+    for(int i = 0; i < 120; ++i) thrown.update(sf::seconds(1.0f / 60.0f));
+    check(landings == 1, "a thrown particle lands once (up at 50, g 100: down after a second)");
+    check(thrown.particle_count() == 0, "landed particles are removed by default");
 }
 
 // --------------------------------------------------------------- Markov

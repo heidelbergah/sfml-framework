@@ -25,13 +25,21 @@ SoundBank::SoundBank()
 {
     (void)Assets::sounds();     // outlive us: see Cinder's SoundBank
 
-    m_music_ready = m_calm.openFromFile(path("music_calm_loop")) && m_combat.openFromFile(path("music_combat_loop"));
+    m_music_ready = m_calm.openFromFile(path("music_calm_loop")) && m_metal.openFromFile(path("music_combat_loop"));
     if(m_music_ready)
     {
         m_calm.setLooping(true);
-        m_combat.setLooping(true);
+        m_metal.setLooping(true);
         m_calm.setVolume(0.0f);
-        m_combat.setVolume(0.0f);
+        m_metal.setVolume(0.0f);
+    }
+    // Misanthropy, cut to one clean cycle and brought up to level by
+    // tools/sfx/make_hill_loop.py.
+    m_dread_ready = m_dread.openFromFile("assets/mudcats/music_hill_loop.ogg");
+    if(m_dread_ready)
+    {
+        m_dread.setLooping(true);
+        m_dread.setVolume(0.0f);
     }
     m_front_ready = m_front.openFromFile(path("front_loop"));
     if(m_front_ready)
@@ -137,8 +145,12 @@ void SoundBank::set_loop(const std::string& name, float volume)
     if(it == m_loops.end())
     {
         if(volume <= 0.0f) return;
-        const sf::SoundBuffer* buffer = Assets::sounds().try_get(path(name));
-        if(!buffer) return;
+        const sf::SoundBuffer* buffer = std::filesystem::exists(path(name)) ? Assets::sounds().try_get(path(name)) : nullptr;
+        if(!buffer)
+        {
+            m_loops.emplace(name, Loop{});      // remembered as missing: don't look again
+            return;
+        }
         Loop loop;
         loop.sound = std::make_unique<sf::Sound>(*buffer);
         loop.sound->setLooping(true);
@@ -162,11 +174,20 @@ void SoundBank::start_music()
     if(m_music_ready)
     {
         m_calm.stop();
-        m_combat.stop();
+        m_metal.stop();
+        if(m_dread_ready) m_dread.stop();
         m_calm.play();
-        m_combat.play();
     }
     if(m_front_ready) m_front.play();
+}
+
+void SoundBank::set_dread(bool on)
+{
+    if(on == m_use_dread) return;
+    // Whichever combat track is going stops; the other starts from its top when it's wanted.
+    m_metal.stop();
+    if(m_dread_ready) m_dread.stop();
+    m_use_dread = on;
 }
 
 void SoundBank::stop_music()
@@ -192,6 +213,7 @@ void SoundBank::update(float dt)
     float const step = std::min(1.0f, dt * 5.0f);
     for(auto& [name, loop] : m_loops)
     {
+        if(!loop.sound) continue;
         loop.volume += (loop.target - loop.volume) * step;
         loop.sound->setVolume(loop.volume * d * 100.0f);
     }
@@ -202,11 +224,26 @@ void SoundBank::update(float dt)
     m_music_level += (m_music_fade - m_music_level) * std::min(1.0f, dt * 0.8f);
     float const fade = m_music_level;
 
+    // Into the combat track when the fighting gets going; out again only
+    // after it has been quiet for a while, so it doesn't flap.
+    if(m_intensity_target > 0.45f) { m_battle = true; m_quiet = 0.0f; }
+    else if(m_intensity_target < 0.25f)
+    {
+        m_quiet += dt;
+        if(m_quiet > 8.0f) m_battle = false;
+    }
+    float const mix_rate = m_battle ? 0.9f : 0.25f;     // in hard, out slow
+    m_battle_mix = std::clamp(m_battle_mix + (m_battle ? 1.0f : -1.0f) * dt * mix_rate, 0.0f, 1.0f);
+
     if(m_music_ready)
     {
         float const on = m_music_on ? MUSIC_VOLUME * fade * d : 0.0f;
-        m_calm.setVolume(on * (1.0f - m_intensity * 0.85f) * 100.0f);
-        m_combat.setVolume(on * m_intensity * 100.0f);
+        sf::Music& combat = m_use_dread && m_dread_ready ? m_dread : m_metal;
+        float const gain = 1.1f;
+        if(m_battle_mix > 0.0f && combat.getStatus() != sf::SoundSource::Status::Playing && m_playing) combat.play();
+        if(m_battle_mix <= 0.0f && combat.getStatus() == sf::SoundSource::Status::Playing) combat.stop();
+        m_calm.setVolume(on * (1.0f - m_battle_mix) * 100.0f);
+        combat.setVolume(std::min(100.0f, on * m_battle_mix * gain * 100.0f));
     }
     if(m_front_ready) m_front.setVolume(m_front_volume * d * fade * 100.0f);
 }

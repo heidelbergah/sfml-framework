@@ -86,7 +86,7 @@ void PlayScene::build_particles()
     dust.set_lifespan(sf::seconds(0.42f));
     dust.set_drag(0.03f);
     dust.set_fade(true);
-    dust.set_gravity(sf::Vector2f{0.0f, 120.0f});
+    dust.set_gravity(sf::Vector2f{0.0f, 17.0f});
     dust.set_gravity_enabled(true);
     m_particles.add_particle_system("dust", std::move(dust));
 
@@ -102,7 +102,7 @@ void PlayScene::build_particles()
     burst.set_lifespan(sf::seconds(0.85f));
     burst.set_drag(0.18f);
     burst.set_fade(true);
-    burst.set_gravity(sf::Vector2f{0.0f, 240.0f});
+    burst.set_gravity(sf::Vector2f{0.0f, 68.0f});
     burst.set_gravity_enabled(true);
     m_particles.add_particle_system("burst", std::move(burst));
 
@@ -111,7 +111,7 @@ void PlayScene::build_particles()
     rise.set_lifespan(sf::seconds(1.6f));
     rise.set_drag(0.6f);
     rise.set_fade(true);
-    rise.set_gravity(sf::Vector2f{0.0f, -30.0f});
+    rise.set_gravity(sf::Vector2f{0.0f, -16.0f});
     rise.set_gravity_enabled(true);
     m_particles.add_particle_system("rise", std::move(rise));
 }

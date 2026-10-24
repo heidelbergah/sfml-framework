@@ -36,7 +36,7 @@ ShakeScene::ShakeScene()
 {
     m_sparks = std::make_shared<ParticleSystem>();
     m_sparks->set_lifespan(sf::seconds(0.9f));
-    m_sparks->set_gravity(sf::Vector2f{0.0f, 380.0f});
+    m_sparks->set_gravity(sf::Vector2f{0.0f, 114.0f});
     m_sparks->set_gravity_enabled(true);
     m_sparks->set_drag(0.25f);
     m_sparks->set_fade(true);
