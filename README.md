@@ -217,7 +217,12 @@ demo does to keep its windows separate.
 ### And the rest
 
 - **Particles** are in world space, with speeds in units per second and
-  angles in degrees (0 is right, 90 is up).
+  angles in degrees (0 is right, 90 is up). A system draws them as short
+  motion streaks by default, or as squares that grow, shrink and change
+  colour over their lives. Blend them additively for fire and sparks, and
+  `emit()` single particles anywhere when effects come from all over the
+  place. For top-down games a particle can have a height: throw it up, let
+  it fall, and get a callback where it lands.
 - **ShaderManager and BloomEffect.** Load a fragment shader by key, or
   switch on bloom with `enable_bloom()`.
 - **EventBus** lets parts of a game talk without holding pointers to each
@@ -249,6 +254,11 @@ Everything takes `EXAMPLE=<folder>` to pick what to build. Binaries go in
 | Linux | Install the SFML 3 dev packages, or build SFML from source. |
 | macOS | `brew install sfml`. Apple Silicon and Intel Homebrew are both found automatically. |
 | Windows | MSYS2/MinGW with `mingw32-make SFML_ROOT=C:/SFML-3.0.0`. Add `WINDOWED=1` to a release build to drop the console window. |
+
+There's also a `CMakeLists.txt`, for Visual Studio, Xcode, or making a zip
+of the Mud Cats demo to hand to someone. It downloads and builds SFML 3
+itself and links it statically; see
+[the demo's README](examples/mudcats/README.md#building-it-for-linux-macos-and-windows).
 
 ## Layout
 
@@ -288,8 +298,6 @@ Known rough edges:
   outside it.
 - Text centring in buttons goes by each string's own glyph bounds, so
   labels can sit a pixel or two differently depending on the letters.
-- Particle gravity builds up over a particle's life instead of staying
-  constant. It's a one-line fix, it just changes how existing effects feel.
 
 ## Credits
 

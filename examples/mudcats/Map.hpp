@@ -1,18 +1,16 @@
 /**
  * Map.hpp  -  Mud Cats
  *
- * A battlefield, as geometry. There are two:
+ * A battlefield, as geometry. There are three:
  *
- *   TRENCHES   the Ochre line in the rain: our trench, no man's land, theirs,
- *              a bunker and a farm
- *   FIELDS     open country at dawn: a sunken lane, hedgerows, a wood, tall
- *              grass, a stream with a mill at its bridge
- *   RAID       before dawn on the Dravo ridge: a slope of shell holes, two
- *              belts of wire, their trench, a hamlet behind it and the
- *              command dugout beyond
- *   HILL       Hill 312, through an afternoon and into the night: a ring of
- *              trench round the crest, gun pits, foxholes on the forward
- *              slope, and every way up it something to hide behind
+ *   CHARGE     the Sava meadow, on a grey morning: a long open field, a
+ *              shallow new trench at one end and a wood at the other, and
+ *              nothing much in between
+ *   TOWN       Kalvo, a market town at dusk: a main street of terraced
+ *              houses with yards behind them, a cross-street, a square
+ *              with a town hall, and the church at the far end of it all
+ *   FOREST     the Lesna road, at midday under the trees: a supply column
+ *              on a forest track, and the ambush waiting for it
  *
  * What things do:
  *
@@ -22,6 +20,10 @@
  *   hedges     block movement and sight; rounds go through them more often
  *              than not
  *   slits      a bunker's firing slit: blocks movement, nothing else
+ *   windows    the same in a house wall: you see, and shoot, through them
+ *   roofs      hide what's under them from above. Close to a building its
+ *              roof opens up, and you see in as far as your eyes reach
+ *              through its doors and windows
  *   trenches   lines with a width; anyone inside is in cover from almost
  *              everything except a man standing right over them. The sunken
  *              lane is one too.
@@ -43,13 +45,14 @@
 #include <SFML/Graphics.hpp>
 
 #include <cstdint>
+#include <initializer_list>
 #include <optional>
 #include <vector>
 
 namespace mudcats
 {
 
-enum class LevelId : std::uint8_t { TRENCHES, FIELDS, RAID, HILL };
+enum class LevelId : std::uint8_t { CHARGE, TOWN, FOREST };
 
 struct Trench
 {
@@ -77,12 +80,6 @@ struct CoverPoint
     bool  trench{false};
 };
 
-struct Target                   // a bottle on the range
-{
-    sf::Vector2f pos;
-    bool broken{false};
-};
-
 class Map
 {
 public:
@@ -99,7 +96,7 @@ public:
         CANOPY = 64,
     };
 
-    LevelId      level{LevelId::TRENCHES};
+    LevelId      level{LevelId::CHARGE};
     sf::Vector2f size{2700.0f, 900.0f};
 
     std::vector<sf::FloatRect> walls;
@@ -107,6 +104,7 @@ public:
     std::vector<sf::FloatRect> hedges;
     std::vector<sf::FloatRect> slits;
     std::vector<sf::FloatRect> wire;
+    std::vector<sf::FloatRect> windows;     // also in slits; kept apart to be drawn as windows
     std::vector<sf::FloatRect> roofs;
     std::vector<sf::FloatRect> grass;
     std::vector<sf::FloatRect> water;
@@ -115,21 +113,23 @@ public:
     std::vector<Crater>        craters;
     std::vector<Tree>          trees;
     std::vector<CoverPoint>    cover;
-    std::vector<Target>        bottles;
     std::vector<sf::Vector2f>  crates;      // ammunition
 
     // Places the level scripts refer to.
     sf::Vector2f player_start;
-    sf::FloatRect range_area;
     sf::FloatRect front_trench_area;
-    sf::FloatRect enemy_trench_area;
-    sf::FloatRect bunker_area;
-    sf::FloatRect farm_area;
     sf::FloatRect wood_area;
-    sf::FloatRect mill_area;
-    sf::FloatRect bridge_area;
-    sf::FloatRect hill_area;                // the hill: inside the trench ring
-    sf::Vector2f  crest;                    // the hill: its top
+    // The town.
+    std::vector<sf::FloatRect> floors;      // inside every building, roofed or not
+    std::vector<sf::Vector2f>  burning;     // fires that are still going when the battle starts
+    sf::FloatRect block_a;                  // the first block of houses, both sides of the street
+    sf::FloatRect block_b;                  // the second, past the cross-street
+    sf::FloatRect square_area;
+    sf::FloatRect church_area;
+    // The forest.
+    std::vector<sf::Vector2f>  road;        // the track through the trees, west to east
+    sf::FloatRect road_area;                // where the column halts
+    sf::FloatRect ambush_area;              // the trees the ambush is in
     std::vector<sf::Vector2f> waypoints;
 
     void build(LevelId id);
@@ -142,23 +142,11 @@ public:
     [[nodiscard]] bool near_wire(sf::Vector2f p, float reach, sf::Vector2f* nearest = nullptr) const;
 
     /*
-     * Digging in, while the battle goes on. A row of sandbags is low cover
-     * and blocks the way; a foxhole is a shell hole you made yourself.
-     * can_dig says whether there is room; the add_ functions change the
-     * map (paths, cover points) and the draw_ functions put the result
-     * into a vertex array, to be stamped into the ground.
+     * Something that comes to rest on the field while the battle goes on,
+     * a wagon pulling up, say: low cover from then on, in the paths and
+     * the cover points, but not drawn into the ground.
      */
-    [[nodiscard]] bool can_dig(sf::FloatRect r) const;
-    void add_bags(sf::FloatRect r);
-    void add_foxhole(sf::Vector2f at, float radius);
-    void draw_bags(sf::VertexArray& va, const sf::FloatRect& r) const;
-    void draw_foxhole(sf::VertexArray& va, sf::Vector2f at, float radius) const;
-
-    /*
-     * How high the ground is, 0 at the foot to 1 on top. Only the hill has
-     * any; a man up there sees further, and a man going up it is slower.
-     */
-    [[nodiscard]] float height(sf::Vector2f p) const;
+    void add_low(sf::FloatRect r);
 
     /*
      * Draws the static field into `ground`, which must be `size` big.
@@ -180,6 +168,23 @@ public:
     [[nodiscard]] bool in_water(sf::Vector2f p) const;
     [[nodiscard]] bool under_canopy(sf::Vector2f p) const;
     [[nodiscard]] bool under_roof(sf::Vector2f p) const;
+
+    /*
+     * How far a roof has opened up for someone at `viewer`, 0 to 1: shut
+     * from a distance, open from close by and from inside. What's under a
+     * shut roof can't be seen at all; under an open one, it's a matter of
+     * line of sight, through the doors and windows.
+     */
+    static constexpr float ROOF_OPEN = 110.0f;
+    static constexpr float ROOF_SHUT = 150.0f;
+    [[nodiscard]] static float roof_open(const sf::FloatRect& roof, sf::Vector2f viewer);
+    [[nodiscard]] float roof_open_at(sf::Vector2f p, sf::Vector2f viewer) const;   // over the point p; 1 if no roof
+
+    // The forest's road: a point and its direction, so far along it from the west end.
+    [[nodiscard]] sf::Vector2f road_at(float along) const;
+    [[nodiscard]] sf::Vector2f road_dir(float along) const;
+    [[nodiscard]] float road_length() const;
+    [[nodiscard]] float road_distance(sf::Vector2f p) const;      // how far p is from the road
     [[nodiscard]] bool walkable(sf::Vector2f p) const;
 
     /*
@@ -207,7 +212,7 @@ private:
     mutable std::vector<int>   m_came;
 
     enum class Material : std::uint8_t { LOG, CONCRETE, BRICK, STONE, TRUNK };
-    enum class Low : std::uint8_t { BAGS, CRATE, TRUNK, STONE };
+    enum class Low : std::uint8_t { BAGS, CRATE, TRUNK, STONE, LOG };
     std::vector<Material> m_materials;
     std::vector<Low>      m_low;
 
@@ -216,20 +221,20 @@ private:
     int m_chunk_cols{1};
     int m_chunk_rows{1};
 
-    void build_trenches();
-    void build_fields();
-    void build_raid();
-    void build_hill();
+    void build_charge();
+    void build_town();
+    void build_forest();
     void rasterise();
     void place_cover();
     void build_grass_tops();
     void wall(sf::FloatRect r, Material m);
+    // A wall with windows in it, centred at `at` along its length, each `width` across.
+    void windowed(sf::FloatRect r, Material m, std::initializer_list<float> at, float width = 10.0f);
     void low(sf::FloatRect r, Low kind);
 
-    void render_trenches(sf::RenderTexture& ground) const;
-    void render_fields(sf::RenderTexture& ground) const;
-    void render_raid(sf::RenderTexture& ground) const;
-    void render_hill(sf::RenderTexture& ground) const;
+    void render_charge(sf::RenderTexture& ground) const;
+    void render_town(sf::RenderTexture& ground) const;
+    void render_forest(sf::RenderTexture& ground) const;
     void draw_low(sf::VertexArray& va, const sf::FloatRect& s, Low kind, std::uint32_t seed) const;
     void mark_rect(const sf::FloatRect& r, std::uint8_t flag, bool centres);
     void cover_around_low(const sf::FloatRect& s);

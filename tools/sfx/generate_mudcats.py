@@ -21,9 +21,10 @@ the same throat with no tension left in it.
     python3 tools/sfx/generate_mudcats.py          # writes assets/mudcats/*.wav
     python3 tools/sfx/generate_mudcats.py --only scream
 
-Files ending in _loop loop seamlessly. There are two pieces of music: a calm
-one for the quiet parts, and a combat one, heavier and darker, which the
-game fades in when the fighting starts.
+Files ending in _loop loop seamlessly. There's a calm piece of music for
+the title, and each battle has its own combat track, which the game brings
+in when the fighting starts: drums and brass on the meadow, strings
+and a bell in Kalvo, a hammering bass and alarm horns on the Lesna road.
 """
 
 import argparse
@@ -44,7 +45,7 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "mudcats")
 
 # Long beds are written at half rate: they are mostly low rumble and pads,
 # and it halves the size of the biggest files.
-HALF_RATE = {"music_calm_loop", "music_combat_loop", "front_loop", "rain_loop", "dawn_loop", "night_loop"}
+HALF_RATE = {"music_calm_loop", "music_charge_loop", "music_town_loop", "front_loop", "dawn_loop", "night_loop", "music_forest_loop", "forest_loop"}
 
 
 def note(midi):
@@ -102,7 +103,39 @@ VOWELS = {
     "m":  ([260, 1150, 2300, 3300], [120, 300, 400, 400]),
 }
 FORMANT_GAIN = [1.0, 0.55, 0.28, 0.12]
+
+# Every voice is pitched down by VOICE_PITCH and its formants by VOICE_TRACT:
+# grown men, with the chest and the longer throat that go with it. The
+# numbers each sound asks for are from before this, which is why they look
+# high.
+VOICE_PITCH = 0.8
+VOICE_TRACT = 0.9
 NASAL = {"m"}
+
+# Not every man sounds the same. Each take of a cry is given to one of these
+# men: how much lower or higher his voice sits than the average, and how
+# long his throat is (a bigger man's formants sit lower). The game shifts
+# each soldier's pitch a little more again, so a section is a handful of
+# different voices rather than one voice many times.
+MEN = {
+    "deep":   (0.84, 0.93),
+    "low":    (0.92, 0.97),
+    "mid":    (1.00, 1.00),
+    "high":   (1.08, 1.03),
+    "light":  (1.15, 1.06),
+}
+
+
+def as_man(who, build):
+    """Runs `build` in one man's voice."""
+    global VOICE_PITCH, VOICE_TRACT
+    pitch, tract = MEN[who]
+    saved = VOICE_PITCH, VOICE_TRACT
+    VOICE_PITCH, VOICE_TRACT = saved[0] * pitch, saved[1] * tract
+    try:
+        return build()
+    finally:
+        VOICE_PITCH, VOICE_TRACT = saved
 
 
 def resonator(x, freqs, bws, block=64):
@@ -154,7 +187,7 @@ def formants(keys, t):
     """Formant tracks from (time, vowel) keyframes, gliding between them."""
     freqs, bws = [], []
     for k in range(4):
-        freqs.append(contour(t, [(at, VOWELS[v][0][k]) for at, v in keys]))
+        freqs.append(contour(t, [(at, VOWELS[v][0][k] * VOICE_TRACT) for at, v in keys]))
         bws.append(contour(t, [(at, VOWELS[v][1][k]) for at, v in keys]))
     nasal = contour(t, [(at, 1.0 if v in NASAL else 0.0) for at, v in keys])
     return freqs, bws, nasal
@@ -168,6 +201,7 @@ def voice(rng, f0, keys, loud, open_q=0.55, breath=0.08, jitter=0.012, shimmer=0
     """
     n = len(f0)
     t = np.arange(n) / SR
+    f0 = np.asarray(f0) * VOICE_PITCH
     buzz, open_ = glottal(rng, f0, open_q, jitter, shimmer, sub)
     # Breath: some all the time, more while the folds are open.
     air = highpass(noise(n, rng), 400) * (0.35 + 0.65 * open_) * breath
@@ -770,18 +804,6 @@ def impact_wood(seed):
     return finish(mix(knock, tone, click(rng, 0.01, 2500, 7000) * 0.5), peak_db=-3.0)
 
 
-def bottle_break(seed=231):
-    rng = np.random.default_rng(seed)
-    length = 0.9
-    t = t_axis(length)
-    out = np.zeros(len(t))
-    for f in rng.uniform(2200, 7000, 10):
-        out += sine(np.full(len(t), f)) * env(length, 0.0005, rng.uniform(0.03, 0.15)) * rng.uniform(0.1, 0.3)
-    for _ in range(40):
-        place(out, click(rng, 0.006, 3000, 9000), rng.uniform(0, 0.5) ** 1.5, rng.uniform(0.1, 0.5))
-    return finish(out, peak_db=-3.0)
-
-
 def body_fall(seed):
     rng = np.random.default_rng(seed)
     length = 0.5
@@ -852,19 +874,19 @@ def scream(seed, length=1.2, peak=560, then_gasp=True, again=False):
         parts.append(cry(rng, length * 0.7, start=240, peak=peak * 0.92, end=180, vowel="ah", rough=0.45))
         parts.append(gasp(rng, 0.3, 0.35))
     out = np.concatenate(parts)
-    return finish(chip(reverb(out, 0.5, 0.12), 10, 24000), peak_db=-2.0)
+    return finish(chip(reverb(out, 0.5, 0.12), 10, 24000), peak_db=-5.0)
 
 
 def scream_burn(seed):
-    """Burning: high, past screaming, broken by desperate breaths."""
+    """Burning: past screaming, broken by desperate breaths."""
     rng = np.random.default_rng(seed)
     parts = []
     for k in range(3):
-        parts.append(cry(rng, rng.uniform(0.9, 1.4), start=300, peak=rng.uniform(680, 820), end=260,
+        parts.append(cry(rng, rng.uniform(0.9, 1.4), start=280, peak=rng.uniform(580, 680), end=240,
                          vowel=rng.choice(["a", "ae"]), rough=0.5, strain=3.0))
         parts.append(gasp(rng, rng.uniform(0.15, 0.25), 0.55, "ae"))
     out = np.concatenate(parts)
-    return finish(chip(reverb(out, 0.5, 0.12), 10, 24000), peak_db=-2.0)
+    return finish(chip(reverb(out, 0.5, 0.12), 10, 24000), peak_db=-5.0)
 
 
 def groan(seed, length=1.8, pitch=115):
@@ -1015,16 +1037,6 @@ def tinnitus():
     return finish(tone * shape, peak_db=-12.0)
 
 
-def heartbeat():
-    length = 0.8
-    out = np.zeros(int(length * SR))
-    for at, g in [(0.0, 1.0), (0.2, 0.7)]:
-        d = length - at
-        tt = t_axis(d)
-        place(out, sine(55 * np.exp(-tt / 0.05) + 35) * env(d, 0.004, 0.07) * g, at)
-    return finish(lowpass(out, 280), peak_db=-6.0)
-
-
 def front_loop(seed=271):
     """
     The war somewhere else: wind over mud, guns rumbling on the horizon,
@@ -1129,34 +1141,7 @@ def music_calm_loop(seed=281):
     return finish(crush(out, bits=12, hold_rate=30000), peak_db=-4.0, loop=True)
 
 
-# --------------------------------------------------------------- weather
-
-def rain_loop(seed=273):
-    """Rain on mud and on water standing in the shell holes."""
-    rng = np.random.default_rng(seed)
-    period = 12.0
-    n = int(period * SR)
-    t = t_axis(period)
-
-    def one(r):
-        hiss = noise(n, r)
-        drops = np.zeros(n)
-        for _ in range(int(period * 260)):
-            place_wrapped(drops, click(r, 0.004, 1500, 7000), r.uniform(0, period), r.uniform(0.03, 0.18))
-        plinks = np.zeros(n)
-        for _ in range(int(period * 3)):
-            d = r.uniform(0.03, 0.06)
-            tt = t_axis(d)
-            f0 = r.uniform(900, 1900)
-            place_wrapped(plinks, sine(f0 * (1 + 0.6 * tt / d)) * env(d, 0.001, d / 3), r.uniform(0, period), r.uniform(0.1, 0.25))
-        return np.stack([hiss, drops, plinks])
-
-    def post(x):
-        return bandpass(x[0], 1200, 8000) * 0.18 + lowpass(x[0], 500) * 0.25 + x[1] + x[2] * 0.6
-
-    gust = 0.85 + 0.1 * np.sin(2 * np.pi * 2 / period * t) + 0.05 * np.sin(2 * np.pi * 5 / period * t)
-    return finish(periodic(one, period, warmup_periods=1)(rng, post) * gust, peak_db=-6.0, loop=True)
-
+# --------------------------------------------------------------- the dawn
 
 def dawn_loop(seed=274):
     """First light on the fields: a little wind, and birds who don't know yet."""
@@ -1210,87 +1195,7 @@ def reverb_loopless(x):
     return out
 
 
-# --------------------------------------------------------------- the fighting
-#
-# The combat track: heavy, dark, fast. 150 bpm in E, mostly Phrygian (the
-# flat second, F over E, is what makes it menacing) with a raised third in
-# the lead for a harmonic-minor edge. Palm-muted gallops under it all, a
-# chromatic descent, a half-time breakdown, then back round.
-#
-# It is chiptune metal: the guitars are detuned saws driven into clipping
-# and pushed through a speaker-shaped filter, the drums are noise and
-# falling sines, and the whole thing is bit-crushed at the end.
-
-BPM = 150
-STEP = 60.0 / BPM / 4          # one sixteenth: 0.1 s
-BAR = STEP * 16
-
-RIFFS = {
-    # m = palm-muted chug, o = open power chord (with length in sixteenths), - = rest
-    "A1": "m40 - m40 m40 m40 - m40 m40 m40 - m40 m40 o41:2 - o43:2 -",
-    "A2": "m40 - m40 m40 m40 - m40 m40 m40 - m40 m40 o46:4 - - -",
-    "B1": "o40:3 - - o39:3 - - o38:3 - - o37:3 - - m40 m40 m40 m40",
-    "B2": "o36:6 - - - - - o35:6 - - - - - m40 m40 m40 m40",
-    "BD": "o40:5 - - - - - m40 - o41:4 - - - m40 - m40 -",
-    "BE": "o40:5 - - - - - m40 - o46:4 - - - m40 m40 m40 m40",
-}
-
-# (riff, drums, lead bar or None)
-SONG = (
-    [("A1", "A", None), ("A2", "A", None), ("A1", "A", None), ("A2", "Afill", None)] +
-    [("B1", "B", None), ("B2", "B", None), ("B1", "B", None), ("B2", "Bfill", None)] +
-    [("A1", "A", 0), ("A2", "A", 1), ("A1", "A", 2), ("A2", "A", 3),
-     ("A1", "A", 4), ("A2", "A", 5), ("A1", "A", 6), ("A2", "Afill", 7)] +
-    [("BD", "D", None), ("BE", "D", None), ("BD", "D", None), ("BE", "Dfill", None)] +
-    [("A1", "A", 4), ("A2", "A", 5), ("A1", "A", 6), ("A2", "A", 7)] +
-    [("B1", "B", None), ("B2", "B", None), ("B1", "B", None), ("B2", "Bfill", None)]
-)
-
-LEAD = [  # (midi, sixteenths) per bar
-    [(76, 6), (77, 2), (76, 4), (74, 4)],
-    [(72, 6), (71, 2), (72, 4), (76, 4)],
-    [(77, 6), (79, 2), (80, 4), (79, 4)],
-    [(77, 8), (76, 8)],
-    [(83, 6), (84, 2), (83, 4), (81, 4)],
-    [(80, 6), (81, 2), (80, 4), (77, 4)],
-    [(76, 4), (77, 4), (80, 4), (83, 4)],
-    [(82, 8), (76, 8)],
-]
-
-
-def parse_riff(text):
-    out = []
-    for k, tok in enumerate(text.split()):
-        if tok == "-":
-            continue
-        kind, rest = tok[0], tok[1:]
-        midi, _, steps = rest.partition(":")
-        out.append((k, kind, int(midi), int(steps) if steps else 1))
-    return out
-
-
-def power_chord(f, d, rng, muted):
-    """Root, fifth and octave, each two slightly detuned saws: raw, before the amp."""
-    tt = t_axis(d)
-    pick = 1 + 0.012 * np.exp(-tt / 0.015)
-    x = np.zeros(len(tt))
-    for ratio in (1.0, 1.4983, 2.0):
-        ff = np.full(len(tt), f * ratio) * pick
-        x += saw(ff * 0.996) + saw(ff * 1.004)
-    if muted:
-        x = lowpass(x, 650) * env(d, 0.002, 0.05)
-    else:
-        x = x * env(d, 0.003, 1.6) * np.clip((d - tt) / 0.03, 0, 1)
-    return x
-
-
-def kick(rng):
-    d = 0.3
-    tt = t_axis(d)
-    body = sine(130 * np.exp(-tt / 0.03) + 45) * env(d, 0.001, 0.12)
-    beater = highpass(noise(len(tt), rng), 2500) * env(d, 0.0002, 0.003) * 0.5
-    return body + beater
-
+# --------------------------------------------------------------- drums
 
 def snare_hit(rng, g=1.0):
     d = 0.3
@@ -1298,11 +1203,6 @@ def snare_hit(rng, g=1.0):
     body = sine(np.full(len(tt), 185.0) * (1 + 0.2 * np.exp(-tt / 0.01))) * env(d, 0.001, 0.05) * 0.7
     rattle = bandpass(noise(len(tt), rng), 1500, 9000) * env(d, 0.001, 0.11)
     return (body + rattle) * g
-
-
-def hat(rng, g=1.0, open_=False):
-    d = 0.25 if open_ else 0.05
-    return highpass(noise(int(d * SR), rng), 7000) * env(d, 0.0005, 0.08 if open_ else 0.012) * g
 
 
 def crash(rng, g=1.0):
@@ -1313,87 +1213,406 @@ def crash(rng, g=1.0):
     return (shimmer + ring) * g
 
 
-def tom(rng, midi):
-    d = 0.4
+# --------------------------------------------------------------------- the charge
+
+def war_drum(rng, midi=33, g=1.0):
+    """A big drum, felt more than heard: a deep body, a skin slap, a long boom."""
+    d = 1.1
     tt = t_axis(d)
-    f = note(midi) * (1 + 0.3 * np.exp(-tt / 0.02))
-    return sine(f) * env(d, 0.001, 0.15) + lowpass(noise(len(tt), rng), 1200) * env(d, 0.001, 0.02) * 0.4
+    f = note(midi) * (1 + 0.45 * np.exp(-tt / 0.03))
+    body = sine(f) * env(d, 0.002, 0.35) + 0.4 * sine(f * 1.51) * env(d, 0.002, 0.12)
+    slap = bandpass(noise(len(tt), rng), 300, 2500) * env(d, 0.0005, 0.02) * 0.5
+    return (body + slap) * g
 
 
-def music_combat_loop(seed=282):
+def brass(f, d, rng, swell=0.25):
+    """Something like massed horns: stacked saws and a square, slow to speak."""
+    tt = t_axis(d)
+    vib = 1 + 0.006 * np.sin(2 * np.pi * 5.0 * tt + rng.uniform(0, 6)) * np.clip((tt - 0.2) / 0.3, 0, 1)
+    ff = f * vib
+    tone = saw(ff) + 0.7 * saw(ff * 1.004) + 0.5 * square(ff * 0.5, 0.4)
+    shape = np.clip(tt / swell, 0, 1) ** 1.5 * np.clip((d - tt) / 0.12, 0, 1)
+    return tone * shape
+
+
+def music_charge_loop(seed=511):
+    """
+    The charge. War drums and a regiment's snare under a low drone, with
+    horns that climb: D minor, a hundred to the minute, sixteen bars. The
+    first eight hold back; the second eight double the drums and push the
+    horns up, and then it comes round again. The game plays it a little
+    slow while the lines walk, and a little fast once they run.
+    """
     rng = np.random.default_rng(seed)
-    period = len(SONG) * BAR
+    beat = 60.0 / 100.0
+    bar = beat * 4
+    bars = 16
+    period = bars * bar
+    n = int(period * SR)
+    chords = {"Dm": [50, 53, 57], "Bb": [46, 50, 53], "C": [48, 52, 55], "A": [45, 49, 52], "Gm": [43, 46, 50]}
+    prog = ["Dm", "Dm", "Bb", "C", "Dm", "Dm", "Gm", "A", "Dm", "Bb", "C", "Dm", "Gm", "Bb", "A", "A"]
+    melody = [62, 62, 65, 64, 62, 60, 62, 61, 65, 65, 67, 69, 70, 69, 67, 64]
+
+    def one(r):
+        drums = np.zeros(n)
+        snare = np.zeros(n)
+        drone = np.zeros(n)
+        horns = np.zeros(n)
+        cym = np.zeros(n)
+        for b in range(bars):
+            t0 = b * bar
+            push = b >= 8
+            # The big drums: a heartbeat, then a gallop.
+            pattern = [0, 6, 8, 12] if not push else [0, 3, 6, 8, 10, 12, 14, 15]
+            for st in pattern:
+                place_wrapped(drums, war_drum(r, 33 if st % 8 == 0 else 38, 1.0 if st % 8 == 0 else 0.7), t0 + st * beat / 4)
+            # The regiment's snare: the march, and a roll into every fourth bar.
+            if b % 4 == 3:
+                for k in range(16):
+                    place_wrapped(snare, snare_hit(r, 0.25 + 0.6 * k / 15), t0 + k * beat / 4)
+                    place_wrapped(snare, snare_hit(r, 0.2 + 0.4 * k / 15), t0 + (k + 0.5) * beat / 4)
+            else:
+                for st in (4, 12):
+                    place_wrapped(snare, snare_hit(r, 0.8), t0 + st * beat / 4)
+                for st in ((2, 6, 7, 10, 14, 15) if push else (7, 15)):
+                    place_wrapped(snare, snare_hit(r, 0.32), t0 + st * beat / 4)
+            if b % 8 == 0 or (push and b % 2 == 0):
+                place_wrapped(cym, crash(r, 0.4 if push else 0.25), t0)
+            # The drone: the chord's root, two octaves down, never quite still.
+            ch = chords[prog[b]]
+            tt = t_axis(bar)
+            f = np.full(len(tt), note(ch[0] - 24)) * (1 + 0.002 * np.sin(2 * np.pi * 0.3 * tt))
+            place_wrapped(drone, (saw(f) + saw(f * 1.006) + 0.6 * saw(f * 1.498)) * 0.5, t0)
+            # The horns: the chord held through the bar, and the tune on top of it.
+            for k, m in enumerate(ch):
+                place_wrapped(horns, brass(note(m - 12), bar + 0.05, r, 0.35) * (0.45 if k else 0.55), t0)
+            if push:
+                for half in (0, 1):
+                    place_wrapped(horns, brass(note(melody[b] + (0 if half == 0 else -2 if b % 2 else 3)), bar / 2 + 0.03, r, 0.08) * 0.6, t0 + half * bar / 2)
+            else:
+                place_wrapped(horns, brass(note(melody[b]), bar * 0.9, r, 0.3) * 0.45, t0 + beat * 0.5)
+        return np.stack([drums, snare, drone, horns, cym])
+
+    def post(x):
+        drums = reverb(drive(x[0] * 0.8, 1.6), 1.6, 0.35, 2200) * 0.9
+        snare = reverb(x[1] * 0.5, 0.8, 0.2, 6000)
+        drone = lowpass(drive(x[2] * 0.4, 2.0), 380) * 0.55
+        horns = reverb(lowpass(drive(x[3] * 0.35, 1.8), 2400), 1.4, 0.3, 3000) * 0.38
+        cym = x[4] * 0.35
+        m = x.shape[-1]                                     # the reverbs ring on past the end: keep the period
+        return drums[:m] + snare[:m] + drone[:m] + horns[:m] + cym[:m]
+
+    out = periodic(one, period, warmup_periods=1)(rng, post)
+    return finish(crush(out, bits=10, hold_rate=26000), peak_db=-1.5, loop=True)
+
+
+# --------------------------------------------------------------------- the town
+
+def bell(f, d, g=1.0, rng=None):
+    """
+    A cast bell: a hum an octave under the strike note, the strike, and the
+    out-of-tune partials above that make it a bell and not a chord, each
+    dying at its own rate.
+    """
+    tt = t_axis(d)
+    out = np.zeros(len(tt))
+    for ratio, amp, decay in ((0.5, 0.5, d * 0.6), (1.0, 1.0, d * 0.3), (1.19, 0.45, d * 0.22), (1.5, 0.35, d * 0.18),
+                              (2.0, 0.4, d * 0.15), (2.74, 0.22, d * 0.08), (3.02, 0.15, d * 0.06), (4.07, 0.1, d * 0.04)):
+        beat = 1 + 0.0015 * np.sin(2 * np.pi * (0.7 + ratio * 0.3) * tt)        # two close partials beating
+        out += sine(np.full(len(tt), f * ratio) * beat) * amp * np.exp(-tt / decay)
+    strike = bandpass(noise(len(tt), rng if rng is not None else np.random.default_rng(1)), 800, 4000) * env(d, 0.0005, 0.01) * 0.3
+    return (out + strike) * np.clip(tt / 0.003, 0, 1) * g
+
+
+def church_bell(seed=532):
+    """The church at Kalvo ringing out over the town: one stroke, a long ring."""
+    rng = np.random.default_rng(seed)
+    x = bell(note(55), 5.5, 1.0, rng)
+    return finish(reverb(x, 2.2, 0.35, 3000, rng), peak_db=-3.0)
+
+
+def music_town_loop(seed=531):
+    """
+    Kalvo. A tense, close piece for fighting house to house: low strings
+    worrying at one note in E Phrygian, a bell tolling under it every other
+    bar, hand drums that come and go. The second half adds dissonant horn
+    swells and a side drum, then it falls back to the strings and the bell.
+    A hundred and twelve to the minute, sixteen bars.
+    """
+    rng = np.random.default_rng(seed)
+    beat = 60.0 / 112.0
+    bar = beat * 4
+    bars = 16
+    period = bars * bar
+    n = int(period * SR)
+    # The ostinato, in eighths: E, its flat second, E again, a step up, back.
+    figure = [40, 40, 41, 40, 43, 40, 41, 40]
+    lift = {4: 0, 5: 0, 6: 1, 7: -1, 12: 1, 13: 1, 14: 3, 15: -1}
+    swells = {8: [52, 53, 59], 9: [53, 57, 60], 10: [50, 53, 58], 11: [53, 56, 59], 12: [52, 53, 59], 13: [53, 57, 60], 14: [55, 58, 62], 15: [53, 56, 59]}
+
+    def one(r):
+        strings = np.zeros(n)
+        bells = np.zeros(n)
+        drums = np.zeros(n)
+        horns = np.zeros(n)
+        side = np.zeros(n)
+        for b in range(bars):
+            t0 = b * bar
+            up = lift.get(b, 0)
+            for k, m in enumerate(figure):
+                d = beat / 2 + 0.02
+                tt = t_axis(d)
+                f = np.full(len(tt), note(m + up))
+                tone = (saw(f) + saw(f * 1.005) + 0.5 * saw(f * 2.002)) * np.clip(tt / 0.012, 0, 1) * np.clip((d - tt) / 0.05, 0, 1)
+                place_wrapped(strings, tone * (1.0 if k % 4 == 0 else 0.75), t0 + k * beat / 2)
+            if b % 2 == 0:
+                place_wrapped(bells, bell(note(40 + (7 if b % 8 == 6 else 0)), 2.6, 0.8, r), t0)
+            # Hand drums from the fifth bar: low, uneven, like someone pounding a door.
+            if 4 <= b < 16:
+                for st, m, g in ((0, 33, 1.0), (3, 36, 0.6), (6, 33, 0.8), (10, 38, 0.6), (11, 36, 0.5), (14, 33, 0.7)):
+                    if b < 8 and st in (10, 11):
+                        continue
+                    place_wrapped(drums, war_drum(r, m, g), t0 + st * beat / 4)
+            if b in swells:
+                for m in swells[b]:
+                    place_wrapped(horns, brass(note(m - 12), bar + 0.05, r, 0.9) * 0.4, t0)
+            if b >= 12:
+                for st in (4, 12):
+                    place_wrapped(side, snare_hit(r, 0.6), t0 + st * beat / 4)
+                if b == 15:
+                    for k in range(8):
+                        place_wrapped(side, snare_hit(r, 0.3 + 0.07 * k), t0 + (8 + k) * beat / 4)
+        return np.stack([strings, bells, drums, horns, side])
+
+    def post(x):
+        strings = reverb(lowpass(drive(x[0] * 0.35, 1.6), 1500), 1.2, 0.25, 2500) * 0.65
+        bells = reverb(x[1] * 0.5, 2.4, 0.4, 3500) * 0.8
+        drums = reverb(drive(x[2] * 0.7, 1.5), 1.4, 0.3, 2000) * 0.8
+        horns = reverb(lowpass(drive(x[3] * 0.3, 1.7), 2200), 1.8, 0.35, 2600) * 0.33
+        side = reverb(x[4] * 0.45, 0.9, 0.2, 6000)
+        m = x.shape[-1]
+        return strings[:m] + bells[:m] + drums[:m] + horns[:m] + side[:m]
+
+    out = periodic(one, period, warmup_periods=1)(rng, post)
+    return finish(crush(out, bits=10, hold_rate=26000), peak_db=-1.5, loop=True)
+
+
+# --------------------------------------------------------------- the forest
+
+def forest_loop(seed=541):
+    """
+    Midday under the trees on the Lesna road: wind moving through the
+    crowns in long slow gusts, leaves, a branch creaking, a woodpecker
+    somewhere, a few birds. Quieter than the meadow at dawn.
+    """
+    rng = np.random.default_rng(seed)
+    period = 32.0
+    n = int(period * SR)
+
+    def chirp(r):
+        out = np.zeros(int(0.7 * SR))
+        at = 0.0
+        base = r.uniform(3000, 4600)
+        for _ in range(int(r.integers(2, 5))):
+            d = r.uniform(0.04, 0.09)
+            tt = t_axis(d)
+            f = base * contour(tt, [(0, r.uniform(1.0, 1.2)), (d, r.uniform(0.8, 0.95))])
+            place(out, (sine(f) + 0.15 * sine(f * 2)) * np.sin(np.pi * tt / d) ** 2, at, r.uniform(0.5, 1.0))
+            at += d + r.uniform(0.04, 0.12)
+            if at > 0.55:
+                break
+        return out
+
+    def woodpecker(r):
+        out = np.zeros(int(1.0 * SR))
+        knock = bandpass(noise(int(0.012 * SR), r), 900, 2600) * env(0.012, 0.0005, 0.004)
+        at, gap = 0.0, 0.045
+        for _ in range(int(r.integers(14, 22))):
+            place(out, knock, at, 0.8)
+            at += gap
+            gap *= 0.985
+        return out
+
+    def creak(r):
+        d = r.uniform(0.7, 1.3)
+        tt = t_axis(d)
+        f = r.uniform(140, 220) * contour(tt, [(0, 1.0), (d * 0.6, 1.12), (d, 0.96)])
+        rough = 1 + 0.6 * square(f * 0.5, 0.3)
+        return bandpass(saw(f) * rough, 300, 1800) * np.sin(np.pi * tt / d) ** 2 * 0.3
+
+    def one(r):
+        wind = noise(n, r)
+        leaves = noise(n, r)
+        birds = np.zeros(n)
+        for _ in range(int(period * 0.7)):
+            place_wrapped(birds, chirp(r), r.uniform(0, period), r.uniform(0.1, 0.3))
+        for at in (5.0, 19.5):
+            place_wrapped(birds, woodpecker(r), at, 0.22)
+        for at in (11.0, 26.0):
+            place_wrapped(birds, creak(r), at, 0.5)
+        return np.stack([wind, leaves, birds])
+
+    tt = t_axis(period)
+    # Gusts: the crowns roar up and settle, three times round the loop.
+    gust = 0.55 + 0.45 * (0.5 + 0.5 * np.sin(2 * np.pi * 3 / period * tt)) ** 2
+
+    def post(x):
+        m = x.shape[-1]
+        g = np.tile(gust, m // len(gust) + 1)[:m]
+        return lowpass(x[0], 500) * 0.35 * g + bandpass(x[1], 1800, 6000) * 0.05 * g ** 2 + reverb_loopless(x[2])
+
+    return finish(periodic(one, period, warmup_periods=1)(rng, post), peak_db=-8.0, loop=True)
+
+
+def music_forest_loop(seed=543):
+    """
+    The Lesna road: the ambush. It has to land like one. The track starts
+    from its top each time the fighting does, so it opens on a stinger: a
+    brass cluster on D and its flat second over a big drum and a crash,
+    and then it's running. A distorted bass hammering sixteenths in
+    3+3+2, war drums and a side drum on the same broken rhythm, a shaker
+    on every sixteenth, diminished brass stabs, and in the second half a
+    horn line climbing a semitone a bar, tremolo, like an alarm nobody can
+    switch off. A hundred and sixty-eight to the minute, sixteen bars.
+    """
+    rng = np.random.default_rng(seed)
+    beat = 60.0 / 168.0
+    bar = beat * 4
+    six = bar / 16
+    bars = 16
+    period = bars * bar
+    n = int(period * SR)
+    accents = (0, 3, 6, 8, 11, 14)                   # 3+3+2, twice
+    roots = [38, 38, 38, 38, 39, 39, 38, 38, 41, 40, 39, 38, 38, 38, 39, 38]
+    climb = {8: 62, 9: 63, 10: 65, 11: 66, 12: 68, 13: 69, 14: 70, 15: 71}
+
+    def bass_hit(f, accent):
+        d = six * (1.9 if accent else 0.95)
+        tt = t_axis(d)
+        ff = np.full(len(tt), f)
+        tone = saw(ff) + saw(ff * 1.008) + 0.7 * square(ff * 0.5, 0.5)
+        return tone * np.exp(-tt / (0.11 if accent else 0.045)) * np.clip(tt / 0.002, 0, 1) * (1.0 if accent else 0.55)
+
+    def tick(r, g):
+        d = 0.04
+        return highpass(noise(int(d * SR), r), 6000) * env(d, 0.0005, 0.012) * g
+
+    def one(r):
+        bass = np.zeros(n)
+        drums = np.zeros(n)
+        hats = np.zeros(n)
+        brassy = np.zeros(n)
+        horn = np.zeros(n)
+        cym = np.zeros(n)
+        # The stinger.
+        for m in (50, 51, 57, 62, 63):
+            place_wrapped(brassy, brass(note(m), 1.6, r, 0.02) * np.exp(-t_axis(1.6) / 0.9) * 0.55, 0.0)
+        place_wrapped(drums, war_drum(r, 28, 1.6), 0.0)
+        place_wrapped(cym, crash(r, 0.9), 0.0)
+        for b in range(bars):
+            t0 = b * bar
+            root = roots[b]
+            for k in range(16):
+                if b == 0 and k < 8:
+                    continue                          # let the stinger ring first
+                accent = k in accents
+                place_wrapped(bass, bass_hit(note(root), accent), t0 + k * six)
+                place_wrapped(hats, tick(r, 0.5 if k % 2 == 0 else 0.25), t0 + k * six)
+            for k in accents:
+                if b == 0 and k < 8:
+                    continue
+                low = k in (0, 8)
+                place_wrapped(drums, war_drum(r, 33 if low else 40, 1.0 if low else 0.6), t0 + k * six)
+            for k in (4, 12):
+                place_wrapped(drums, snare_hit(r, 0.8), t0 + k * six)
+            if b in (3, 7, 11, 15):
+                for k in range(8):                    # a roll into the next phrase
+                    place_wrapped(drums, snare_hit(r, 0.3 + 0.08 * k), t0 + (8 + k) * six)
+            if b % 4 == 2:
+                for k in (0, 6, 11):
+                    for m in (root + 12, root + 15, root + 18):      # a diminished stab
+                        place_wrapped(brassy, brass(note(m), six * 2.2, r, 0.01) * 0.45, t0 + k * six)
+            if b % 4 == 0 and b > 0:
+                place_wrapped(cym, crash(r, 0.6), t0)
+            if b in climb:
+                d = bar + 0.03
+                tt = t_axis(d)
+                trem = 0.6 + 0.4 * np.sign(np.sin(2 * np.pi * (168.0 / 60.0 * 4) * tt))
+                place_wrapped(horn, brass(note(climb[b]), d, r, 0.05) * trem, t0)
+        return np.stack([bass, drums, hats, brassy, horn, cym])
+
+    def post(x):
+        bass = lowpass(drive(x[0] * 0.5, 2.2), 1100) * 0.7
+        drums = reverb(drive(x[1] * 0.75, 1.6), 0.8, 0.22, 2600) * 0.85
+        hats = x[2] * 0.35
+        brassy = reverb(lowpass(drive(x[3] * 0.35, 1.8), 2600), 1.2, 0.3, 3000) * 0.5
+        horn = reverb(lowpass(drive(x[4] * 0.3, 1.6), 3000), 1.0, 0.3, 3200) * 0.32
+        cym = reverb(x[5] * 0.5, 1.2, 0.25, 7000)
+        m = x.shape[-1]
+        return bass[:m] + drums[:m] + hats[:m] + brassy[:m] + horn[:m] + cym[:m]
+
+    out = periodic(one, period, warmup_periods=1)(rng, post)
+    return finish(crush(out, bits=10, hold_rate=26000), peak_db=-1.5, loop=True)
+
+
+def drums_loop(seed=512):
+    """
+    The Rechivii drums as the lines step off: a march on bass and side
+    drums, at the charge music's own hundred to the minute and two of its
+    bars long, so the game can lay the two over each other on the beat.
+    """
+    rng = np.random.default_rng(seed)
+    beat = 60.0 / 100.0
+    period = beat * 8
     n = int(period * SR)
 
     def one(r):
-        gtr_l = np.zeros(n)
-        gtr_r = np.zeros(n)
-        bass = np.zeros(n)
-        kicks = np.zeros(n)
-        snares = np.zeros(n)
-        cymbals = np.zeros(n)
-        lead = np.zeros(n)
-        for b, (riff, drums, lead_bar) in enumerate(SONG):
-            t0 = b * BAR
-            hits = parse_riff(RIFFS[riff])
-            for step, kind, midi, steps in hits:
-                at = t0 + step * STEP
-                d = steps * STEP + (0.02 if kind == "m" else 0.05)
-                muted = kind == "m"
-                # Two guitars, one each side in the real thing; here they
-                # just thicken each other.
-                place_wrapped(gtr_l, power_chord(note(midi), d, r, muted), at)
-                place_wrapped(gtr_r, power_chord(note(midi) * 1.002, d, r, muted), at + 0.004)
-                tt = t_axis(d)
-                fb = np.full(len(tt), note(midi - 12))
-                place_wrapped(bass, (triangle(fb) + 0.5 * square(fb, 0.5)) * env(d, 0.002, 0.08 if muted else 0.8), at)
-                # The kick follows the guitar in the gallops.
-                if drums.startswith("A") or (drums.startswith("B") and (kind == "o" or step >= 12)):
-                    place_wrapped(kicks, kick(r), at, 0.9 if kind == "o" else 0.75)
-            if drums.startswith("D"):
-                for step in (0, 3, 6, 10, 14):
-                    place_wrapped(kicks, kick(r), t0 + step * STEP, 0.95)
-                place_wrapped(snares, snare_hit(r, 1.0), t0 + 8 * STEP)
-                place_wrapped(cymbals, crash(r, 0.5), t0)
-                place_wrapped(cymbals, crash(r, 0.35), t0 + 8 * STEP)
-                for step in range(0, 16, 2):
-                    place_wrapped(cymbals, hat(r, 0.25, open_=step % 4 == 2), t0 + step * STEP)
-            else:
-                for step in (4, 12):
-                    place_wrapped(snares, snare_hit(r, 0.9), t0 + step * STEP)
-                for step in range(0, 16, 2):
-                    place_wrapped(cymbals, hat(r, 0.3 if step % 4 == 0 else 0.2), t0 + step * STEP)
-                if b % 4 == 0 or drums.startswith("B") and b % 2 == 0:
-                    place_wrapped(cymbals, crash(r, 0.45), t0)
-            if drums.endswith("fill"):
-                for k, m in enumerate([52, 50, 47, 45, 43, 43]):
-                    place_wrapped(snares, tom(r, m), t0 + (10 + k) * STEP, 0.8)
-            if lead_bar is not None:
-                at = t0
-                for midi, steps in LEAD[lead_bar]:
-                    d = steps * STEP
-                    tt = t_axis(d + 0.05)
-                    vib = 1 + 0.012 * np.sin(2 * np.pi * 5.5 * tt) * np.clip((tt - 0.12) / 0.1, 0, 1)
-                    f = np.full(len(tt), note(midi)) * vib
-                    tone = square(f, 0.25) + 0.35 * saw(f * 1.003)
-                    shape = np.clip(tt / 0.008, 0, 1) * np.clip((d + 0.05 - tt) / 0.06, 0, 1)
-                    place_wrapped(lead, tone * shape, at)
-                    at += d
-        return np.stack([gtr_l, gtr_r, bass, kicks, snares, cymbals, lead])
+        out = np.zeros(n)
+        for k in range(8):
+            place_wrapped(out, war_drum(r, 36, 0.8 if k % 4 == 0 else (0.6 if k % 2 == 0 else 0.42)), k * beat)
+            place_wrapped(out, snare_hit(r, 0.5), k * beat + beat * 0.5)
+        for j in range(8):                                  # a roll into the top of the next bar
+            place_wrapped(out, snare_hit(r, 0.25 + 0.06 * j), 7 * beat + j * beat / 8)
+        return out
 
     def post(x):
-        def amp(g):
-            g = drive(highpass(g, 80) * 0.6, 7.0)
-            return lowpass(bandpass(g, 90, 5000), 3600)
-        guitars = (amp(x[0]) + amp(x[1])) * 0.32
-        bass = drive(lowpass(x[2], 700) * 0.8, 1.8) * 0.4
-        drums = x[3] * 0.85 + x[4] * 0.55 + x[5] * 0.5
-        lead = drive(lowpass(x[6], 4000) * 0.5, 2.5) * 0.18
-        lead = lead + np.roll(lead, int(3 * STEP * SR)) * 0.3 + np.roll(lead, int(6 * STEP * SR)) * 0.12
-        return guitars + bass + drums + lead
+        return reverb(x, 1.2, 0.35, 3000)[:len(x)]
 
     out = periodic(one, period, warmup_periods=1)(rng, post)
-    return finish(crush(out, bits=10, hold_rate=26000), peak_db=-2.0, loop=True)
+    return finish(chip(out, 10, 22050), peak_db=-3.0, loop=True)
+
+def urra(rng, length=1.4, pitch=200.0):
+    """One man: 'Urraaa!', the 'r' a quick flap, the 'a' held and strained."""
+    t = t_axis(length)
+    n = len(t)
+    f0 = pitch * contour(t, [(0, 0.85), (0.12, 0.95), (0.2, 1.12), (length * 0.7, 1.08), (length, 0.82)])
+    f0 = f0 * (1 + lowpass(noise(n, rng), 7) * 0.18)
+    flap = 1 - 0.7 * np.exp(-((t - 0.16) / 0.012) ** 2)
+    loud = np.clip(t / 0.04, 0, 1) * np.clip((length - t) / 0.35, 0, 1) * flap
+    keys = [(0, "u"), (0.13, "u"), (0.19, "ah"), (0.28, "a"), (length, "a")]
+    return voice(rng, f0, keys, loud, open_q=0.42, breath=0.16, jitter=0.022, shimmer=0.13, sub=0.25, strain=2.4)
+
+
+def war_cry(seed):
+    rng = np.random.default_rng(seed)
+    x = urra(rng, rng.uniform(1.1, 1.6), rng.uniform(150, 260))
+    return finish(chip(reverb(x, 0.6, 0.2), 10, 22050), peak_db=-3.0)
+
+
+def war_roar(seed=520):
+    """A hundred men at once, starting ragged and swelling as it catches."""
+    rng = np.random.default_rng(seed)
+    length = 3.6
+    out = np.zeros(int((length + 1.0) * SR))
+    for k in range(46):
+        d = rng.uniform(1.6, 3.0)
+        v = urra(rng, d, rng.uniform(140, 290))
+        start = rng.uniform(0.0, 0.9) * (0.4 + 0.6 * rng.uniform())
+        place(out, v, start, rng.uniform(0.3, 0.8))
+    # The mass of it: a broad, rough bed under the voices.
+    t = t_axis(len(out) / SR)
+    bed = bandpass(noise(len(out), rng), 250, 1800) * np.clip(t / 0.8, 0, 1) * np.clip((len(out) / SR - t) / 1.2, 0, 1) * 0.25
+    return finish(chip(reverb(out + bed, 1.4, 0.35), 10, 22050), peak_db=-2.0)
 
 
 # --------------------------------------------------------- raids and radios
@@ -1500,22 +1719,6 @@ def night_loop(seed=488):
     return finish(periodic(one, period, warmup_periods=1)(rng, post) * gust, peak_db=-6.0, loop=True)
 
 
-def alarm_bell(seed=489):
-    """The alarm in their trench: a shell case hung from a post, hammered."""
-    rng = np.random.default_rng(seed)
-    length = 2.6
-    out = np.zeros(int(length * SR))
-    for k in range(14):
-        d = 0.5
-        tt = t_axis(d)
-        ring = sum(sine(np.full(len(tt), f)) * env(d, 0.0005, dk) * g for f, dk, g in [(1120, 0.2, 1.0), (1830, 0.12, 0.6), (2710, 0.07, 0.4)])
-        at = k * 0.16 + rng.uniform(0, 0.02)
-        g = rng.uniform(0.6, 1.0)
-        place(out, ring, at, g)
-        place(out, click(rng, 0.006, 2000, 7000), at, g * 0.5)          # the hammer
-    return finish(chip(reverb(out, 0.8, 0.2), 10, 22050), peak_db=-5.0)
-
-
 def satchel_fuse(seed=490):
     rng = np.random.default_rng(seed)
     length = 1.2
@@ -1575,21 +1778,6 @@ def mortar_incoming(seed=498):
     air = bandpass(noise(len(t), rng), 1500, 6000) * 0.12
     grow = (t / length) ** 2.0
     return finish((tone + air) * grow, fade_out=0.004)
-
-
-def shovel(seed):
-    """A spade going into the earth, and the spoil thrown off it."""
-    rng = np.random.default_rng(seed)
-    length = 0.5
-    t = t_axis(length)
-    n = len(t)
-    scrape = bandpass(noise(n, rng), 1200, 4500) * env(length, 0.005, 0.07) * 0.6
-    chunk = lowpass(noise(n, rng), 500) * env(length, 0.001, 0.05) * 0.8
-    out = mix(scrape, chunk)
-    throw_at = int(rng.uniform(0.22, 0.3) * SR)
-    spill = lowpass(noise(n - throw_at, rng), 1500) * env((n - throw_at) / SR, 0.01, 0.1) * 0.35
-    out[throw_at:] += spill
-    return finish(chip(out, 10, 22050), peak_db=-6.0)
 
 
 # --------------------------------------------------------------------- menus
@@ -1671,8 +1859,6 @@ SOUNDS = {
     "explosion_3":        lambda: explosion(423),
     "explosion_far_1":    lambda: explosion_far(427),
     "explosion_far_2":    lambda: explosion_far(428),
-    "artillery_far_1":    lambda: artillery_far(424),
-    "artillery_far_2":    lambda: artillery_far(425),
     "shell_incoming":     lambda: shell_incoming(426),
     "flamer_loop":        flamer_loop,
     "flamer_start":       flamer_start,
@@ -1700,7 +1886,6 @@ SOUNDS = {
     "gore_2":             lambda: gore(444),
     "impact_sandbag":     lambda: impact_sandbag(445),
     "impact_wood":        lambda: impact_wood(446),
-    "bottle_break":       bottle_break,
     "splash_1":           lambda: splash(456),
     "splash_2":           lambda: splash(457),
     # bodies
@@ -1717,28 +1902,38 @@ SOUNDS = {
     "drag_loop":          drag_loop,
     "bandage":            bandage,
     # voices
-    "scream_1":           lambda: scream(461, 1.1, 560),
-    "scream_2":           lambda: scream(462, 0.9, 640),
-    "scream_3":           lambda: scream(463, 1.4, 500, again=True),
-    "scream_4":           lambda: scream(469, 1.0, 600, then_gasp=False),
-    "scream_burn_1":      lambda: scream_burn(475),
-    "scream_burn_2":      lambda: scream_burn(476),
-    "groan_1":            lambda: groan(464, 1.8, 115),
-    "groan_2":            lambda: groan(465, 2.4, 100),
-    "groan_3":            lambda: groan(466, 1.4, 135),
-    "sob_1":              lambda: sob(477),
-    "sob_2":              lambda: sob(478),
-    "death_cry_1":        lambda: death_cry(479),
-    "death_cry_2":        lambda: death_cry(480),
-    "death_cry_3":        lambda: death_cry(481),
-    "grunt_1":            lambda: grunt(482, 135),
-    "grunt_2":            lambda: grunt(483, 120),
-    "medic_call_1":       lambda: medic_call(251),
-    "medic_call_2":       lambda: medic_call(252),
-    "bark_1":             lambda: bark(471, 3, 170),
-    "bark_2":             lambda: bark(472, 2, 160),
-    "bark_3":             lambda: bark(473, 4, 185),
-    "bark_4":             lambda: bark(474, 2, 200),
+    "scream_1":           lambda: as_man("mid", lambda: scream(461, 1.1, 560)),
+    "scream_2":           lambda: as_man("light", lambda: scream(462, 0.9, 640)),
+    "scream_3":           lambda: as_man("deep", lambda: scream(463, 1.4, 500, again=True)),
+    "scream_4":           lambda: as_man("high", lambda: scream(469, 1.0, 600, then_gasp=False)),
+    "scream_5":           lambda: as_man("low", lambda: scream(470, 1.2, 540)),
+    "scream_6":           lambda: as_man("mid", lambda: scream(468, 0.8, 620, then_gasp=False)),
+    "scream_burn_1":      lambda: as_man("low", lambda: scream_burn(475)),
+    "scream_burn_2":      lambda: as_man("high", lambda: scream_burn(476)),
+    "groan_1":            lambda: as_man("deep", lambda: groan(464, 1.8, 115)),
+    "groan_2":            lambda: as_man("mid", lambda: groan(465, 2.4, 100)),
+    "groan_3":            lambda: as_man("high", lambda: groan(466, 1.4, 135)),
+    "groan_4":            lambda: as_man("low", lambda: groan(467, 2.0, 120)),
+    "sob_1":              lambda: as_man("mid", lambda: sob(477)),
+    "sob_2":              lambda: as_man("light", lambda: sob(478)),
+    "sob_3":              lambda: as_man("low", lambda: sob(487)),
+    "death_cry_1":        lambda: as_man("deep", lambda: death_cry(479)),
+    "death_cry_2":        lambda: as_man("high", lambda: death_cry(480)),
+    "death_cry_3":        lambda: as_man("mid", lambda: death_cry(481)),
+    "death_cry_4":        lambda: as_man("low", lambda: death_cry(485)),
+    "grunt_1":            lambda: as_man("mid", lambda: grunt(482, 135)),
+    "grunt_2":            lambda: as_man("deep", lambda: grunt(483, 120)),
+    "grunt_3":            lambda: as_man("light", lambda: grunt(488, 140)),
+    "grunt_4":            lambda: as_man("low", lambda: grunt(489, 128)),
+    "medic_call_1":       lambda: as_man("mid", lambda: medic_call(251)),
+    "medic_call_2":       lambda: as_man("deep", lambda: medic_call(252)),
+    "medic_call_3":       lambda: as_man("high", lambda: medic_call(253)),
+    "bark_1":             lambda: as_man("mid", lambda: bark(471, 3, 170)),
+    "bark_2":             lambda: as_man("deep", lambda: bark(472, 2, 160)),
+    "bark_3":             lambda: as_man("high", lambda: bark(473, 4, 185)),
+    "bark_4":             lambda: as_man("light", lambda: bark(474, 2, 200)),
+    "bark_5":             lambda: as_man("low", lambda: bark(475, 3, 175)),
+    "bark_6":             lambda: as_man("mid", lambda: bark(476, 2, 180)),
     "charge_cry":         charge_cry,
     "kill_thud":          kill_thud,
     "sniper_1":           lambda: sniper(493),
@@ -1747,7 +1942,6 @@ SOUNDS = {
     "radio_squelch":      radio_squelch,
     "radio_loop":         radio_loop,
     "night_loop":         night_loop,
-    "alarm_bell":         alarm_bell,
     "satchel_fuse":       satchel_fuse,
     "wire_cut":           wire_cut,
     "wire_snip_1":        lambda: wire_snip(495),
@@ -1755,18 +1949,23 @@ SOUNDS = {
     "mortar_fire_1":      lambda: mortar_fire(497),
     "mortar_fire_2":      lambda: mortar_fire(499),
     "mortar_incoming":    mortar_incoming,
-    "shovel_1":           lambda: shovel(500),
-    "shovel_2":           lambda: shovel(501),
-    "shovel_3":           lambda: shovel(502),
+    "music_charge_loop":  music_charge_loop,
+    "drums_loop":         drums_loop,
+    "war_roar":           war_roar,
+    "music_town_loop":    music_town_loop,
+    "church_bell":        church_bell,
+    "music_forest_loop":  music_forest_loop,
+    "forest_loop":        forest_loop,
+    "war_cry_1":          lambda: as_man("low", lambda: war_cry(521)),
+    "war_cry_2":          lambda: as_man("mid", lambda: war_cry(522)),
+    "war_cry_3":          lambda: as_man("deep", lambda: war_cry(523)),
+    "war_cry_4":          lambda: as_man("high", lambda: war_cry(524)),
     "whistle":            whistle,
     # the world
     "tinnitus":           tinnitus,
-    "heartbeat":          heartbeat,
     "front_loop":         front_loop,
-    "rain_loop":          rain_loop,
     "dawn_loop":          dawn_loop,
     "music_calm_loop":    music_calm_loop,
-    "music_combat_loop":  music_combat_loop,
     "ui_select":          ui_select,
     "ui_hover":           ui_hover,
     "paper":              paper,

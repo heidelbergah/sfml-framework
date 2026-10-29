@@ -66,6 +66,13 @@ private:
 
     std::string m_title{"SFML Framework"};
     bool        m_running{false};
+    bool        m_fullscreen{false};
+    unsigned    m_window_scale{SCALE};
+    bool        m_key_repeat{false};
+    sf::Image   m_icon;
+    bool        m_mode_pending{false};
+    bool        m_pending_fullscreen{false};
+    unsigned    m_pending_scale{0};
 
     // How the low-res target is mapped onto the window. Recomputed on
     // creation and on every resize; mouse input is inverted through it.
@@ -74,6 +81,8 @@ private:
 
     std::vector<Subscription> m_subscriptions;
 
+    void create_window(bool fullscreen, unsigned scale);
+    void apply_window_mode();
     void setup_event_listeners();
     void update_presentation();
     void process_window_events();
@@ -138,6 +147,29 @@ public:
      * you add a text input widget.
      */
     void set_key_repeat_enabled(bool enabled);
+
+    /*
+     * Fullscreen, or a window `scale` times the base resolution. The
+     * window is re-created, between frames, so this is for a settings
+     * screen, not for every frame. A scale of 0, or one too big for the display, picks
+     * the largest that fits. Fullscreen uses the desktop's own size;
+     * set_scaling_mode(FIT) keeps the picture's shape on a screen that
+     * isn't 16:9.
+     */
+    void set_window_mode(bool fullscreen, unsigned scale = 0);
+    [[nodiscard]] bool     is_fullscreen() const;
+    [[nodiscard]] unsigned get_window_scale() const;
+
+    /*
+     * The largest whole-number window scale that fits on this display.
+     */
+    [[nodiscard]] static unsigned largest_window_scale();
+
+    /*
+     * The window's icon, kept and set again if the window is re-created.
+     * Windows and Linux show it; on macOS the app bundle's icon is used.
+     */
+    void set_icon(const sf::Image& image);
 
     /*
      * How the render target is currently mapped onto the window.

@@ -201,7 +201,7 @@ void Battle::fire_bullet(Soldier& s, float angle)
 
 void Battle::hear_shot(const Soldier& shooter)
 {
-    if(!m_alarm) raise_alarm(shooter.team == Team::MONTERAN ? "A shot! They heard it." : "They've seen us!");
+    if(!m_alarm) raise_alarm(shooter.team == Team::MONTERAN ? "A shot from the column! Ambush!" : "The ambush is sprung!");
     for(auto& s : m_soldiers)
     {
         if(s.team == shooter.team || !s.alive()) continue;
@@ -292,7 +292,7 @@ void Battle::bayonet(Soldier& s)
     s.bayonet_cd = 0.95f;
     s.firing = false;
     SoundBank::get().play_at("bayonet_swish", s.pos, s.is_player ? 0.8f : 0.5f);
-    if(Random::chance(0.5f)) SoundBank::get().play_at("grunt", s.pos, 0.6f, 0.1f);
+    if(Random::chance(0.5f)) SoundBank::get().play_at("grunt", s.pos, 0.6f, 0.04f, s.voice);
 }
 
 void Battle::update_bayonet(Soldier& s, float dt)
@@ -342,7 +342,7 @@ void Battle::update_bayonet(Soldier& s, float dt)
         }
         if(v.life == Life::DOWNED || (blade && Random::chance(0.45f)))
         {
-            SoundBank::get().play_at("death_cry", v.pos, 0.9f, 0.08f);
+            SoundBank::get().play_at("death_cry", v.pos, 0.9f, 0.04f, v.voice);
             kill(v, s.id, blade ? "Bayoneted" : "Beaten to death");
             return;
         }
@@ -351,7 +351,7 @@ void Battle::update_bayonet(Soldier& s, float dt)
             v.hp -= 70.0f;
             v.bleeding += 4.0f;
             if(v.hp <= 0.0f) go_down(v, s.id);
-            else SoundBank::get().play_at("scream", v.pos, 1.0f, 0.06f);
+            else SoundBank::get().play_at("scream", v.pos, 1.0f, 0.04f, v.voice);
         }
         else
         {
@@ -463,22 +463,6 @@ void Battle::update_bullets(float dt)
             continue;
         }
 
-        // Bottles on the range.
-        for(auto& bottle : m_map.bottles)
-        {
-            sf::Vector2f at;
-            if(!bottle.broken && segment_circle(a, a + (c - a) * end, bottle.pos, 2.5f, &at))
-            {
-                bottle.broken = true;
-                --m_bottles_left;
-                SoundBank::get().play_at("bottle_break", at, 0.9f);
-                sparks(at, 14, 60.0f, lerp(GRASS, MON_WHITE, 0.6f), 0.4f);
-                b.dead = true;
-                break;
-            }
-        }
-        if(b.dead) continue;
-
         // Men: the nearest one along the path.
         Soldier* victim = nullptr;
         sf::Vector2f victim_at;
@@ -523,7 +507,7 @@ void Battle::update_bullets(float dt)
                 {
                     sf::Vector2f const along = unit(b.vel);
                     sf::Vector2f const at = s.pos + along * Random::real(6.0f, 22.0f) + sf::Vector2f{-along.y, along.x} * Random::real(-8.0f, 8.0f);
-                    dust(at, 3, m_level == LevelId::FIELDS ? MEADOW_DK : MUD_PALE);
+                    dust(at, 3, m_level != LevelId::TOWN ? MEADOW_DK : MUD_PALE);
                     if(Random::chance(0.35f)) sparks(at, 2, 60.0f, FIRE_YELLOW, 0.12f);
                 }
             }
@@ -551,7 +535,7 @@ void Battle::update_bullets(float dt)
             if(Random::chance(block))
             {
                 sf::Vector2f const at = victim_at - unit(b.vel) * 3.0f;
-                dust(at, 4, m_level == LevelId::FIELDS ? STONE : MUD_PALE);
+                dust(at, 4, m_level == LevelId::TOWN ? STONE : MUD_PALE);
                 if(Random::chance(0.3f)) sparks(at, 2, 40.0f, FIRE_YELLOW, 0.12f);
                 SoundBank::get().play_at(m_map.in_trench(s.pos) ? "impact_dirt" : "impact_sandbag", victim_at, 0.5f);
                 if(s.is_player) m_camera.shake(0.12f);
@@ -567,7 +551,7 @@ void Battle::update_bullets(float dt)
         if(end < 1.0f)
         {
             sf::Vector2f const at = a + (c - a) * end;
-            dust(at - unit(b.vel) * 1.5f, 3, m_level == LevelId::FIELDS ? STONE : lerp(CONCRETE, BRICK, 0.5f));
+            dust(at - unit(b.vel) * 1.5f, 3, m_level == LevelId::TOWN ? STONE : lerp(CONCRETE, BRICK, 0.5f));
             sparks(at - unit(b.vel) * 1.0f, Random::integer(1, 3), 50.0f, FIRE_YELLOW, 0.12f);
             if(length(at - me.pos) < 200.0f && Random::chance(0.35f)) SoundBank::get().play_at("ricochet", at, 0.5f);
             else SoundBank::get().play_at("impact_wood", at, 0.3f);
@@ -586,7 +570,7 @@ void Battle::update_bullets(float dt)
             }
             else
             {
-                dust(b.pos, 2, m_level == LevelId::FIELDS ? MEADOW_DK : MUD_PALE);
+                dust(b.pos, 2, m_level != LevelId::TOWN ? MEADOW_DK : MUD_PALE);
                 if(length(b.pos - me.pos) < 120.0f) SoundBank::get().play_at("impact_dirt", b.pos, 0.35f);
             }
             b.dead = true;
@@ -688,7 +672,7 @@ void Battle::wound(Soldier& s, float damage, sf::Vector2f from_dir, int attacker
     }
 
     if(!s.can_walk()) s.stance = Stance::PRONE;
-    if(Random::chance(0.75f)) SoundBank::get().play_at(Random::chance(0.6f) ? "scream" : "groan", s.pos, 0.75f, 0.08f);
+    if(Random::chance(0.75f)) SoundBank::get().play_at(Random::chance(0.6f) ? "scream" : "groan", s.pos, 0.75f, 0.04f, s.voice);
     static const char* const ours[] = {"I'm hit!", "Agh! God!", "My arm, my arm!", "Ahh, Christ!", "I'm hit, I'm hit!"};
     static const char* const theirs[] = {"Ahh!", "Mama!", "Bozhe!"};
     bark(s, s.team == Team::MONTERAN ? ours[Random::integer(0, 4)] : theirs[Random::integer(0, 2)], false);
@@ -722,7 +706,7 @@ void Battle::sever(Soldier& s, Limb limb, sf::Vector2f push)
 
     spray_blood(s.pos, push, 24, 95.0f);
     SoundBank::get().play_at("gore", s.pos, 0.9f, 0.08f);
-    if(limb != HEAD && s.life == Life::OK) SoundBank::get().play_at("scream", s.pos, 1.0f, 0.06f);
+    if(limb != HEAD && s.life == Life::OK) SoundBank::get().play_at("scream", s.pos, 1.0f, 0.04f, s.voice);
 }
 
 void Battle::gib_body(Soldier& s, sf::Vector2f push)
@@ -760,7 +744,7 @@ void Battle::go_down(Soldier& s, int attacker)
     s.treating = -1;
 
     SoundBank::get().play_at("body_fall", s.pos, 0.7f);
-    SoundBank::get().play_at("scream", s.pos, 0.9f, 0.05f);
+    SoundBank::get().play_at("scream", s.pos, 0.9f, 0.04f, s.voice);
     if(s.team == Team::MONTERAN)
     {
         s.bark_cooldown = 0.0f;
@@ -804,7 +788,7 @@ void Battle::kill(Soldier& s, int attacker, const std::string& fate)
     if(!was_down)
     {
         SoundBank::get().play_at("body_fall", s.pos, 0.7f);
-        if(!s.charred && !(s.lost & HEAD) && Random::chance(0.5f)) SoundBank::get().play_at("death_cry", s.pos, 0.7f, 0.08f);
+        if(!s.charred && !(s.lost & HEAD) && Random::chance(0.5f)) SoundBank::get().play_at("death_cry", s.pos, 0.7f, 0.04f, s.voice);
     }
     drop_weapon(s);
     stamp_corpse(s);
@@ -866,7 +850,7 @@ void Battle::ignite(Soldier& s, int attacker)
     if(s.life != Life::OK) return;
     if(s.burning <= 0.0f)
     {
-        SoundBank::get().play_at("scream_burn", s.pos, 1.0f, 0.04f);
+        SoundBank::get().play_at("scream_burn", s.pos, 1.0f, 0.03f, s.voice);
         bark(s, s.team == Team::MONTERAN ? "I'm burning! Help me!" : "AAAH!", false);
         if(s.is_player) hint("You are on fire. Z to drop and roll, it puts it out faster.", 4.0f);
     }
@@ -883,6 +867,11 @@ void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fi
     Soldier& me = *player();
     float const to_me = length(at - me.pos);
     bool const wet = m_map.in_water(at);
+    if(m_level == LevelId::FOREST)
+    {
+        damage_wagons(at, power, fire || cause == "a satchel charge");
+        if(!m_alarm) raise_alarm("An explosion on the road! Ambush!");
+    }
 
     if(!m_alarm) raise_alarm("The explosion woke them.");
     SoundBank::get().play_at(fire ? "tank_burst" : "explosion", at, std::min(1.0f, 0.6f + power * 0.3f), 0.08f);
@@ -901,7 +890,7 @@ void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fi
     float const r = 6.0f + 6.0f * power;
     if(!wet)
     {
-        sf::Color const rim = m_level == LevelId::FIELDS ? lerp(MEADOW_DK, MUD_PALE, 0.5f) : lerp(MUD_PALE, MUD_DARK, 0.3f);
+        sf::Color const rim = m_level != LevelId::TOWN ? lerp(MEADOW_DK, MUD_PALE, 0.5f) : lerp(MUD_PALE, MUD_DARK, 0.3f);
         draw::disc(m_stamps, at.x, at.y, r + 3.0f, rim);
         draw::disc(m_stamps, at.x, at.y, r, MUD_DARK);
         draw::disc(m_stamps, at.x + 1, at.y + 1, r * 0.6f, fire ? CHAR : lerp(MUD_DARK, INK, 0.4f));
@@ -991,7 +980,7 @@ void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fi
             {
                 if(!s.can_walk()) s.stance = Stance::PRONE;
                 if(!s.can_use_rifle() && !s.one_handed()) drop_weapon(s);
-                if(Random::chance(0.6f)) SoundBank::get().play_at("scream", s.pos, 0.9f, 0.06f);
+                if(Random::chance(0.6f)) SoundBank::get().play_at("scream", s.pos, 0.9f, 0.04f, s.voice);
             }
             if(fire && s.life == Life::OK) ignite(s, owner);
         }
@@ -1026,7 +1015,7 @@ void Battle::update_soldier_body(Soldier& s, float dt)
             const char* sound = "groan";
             if(s.team == Team::MONTERAN && Random::chance(0.45f)) sound = "medic_call";
             else if(s.bleed_out < 10.0f) sound = "sob";
-            SoundBank::get().play_at(sound, s.pos, 0.6f, 0.06f);
+            SoundBank::get().play_at(sound, s.pos, 0.6f, 0.04f, s.voice);
         }
         if(s.dragged_by >= 0)
         {
@@ -1107,24 +1096,6 @@ void Battle::update_soldier_body(Soldier& s, float dt)
         }
     }
 
-    // Digging in: a shovel going, spoil flying.
-    if(s.digging > 0.0f)
-    {
-        s.vel *= std::exp(-dt * 12.0f);
-        if(s.life != Life::OK) s.digging = 0.0f;
-        else
-        {
-            float const before = s.digging;
-            s.digging -= dt;
-            if(std::floor(before / 0.7f) != std::floor(s.digging / 0.7f))
-            {
-                SoundBank::get().play_at("shovel", s.pos, 0.45f, 0.12f);
-                dust(s.dig_rect.getCenter(), 3, MUD_LIGHT);
-            }
-            if(s.digging <= 0.0f) { s.digging = 0.0f; finish_dig(s); }
-        }
-    }
-
     // Fear fades, faster in cover and near a leader.
     float calm = 0.18f;
     if(m_map.in_trench(s.pos) || s.stance == Stance::PRONE) calm *= 1.3f;
@@ -1145,7 +1116,7 @@ void Battle::update_soldier_body(Soldier& s, float dt)
         if(std::floor(before / 3.14159f) != std::floor(s.walk_phase / 3.14159f) && s.stance != Stance::PRONE)
         {
             bool const wet = m_map.in_water(s.pos);
-            SoundBank::get().play_at(wet ? "wade" : (m_level == LevelId::TRENCHES ? "footstep" : "footstep_grass"),
+            SoundBank::get().play_at(wet ? "wade" : (m_level == LevelId::TOWN ? "footstep" : "footstep_grass"),
                                      s.pos, s.is_player ? 0.35f : 0.18f, 0.1f);
             if(wet && Random::chance(0.5f)) sparks(s.pos, 3, 20.0f, STREAM_LT, 0.25f);
         }
@@ -1167,7 +1138,7 @@ void Battle::update_soldier_body(Soldier& s, float dt)
                        Random::real(1.5f, 3.0f), Random::real(0.25f, 0.45f));
         if(Random::chance(dt * 6.0f))
             puff(s.pos, {Random::real(-4, 4), Random::real(-16, -8)}, 2.0f, 4.0f, 1.2f, with_alpha(SMOKE, 0.45f));
-        if(Random::chance(dt * 1.5f)) SoundBank::get().play_at("scream_burn", s.pos, 0.9f, 0.1f);
+        if(Random::chance(dt * 1.5f)) SoundBank::get().play_at("scream_burn", s.pos, 0.9f, 0.04f, s.voice);
         m_lights.push_back({s.pos, 18.0f, dt * 1.5f, dt * 1.5f, FIRE_ORANGE});
         if(s.hp <= 0.0f)
         {
@@ -1244,7 +1215,7 @@ void Battle::update_world(float dt)
     for(auto& l : m_later)
     {
         l.t -= dt;
-        if(l.t <= 0.0f) SoundBank::get().play_at(l.name, l.pos, l.volume);
+        if(l.t <= 0.0f) SoundBank::get().play_at(l.name, l.pos, l.volume, 0.04f, l.pitch);
     }
     std::erase_if(m_later, [](const Later& l) { return l.t <= 0.0f; });
 
@@ -1294,7 +1265,7 @@ void Battle::update_world(float dt)
             {
                 explode(g.pos, 2.2f, g.owner, g.team, false, "a satchel charge");
                 cut_wire_at(m_soldiers[static_cast<std::size_t>(std::max(0, g.owner))], g.pos);
-                if(m_map.bunker_area.contains(g.pos) || m_map.under_roof(g.pos)) log("A satchel charge went off inside");
+                if(m_map.under_roof(g.pos)) log("A satchel charge went off inside");
             }
             else if(g.smoke)
             {
@@ -1394,6 +1365,8 @@ void Battle::update_world(float dt)
         f.life -= dt;
         float const age = 1.0f - f.life / f.max_life;
         if(m_map.in_water(f.pos)) f.life = std::min(f.life, 0.05f);
+        for(auto& w : m_wagons)
+            if(!w.destroyed && w.burning <= 0.0f && length(w.pos - f.pos) < 11.0f) ignite_wagon(w);
 
         for(auto& s : m_soldiers)
         {
@@ -1422,8 +1395,7 @@ void Battle::update_world(float dt)
     float burning_near = 0.0f;
     for(auto& fire : m_fires)
     {
-        // Rain puts them out sooner.
-        fire.life -= dt * (m_level == LevelId::TRENCHES ? 1.3f : 1.0f);
+        fire.life -= dt;
         for(auto& s : m_soldiers)
             if(s.life == Life::OK && length(s.pos - fire.pos) < fire.radius) ignite(s, -1);
         m_lights.push_back({fire.pos, fire.radius * 3.0f, dt * 1.5f, dt * 1.5f, FIRE_ORANGE});
@@ -1456,7 +1428,7 @@ void Battle::update_world(float dt)
             {
                 // Settled: into the ground it goes.
                 sf::Vector2f const u = dir(g.angle);
-                sf::Color const coat = g.charred ? CHAR : (g.team == Team::MONTERAN ? MON_BLUE : RCH_TAN);
+                sf::Color const coat = g.charred ? CHAR : (g.team == Team::MONTERAN ? MON_TUNIC : RCH_TAN);
                 if(g.kind != 4) draw::disc(m_stamps, g.pos.x, g.pos.y, g.kind == 0 ? 1.5f : 2.5f, BLOOD_DK);
                 switch(g.kind)
                 {

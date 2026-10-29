@@ -6,50 +6,14 @@
 
 #include "../../include/scenes/SceneManager.hpp"
 
+#include <algorithm>
+
 SceneManager::SceneManager(const std::string& title, bool fullscreen)
     : m_render_texture(BASE_RESOLUTION),
       m_render_sprite(m_render_texture.getTexture()),
       m_title(title)
 {
-    /*
-     * Pick the largest whole-number upscale that actually fits on this
-     * display, rather than always demanding WINDOW * SCALE.
-     *
-     * Asking for 1920x1080 on a 1920x1080 desktop does not fail,
-     * the window manager quietly shrinks the window to make room for
-     * the title bar, and everything downstream inherits a size nobody
-     * asked for. Better to ask for something that fits.
-     */
-    sf::Vector2u window_size{SCALED_WIDTH, SCALED_HEIGHT};
-
-    if(!fullscreen)
-    {
-        sf::VideoMode const desktop = sf::VideoMode::getDesktopMode();
-
-        // Leave room for the title bar, taskbar and window borders.
-        unsigned const usable_w = desktop.size.x;
-        unsigned const usable_h = (desktop.size.y > 120u) ? desktop.size.y - 120u
-                                                          : desktop.size.y;
-
-        unsigned scale = SCALE;
-        while(scale > 1u &&
-              (WINDOW_WIDTH * scale > usable_w || WINDOW_HEIGHT * scale > usable_h))
-        {
-            --scale;
-        }
-
-        window_size = {WINDOW_WIDTH * scale, WINDOW_HEIGHT * scale};
-    }
-
-    m_window.create(sf::VideoMode(window_size), m_title,
-                    sf::Style::Default,
-                    fullscreen ? sf::State::Fullscreen : sf::State::Windowed);
-
-    m_window.setVerticalSyncEnabled(true);
-
-    // Held keys should not machine-gun KeyPressed events at the OS
-    // repeat rate, anything that accumulates per press runs away.
-    m_window.setKeyRepeatEnabled(false);
+    create_window(fullscreen, 0);
 
     m_render_texture.setSmooth(false);
 
@@ -328,6 +292,7 @@ void SceneManager::run(int frames_per_second)
 
     while(m_running && m_window.isOpen())
     {
+        apply_window_mode();
         process_window_events();
         if(!m_running) break;
 
@@ -433,6 +398,7 @@ ScalingMode SceneManager::get_scaling_mode() const
 
 void SceneManager::set_key_repeat_enabled(bool enabled)
 {
+    m_key_repeat = enabled;
     m_window.setKeyRepeatEnabled(enabled);
 }
 
@@ -463,6 +429,100 @@ BloomEffect& SceneManager::get_bloom()
 ShaderManager& SceneManager::get_shaders()
 {
     return m_shaders;
+}
+
+unsigned SceneManager::largest_window_scale()
+{
+    /*
+     * The largest whole-number upscale that actually fits on this
+     * display, rather than always demanding WINDOW * SCALE.
+     *
+     * Asking for 1920x1080 on a 1920x1080 desktop does not fail,
+     * the window manager quietly shrinks the window to make room for
+     * the title bar, and everything downstream inherits a size nobody
+     * asked for. Better to ask for something that fits.
+     */
+    sf::VideoMode const desktop = sf::VideoMode::getDesktopMode();
+
+    // Leave room for the title bar, taskbar and window borders.
+    unsigned const usable_w = desktop.size.x;
+    unsigned const usable_h = (desktop.size.y > 120u) ? desktop.size.y - 120u
+                                                      : desktop.size.y;
+
+    unsigned scale = std::max(SCALE, usable_w / WINDOW_WIDTH + 1u);
+    while(scale > 1u &&
+          (WINDOW_WIDTH * scale > usable_w || WINDOW_HEIGHT * scale > usable_h))
+    {
+        --scale;
+    }
+    return scale;
+}
+
+void SceneManager::create_window(bool fullscreen, unsigned scale)
+{
+    unsigned const largest = largest_window_scale();
+    if(scale == 0u) scale = std::min(SCALE, largest);
+    scale = std::clamp(scale, 1u, largest);
+
+    // Fullscreen takes the desktop as it is: no mode switch, so nothing
+    // flickers and the other windows don't get rearranged behind it.
+    sf::Vector2u const size = fullscreen ? sf::VideoMode::getDesktopMode().size
+                                         : sf::Vector2u{WINDOW_WIDTH * scale, WINDOW_HEIGHT * scale};
+
+    m_window.create(sf::VideoMode(size), m_title,
+                    sf::Style::Default,
+                    fullscreen ? sf::State::Fullscreen : sf::State::Windowed);
+
+    m_fullscreen   = fullscreen;
+    m_window_scale = scale;
+
+    m_window.setVerticalSyncEnabled(true);
+
+    // Held keys should not machine-gun KeyPressed events at the OS
+    // repeat rate, anything that accumulates per press runs away.
+    m_window.setKeyRepeatEnabled(m_key_repeat);
+
+    if(m_icon.getSize().x > 0) m_window.setIcon(m_icon);
+}
+
+void SceneManager::set_window_mode(bool fullscreen, unsigned scale)
+{
+    // Not now: this is usually called from inside an event handler, in the
+    // middle of draining the old window's queue. run() applies it between
+    // frames, or it happens here if the loop isn't running yet.
+    m_mode_pending = true;
+    m_pending_fullscreen = fullscreen;
+    m_pending_scale = scale;
+    if(!m_running) apply_window_mode();
+}
+
+void SceneManager::apply_window_mode()
+{
+    if(!m_mode_pending) return;
+    m_mode_pending = false;
+
+    unsigned const scale = m_pending_scale == 0u ? std::min(SCALE, largest_window_scale())
+                                                 : std::min(m_pending_scale, largest_window_scale());
+    if(m_pending_fullscreen == m_fullscreen && (m_fullscreen || scale == m_window_scale)) return;
+
+    create_window(m_pending_fullscreen, m_pending_scale);
+    update_presentation();
+}
+
+bool SceneManager::is_fullscreen() const
+{
+    return m_fullscreen;
+}
+
+unsigned SceneManager::get_window_scale() const
+{
+    return m_window_scale;
+}
+
+void SceneManager::set_icon(const sf::Image& image)
+{
+    m_icon = image;
+    if(m_icon.getSize().x > 0) m_window.setIcon(m_icon);
 }
 
 sf::RenderWindow& SceneManager::get_window()

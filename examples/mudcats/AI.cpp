@@ -50,10 +50,9 @@ namespace
 
 bool Battle::fighting_started() const
 {
-    if(m_level == LevelId::TRENCHES) return m_stage >= Stage::ASSAULT && m_stage <= Stage::COUNTER;
-    if(m_level == LevelId::RAID) return m_alarm && m_stage >= Stage::RAID_CREEP && m_stage <= Stage::COUNTER;
-    if(m_level == LevelId::HILL) return m_stage == Stage::HILL_WAVE || (m_stage == Stage::HILL_LULL && m_wave > 0);
-    return (m_stage >= Stage::CONTACT && m_stage <= Stage::MILL) || m_stage == Stage::COUNTER;
+    if(m_level == LevelId::CHARGE) return m_stage >= Stage::CHARGE_WALK && m_stage <= Stage::CHARGE_RUN;
+    if(m_level == LevelId::TOWN) return (m_stage >= Stage::TOWN_STREET && m_stage <= Stage::TOWN_SQUARE) || m_stage == Stage::COUNTER;
+    return m_alarm && ((m_stage >= Stage::FOREST_AMBUSH && m_stage <= Stage::FOREST_PUSH) || m_stage == Stage::COUNTER);
 }
 
 int Battle::player_section() const
@@ -76,8 +75,15 @@ float Battle::lit(sf::Vector2f p) const
 
 sf::Vector2f Battle::objective_point() const
 {
-    if(m_level == LevelId::HILL) return m_map.crest;
-    return m_level == LevelId::TRENCHES ? sf::Vector2f{2320.0f, 380.0f} : sf::Vector2f{1815.0f, 482.0f};
+    if(m_level == LevelId::CHARGE) return {410.0f, 550.0f};
+    if(m_level == LevelId::TOWN)
+    {
+        // The next block to take, or to hold.
+        if(m_stage <= Stage::TOWN_STREET) return {720.0f, 500.0f};
+        if(m_stage == Stage::TOWN_CROSS) return {1400.0f, 500.0f};
+        return {2140.0f, 500.0f};
+    }
+    return forest_objective();
 }
 
 bool Battle::through_smoke(sf::Vector2f a, sf::Vector2f b) const
@@ -94,28 +100,16 @@ bool Battle::sight(sf::Vector2f a, sf::Vector2f b) const
 
 float Battle::vision_range() const
 {
-    if(m_level == LevelId::TRENCHES) return 420.0f;             // rain
-    if(m_level == LevelId::RAID) return m_alarm ? 150.0f : 95.0f;   // the dark, and men not yet looking
-    if(m_level == LevelId::HILL) return 360.0f - 210.0f * m_night;  // the afternoon going
-    return 170.0f + 300.0f * (1.0f - m_mist);                   // the mist lifts
+    if(m_level == LevelId::CHARGE) return 470.0f;                   // a grey morning, but open country
+    if(m_level == LevelId::TOWN) return 320.0f;                     // dusk, and smoke from the fires
+    return 280.0f;                                              // the forest: trunks and undergrowth everywhere
 }
 
 bool Battle::can_spot(const Soldier& viewer, const Soldier& target, float d) const
 {
     float range = vision_range() * (target.revealed > 0.0f ? 1.35f : 1.0f);
-    // From higher up you see further, and a man below you has less to hide behind.
-    if(m_level == LevelId::HILL) range *= std::clamp(1.0f + 0.35f * (m_map.height(viewer.pos) - m_map.height(target.pos)), 0.88f, 1.2f);
-    if(m_level == LevelId::RAID || (m_level == LevelId::HILL && m_night > 0.25f))
-    {
-        // At night what matters is light: a man under a flare, or behind
-        // his own muzzle flash, can be seen from a long way off.
-        float const light = std::max(lit(target.pos), target.revealed > 0.0f ? 0.8f : 0.0f);
-        // On the hill the dark comes on slowly, and the slope is long: less in it.
-        range *= 1.0f + (m_level == LevelId::HILL ? 1.0f * std::min(1.0f, m_night * 1.4f) : 1.8f) * light;
-        // Men keeping low in the dark are hard to make out; stormtroopers,
-        // who are trained to it, harder still.
-        if(!m_alarm && target.stance != Stance::STAND) range *= target.role == Role::STORMTROOPER ? 0.6f : 0.75f;
-    }
+    // Before an ambush is sprung, men lying still in the undergrowth are very hard to see.
+    if(!m_alarm && target.team == Team::RECHIVII && target.stance != Stance::STAND) range *= target.stance == Stance::PRONE ? 0.17f : 0.23f;
     if(d > range) return false;
     // A sniper lying still is a heap of rag and grass.
     if(target.role == Role::SNIPER && target.stance == Stance::PRONE && target.revealed <= 0.0f && d > 90.0f) return false;
@@ -150,7 +144,8 @@ float Battle::spread_of(const Soldier& s) const
     spread *= 1.0f + 2.2f * s.suppression + 1.5f * s.shock;
     if(s.is_player && m_aiming) spread *= s.gun == Gun::SNIPER ? 0.25f : 0.45f;
     if(s.lost & (ARM_L | ARM_R)) spread *= 2.0f;
-    if(s.team == Team::RECHIVII) spread *= enemy_accuracy();    // defenders shooting at men who keep moving
+    if(m_level == LevelId::FOREST) spread *= 2.6f;              // through the trees: branches, ferns, half a man to aim at
+    if(s.team != ours()) spread *= enemy_accuracy();            // the difficulty: how well the other side shoots
     return spread + s.kick;
 }
 
@@ -235,7 +230,7 @@ void Battle::section_goal(Soldier& s)
         if(!lead || lead->id == s.id) lead = player();
     }
     // "On me!" from you means you.
-    if(player_leads()) lead = player();
+    if(player_leads() || (player_commands_section() && s.section == player()->section)) lead = player();
     if(!lead || lead->id == s.id || !lead->alive()) return;
 
     // A loose file behind him.
@@ -379,7 +374,8 @@ void Battle::think(Soldier& s, float dt)
     s.think = Random::real(0.2f, 0.32f);
 
     // --- targets ----------------------------------------------------------------
-    int const target = find_target(s);
+    // Waiting in ambush, nobody picks a target: they wait for the signal.
+    int const target = (!m_alarm && s.team == Team::RECHIVII) ? -1 : find_target(s);
     if(target != s.target)
     {
         if(target >= 0 && s.target < 0)
@@ -398,10 +394,11 @@ void Battle::think(Soldier& s, float dt)
         s.threat = m_soldiers[static_cast<std::size_t>(target)].pos;
         s.threat_age = 0.0f;
     }
-    if(target >= 0 && !m_alarm && s.team == Team::RECHIVII)
+    // One of the escort sees them first: the ambush is sprung early.
+    if(target >= 0 && !m_alarm && s.team == Team::MONTERAN)
     {
-        bark(s, "Tam! Tam! Trevoga!", true);
-        raise_alarm("A sentry saw us!");
+        bark(s, "In the trees! Ambush! Ambush!", true);
+        raise_alarm("One of the escort saw them in the trees");
     }
 
     // --- grenades landing nearby: get away from them --------------------------------
@@ -436,7 +433,8 @@ void Battle::think(Soldier& s, float dt)
         s.path.clear();
         return;
     }
-    if(s.team == Team::RECHIVII && s.morale <= 0.0f)
+    // In Kalvo a Monteran only runs when the whole attack does.
+    if((s.team == Team::RECHIVII || m_level == LevelId::CHARGE || (m_level == LevelId::TOWN && m_town_broken)) && s.morale <= 0.0f)
     {
         bool const homeward = s.home.x != 0.0f || s.home.y != 0.0f;
         s.goal = homeward ? s.home : sf::Vector2f{m_map.size.x - 4.0f, std::clamp(s.pos.y, 150.0f, m_map.size.y - 150.0f)};
@@ -458,8 +456,8 @@ void Battle::think(Soldier& s, float dt)
     }
 
     // --- wire in the way: cut it ------------------------------------------------------------------
-    if(s.cutting > 0.0f || s.digging > 0.0f) return;
-    if(s.team == Team::MONTERAN && s.role == Role::SAPPER && !(m_level == LevelId::RAID && m_stage == Stage::RAID_CREEP))
+    if(s.cutting > 0.0f) return;
+    if(s.team == Team::MONTERAN && s.role == Role::SAPPER)
     {
         sf::Vector2f pt;
         bool const ahead = s.goal.x > s.pos.x + 20.0f;
@@ -518,6 +516,13 @@ void Battle::think(Soldier& s, float dt)
             }
     }
 
+    // --- the charge: the lines go where they're told -------------------------------------------
+    if(m_level == LevelId::CHARGE && s.team == Team::RECHIVII && s.line >= 0 && s.role != Role::MEDIC)
+    {
+        charge_think(s);
+        return;
+    }
+
     // --- where to be --------------------------------------------------------------------------
     if(s.role == Role::MEDIC)
     {
@@ -538,9 +543,10 @@ void Battle::think(Soldier& s, float dt)
 
     if(s.team == Team::MONTERAN)
     {
+        if(m_level == LevelId::FOREST && m_stage == Stage::FOREST_MARCH) return;    // the march keeps his place for him
         if(s.order == Order::FOLLOW) section_goal(s);
         // Back to where he was put, once he has been to the dump or to a mate.
-        else if(m_level == LevelId::HILL && s.has_post && length(s.goal - s.post) > 1.0f && s.want_pickup < 0)
+        else if(m_level == LevelId::CHARGE && s.has_post && length(s.goal - s.post) > 1.0f && s.want_pickup < 0)
         {
             s.goal = s.post;
             s.path.clear();
@@ -550,6 +556,8 @@ void Battle::think(Soldier& s, float dt)
     }
 
     // --- Rechivii ---------------------------------------------------------------------------------
+    // The assault group, once it's been sent: straight for the wagons.
+    if(s.raider && s.active && m_level == LevelId::FOREST && m_stage == Stage::FOREST_PUSH && s.morale > 0.0f && raider_think(s)) return;
     // A sniper who has given himself away moves: shoot, and somewhere else.
     if(s.has_post && s.role == Role::SNIPER && s.revealed > 3.0f && s.revealed < 3.4f && Random::chance(0.5f))
     {
@@ -560,23 +568,6 @@ void Battle::think(Soldier& s, float dt)
     {
         if(length(s.goal - s.post) > 1.0f)
         {
-            s.goal = s.post;
-            s.path.clear();
-        }
-        return;
-    }
-
-    // The scout creeps up to the wire, then pulls back to his trench.
-    if(!s.reserve && m_level == LevelId::TRENCHES)
-    {
-        if(m_stage_time < 16.0f && s.suppression < 0.5f && m_stage == Stage::SCOUT)
-        {
-            if(length(s.goal - sf::Vector2f{1180, 505}) > 1.0f) { s.goal = {1180, 505}; s.path.clear(); }
-        }
-        else
-        {
-            s.has_post = true;
-            s.post = {1712, 470};
             s.goal = s.post;
             s.path.clear();
         }
@@ -623,9 +614,11 @@ void Battle::steer(Soldier& s, float dt)
     float const dist = length(to_goal);
 
     bool const charging = s.charge_until > m_time;
-    bool const pinned = s.suppression > 0.75f && s.burning <= 0.0f && s.morale > 0.0f && !charging;
+    // A man walking in the line keeps walking unless he's truly terrified.
+    bool const in_line = m_level == LevelId::CHARGE && s.line >= 0 && m_stage == Stage::CHARGE_WALK && s.morale > 0.0f;
+    bool const pinned = s.suppression > (in_line ? 0.93f : 0.75f) && s.burning <= 0.0f && s.morale > 0.0f && !charging;
     bool const busy = s.treating >= 0 || (s.has_mg() && (s.deployed || s.deploying > 0.0f));
-    bool const waiting = m_time < s.hold_until || s.cutting > 0.0f || s.digging > 0.0f;
+    bool const waiting = m_time < s.hold_until || s.cutting > 0.0f;
     if(dist < 3.0f || pinned || busy || waiting || s.sitting || s.surrendered || s.lunge > 0.0f)
     {
         if(s.lunge <= 0.0f) s.vel *= std::exp(-dt * 10.0f);
@@ -660,13 +653,8 @@ void Battle::steer(Soldier& s, float dt)
     if(m_map.in_water(s.pos)) speed *= 0.5f;
     if(s.role == Role::MEDIC && s.goal != s.post) speed = std::max(speed, 55.0f);
     if(s.dragging >= 0) speed = 20.0f;
-    if(!fighting_started() && m_level == LevelId::FIELDS && s.team == Team::MONTERAN) speed = std::min(speed, 30.0f);    // on the march
-    if(m_level == LevelId::HILL)
-    {
-        // Climbing is slow work.
-        float const climb = m_map.height(s.pos + unit(next - s.pos) * 6.0f) - m_map.height(s.pos);
-        if(climb > 0.0f) speed *= 1.0f - std::min(0.22f, climb * 18.0f);
-    }
+    if(!m_alarm && m_level == LevelId::FOREST && s.team == Team::MONTERAN) speed = std::min(speed, 26.0f);    // on the march, with the wagons
+    if(in_line) speed = 30.0f;                    // the walk: the line keeps together
 
     sf::Vector2f const want = unit(next - s.pos) * std::min(speed, length(next - s.pos) * 6.0f);
     s.vel += (want - s.vel) * std::min(1.0f, dt * 8.0f);
@@ -703,19 +691,17 @@ void Battle::act(Soldier& s, float dt)
         bool const covered = s.cover_index >= 0 || m_map.in_trench(s.pos) || m_map.in_crater(s.pos) || m_map.under_roof(s.pos);
         want = (s.suppression > 0.4f || !covered) ? Stance::PRONE : Stance::CROUCH;
     }
-    // Up the hill under fire, they keep low.
-    if(m_level == LevelId::HILL && s.team == Team::RECHIVII && s.wave >= 0 && moving && want == Stance::STAND && !charging && s.morale > 0.0f
-       && length(s.pos - m_map.crest) < 470.0f)
-        want = Stance::CROUCH;
-    // Creeping up in the dark: low when moving, flat when not.
-    if(m_level == LevelId::RAID && !m_alarm && s.team == Team::MONTERAN) want = moving ? Stance::CROUCH : Stance::PRONE;
+    // In the line, on their feet: walking, then running.
+    if(m_level == LevelId::CHARGE && s.team == Team::RECHIVII && s.line >= 0 && s.morale > 0.0f && moving
+       && (m_stage == Stage::CHARGE_WALK || m_stage == Stage::CHARGE_RUN) && s.suppression < 0.93f)
+        want = Stance::STAND;
+    // Waiting in ambush: flat in the undergrowth, the guns just up on their elbows.
+    if(m_level == LevelId::FOREST && !m_alarm && s.team == Team::RECHIVII) want = s.has_mg() ? Stance::CROUCH : Stance::PRONE;
+    // On the march, before it starts: on their feet, walking with the wagons.
+    if(m_level == LevelId::FOREST && !m_alarm && s.team == Team::MONTERAN) want = Stance::STAND;
     if(s.cutting > 0.0f) want = Stance::CROUCH;
-    if(s.digging > 0.0f) want = s.dig_hole ? Stance::PRONE : Stance::CROUCH;
     // A sniper lies up; so do a mortar's crew, by the tube.
     if(s.team == Team::RECHIVII && s.has_post && !moving && s.morale > 0.0f && (s.role == Role::SNIPER || s.serving >= 0)) want = s.serving >= 0 ? Stance::CROUCH : Stance::PRONE;
-    if(m_level == LevelId::TRENCHES && !s.has_post && !s.reserve && s.team == Team::RECHIVII && m_stage == Stage::SCOUT && s.suppression < 0.5f) want = Stance::PRONE;
-    // The patrol in the wood waits lying in the trees.
-    if(m_level == LevelId::FIELDS && s.team == Team::RECHIVII && !s.active) want = Stance::PRONE;
     if(want != s.stance && s.stance_change <= 0.0f)
     {
         if(want == Stance::PRONE) s.body_angle = moving ? angle_of(s.goal - s.pos) : s.aim;
@@ -739,7 +725,6 @@ void Battle::act(Soldier& s, float dt)
         s.deploy_dir = s.target >= 0 ? angle_of(m_soldiers[static_cast<std::size_t>(s.target)].pos - s.pos)
                      : (s.order == Order::SUPPRESS && s.team == Team::MONTERAN ? angle_of(s.suppress_at - s.pos)
                      : (s.threat_age < 8.0f ? angle_of(s.threat - s.pos) : (s.team == Team::MONTERAN ? 0.0f : 3.14159f)));
-        if(m_level == LevelId::TRENCHES && s.has_post && s.post.x > 1990 && s.post.x < 2070) s.deploy_dir = 3.14159f;   // the bunker gun covers its slit
         s.body_angle = s.deploy_dir;
     }
 
@@ -808,12 +793,15 @@ void Battle::act(Soldier& s, float dt)
         bool const want_up = (has_aim && (s.target >= 0 || suppressing)) || s.deployed || s.deploying > 0.0f || (s.threat_age < 2.5f && !moving);
         s.ready += ((want_up ? 1.0f : 0.0f) - s.ready) * std::min(1.0f, dt * 6.0f);
     }
-    if(!has_aim || s.reaction > 0.0f || s.reloading > 0.0f || s.treating >= 0 || s.sitting || s.cutting > 0.0f || s.digging > 0.0f) return;
+    if(!has_aim || s.reaction > 0.0f || s.reloading > 0.0f || s.treating >= 0 || s.sitting || s.cutting > 0.0f) return;
+    // Bayonets fixed: the riflemen in the charge hold their fire until they're on us.
+    if(m_level == LevelId::CHARGE && s.team == Team::RECHIVII && s.line >= 0 && s.morale > 0.0f
+       && (s.gun == Gun::RIFLE || s.gun == Gun::SNIPER) && (m_stage == Stage::CHARGE_WALK || length(aim_at - s.pos) > 60.0f)) return;
     // A mortar's crew serves the tube, and only reaches for a rifle if we get close.
     if(s.serving >= 0 && length(aim_at - s.pos) > 140.0f) return;
     if(s.ready < 0.75f) return;
-    // On the raid, nobody fires until they know we're there.
-    if(m_level == LevelId::RAID && !m_alarm && s.team == Team::MONTERAN) return;
+    // In the forest, nobody fires before the ambush is sprung.
+    if(m_level == LevelId::FOREST && !m_alarm) return;
     if(s.burning > 0.0f || s.morale <= 0.0f) return;
     if(!s.can_shoot() && !s.has_flamer()) return;
     if(s.target < 0 && !suppressing) return;
@@ -843,10 +831,10 @@ void Battle::act(Soldier& s, float dt)
         {
             if(s.cooldown > 0.0f || s.heat > 0.45f) return;
             s.burst_left = Random::integer(7, 14);
-            float const night = m_level == LevelId::RAID && s.target >= 0 ? 1.8f - 0.8f * lit(m_soldiers[static_cast<std::size_t>(s.target)].pos) : 1.0f;
+            float const night = 1.0f;
             // A machine gun on its bipod is a steady thing: the first rounds
             // of a burst are a little off, and the gunner walks the rest on.
-            s.sway = Random::normal(0.0f, (0.02f + 0.04f * s.suppression + d / 14000.0f) * (s.team == Team::RECHIVII ? enemy_accuracy() : 1.0f) * night);
+            s.sway = Random::normal(0.0f, (0.02f + 0.04f * s.suppression + d / 14000.0f) * (s.team != ours() ? enemy_accuracy() : 1.0f) * night);
         }
         int const before = s.shots_fired;
         s.firing = true;
@@ -893,11 +881,10 @@ void Battle::act(Soldier& s, float dt)
         const Soldier* t = s.target >= 0 ? &m_soldiers[static_cast<std::size_t>(s.target)] : nullptr;
         float const low = t && t->stance != Stance::STAND ? 0.02f : 0.0f;
         float const sniper = s.gun == Gun::SNIPER ? 0.3f : 1.0f;
-        // In the dark, you shoot at a shape, unless a flare is over him.
-        float const night = m_level == LevelId::RAID && t ? 1.7f - 0.7f * lit(t->pos) : 1.0f;
-        // Men just shaken awake shoot wild for the first few seconds.
-        float const groggy = m_level == LevelId::RAID && s.team == Team::RECHIVII && m_alarm
-                           ? 1.0f + 0.8f * std::max(0.0f, 1.0f - (m_time - m_alarm_at) / 20.0f) : 1.0f;
+        float const night = 1.0f;
+        // Men caught in an ambush shoot wild for the first few seconds.
+        float const groggy = m_level == LevelId::FOREST && s.team == Team::MONTERAN && m_alarm
+                           ? 1.0f + 0.7f * std::max(0.0f, 1.0f - (m_time - m_alarm_at) / 12.0f) : 1.0f;
         s.aim += Random::normal(0.0f, (0.03f + 0.07f * s.suppression + d / 5000.0f + mover + low) * sniper * night * groggy);
         s.firing = true;
         fire(s, dt);

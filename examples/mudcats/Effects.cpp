@@ -17,7 +17,6 @@
  *   glow     big soft halos: the bloom of a muzzle blast, a tracer's
  *            core, a flare hanging over the field
  *   trails   the faint glow behind tracers
- *   rain     on the Ochre line, it never stops
  *   screen   smoke screens: big, slow and thick enough to hide a section
  *
  * The callers in Combat.cpp only say where: these functions say how.
@@ -103,7 +102,7 @@ void Battle::setup_effects()
     {
         sf::Vector2f const at = p.get_position();
         if(m_map.in_water(at)) return;
-        sf::Color const a = m_level == LevelId::FIELDS ? MEADOW_DK : MUD_PALE;
+        sf::Color const a = m_level != LevelId::TOWN ? MEADOW_DK : MUD_PALE;
         draw::rect(m_stamps, std::floor(at.x), std::floor(at.y), std::round(p.get_size()), 1, Random::chance(0.5f) ? a : MUD_DARK);
     });
 }
@@ -184,7 +183,7 @@ void Battle::sparks(sf::Vector2f at, int count, float speed, sf::Color colour, f
 
 void Battle::debris(sf::Vector2f at, int count, float power)
 {
-    sf::Color const earth = m_level == LevelId::FIELDS ? lerp(MEADOW_DK, MUD_PALE, 0.5f) : MUD_LIGHT;
+    sf::Color const earth = m_level != LevelId::TOWN ? lerp(MEADOW_DK, MUD_PALE, 0.5f) : MUD_LIGHT;
     for(int i = 0; i < count; ++i)
     {
         float const size = Random::chance(0.3f) ? 2.0f : 1.0f;
@@ -288,29 +287,6 @@ void Battle::update_effects(float dt)
             halo(*m_glow_fx, p, 0.05f, core, f.illum ? 0.35f : 0.3f, f.illum ? 22.0f : 16.0f, f.illum ? 26.0f : 20.0f);
             if(Random::chance(0.4f))
                 m_fire_fx->emit(p, {Random::real(-6, 6), Random::real(8, 20)}, seconds(0.5f), FIRE_WHITE, with_alpha(core, 0.0f), 1.0f, 1.0f);
-        }
-    }
-
-    // --- rain on the Ochre line --------------------------------------------------------------
-    if(m_level == LevelId::TRENCHES)
-    {
-        float const per_second = 900.0f;
-        int n = static_cast<int>(per_second * dt);
-        if(Random::chance(per_second * dt - static_cast<float>(n))) ++n;
-        sf::Vector2f const wind{-35.0f, 300.0f};
-        for(int i = 0; i < n; ++i)
-        {
-            sf::Vector2f const at{Random::real(seen.position.x, seen.position.x + seen.size.x),
-                                  Random::real(seen.position.y - 20.0f, seen.position.y + seen.size.y)};
-            float const life = Random::real(0.05f, 0.12f);
-            m_rain_fx->emit(at, wind * Random::real(0.9f, 1.1f), seconds(life), sf::Color(150, 160, 175, 90));
-            // Where it lands, a little splash.
-            if(Random::chance(0.12f))
-            {
-                sf::Vector2f const down = at + wind * life;
-                bool const pool = m_map.in_water(down) || m_map.in_crater(down) || m_map.in_trench(down);
-                m_smoke_fx->emit(down, {}, seconds(0.15f), sf::Color(170, 180, 190, pool ? 110 : 60), 1.0f, pool ? 3.0f : 1.0f);
-            }
         }
     }
 

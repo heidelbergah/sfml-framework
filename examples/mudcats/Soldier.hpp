@@ -81,6 +81,7 @@ struct Soldier
     Stance stance{Stance::STAND};
     Life   life{Life::OK};
     float  hp{100.0f};
+    float  voice{1.0f};             // how high or low he sounds: under 1 a deeper man
     float  bleeding{0.0f};          // hp per second
     float  bleed_out{0.0f};         // seconds left once down
     std::uint8_t lost{0};           // Limb bits
@@ -118,11 +119,6 @@ struct Soldier
     int   missions{0};              // fire missions a radioman can still call
     float cutting{0.0f};            // seconds left cutting wire
     sf::Vector2f cut_at;
-    int   bags{0};                  // sandbags he can still fill (the hill)
-    float digging{0.0f};            // seconds left digging in
-    float dig_total{1.0f};
-    sf::FloatRect dig_rect;         // where the bags go, or the hole
-    bool  dig_hole{false};
     float lunge{0.0f};              // bayonet thrust in progress
     float bayonet_cd{0.0f};
     sf::Vector2f lunge_dir;
@@ -168,9 +164,14 @@ struct Soldier
     float        hold_until{0.0f};  // waits for the men ahead of him before moving off
     bool         alerted{true};     // false: asleep in a dugout, or a sentry who hasn't noticed yet
     sf::Vector2f home;              // where a man who breaks runs to (zero: off to the east)
-    int          wave{-1};          // the hill: which wave he came up with
     int          serving{-1};       // crewing a mortar: its index
     bool         support{false};    // the hill: a gun or a sniper hanging back, not in the rush
+    int          line{-1};          // the charge: which line he steps off with (0 first, 1 second)
+    float        file_y{0.0f};      // the charge: his place along the line
+    bool         colours{false};    // the charge: he carries the regiment's colours
+    bool         raider{false};     // the forest: one of those who go in at the wagons
+    float        march_at{0.0f};    // the forest: his place in the column, ahead of the lead wagon or behind
+    float        march_side{0.0f};  // and which side of the road he walks
 
     // --- record --------------------------------------------------------------------
     int         kills{0};
@@ -195,14 +196,6 @@ struct Soldier
  */
 void draw_soldier(sf::VertexArray& va, const Soldier& s, float time);
 void draw_shadow(sf::VertexArray& va, const Soldier& s);
-
-/*
- * The same man from the side, for the briefing: standing at ease with his
- * weapon held low, or brought up to the shoulder as `raise` goes to 1.
- * `breath` is time, for the rise and fall of his chest. Feet at (0, 0),
- * one unit a pixel; he is about 30 tall.
- */
-void draw_profile(sf::VertexArray& va, Role role, Team team, float breath, float raise);
 
 [[nodiscard]] sf::Color uniform_colour(Team team);
 

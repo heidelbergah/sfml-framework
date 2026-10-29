@@ -54,11 +54,22 @@ inline const sf::Color STREAM_LT  {0x48, 0x64, 0x6A};
 inline const sf::Color MIST       {0xB4, 0xB8, 0xB4};
 
 // Monterans: blue and white, a little gold for rank
-inline const sf::Color MON_BLUE   {0x3A, 0x5A, 0x92};
+inline const sf::Color MON_BLUE   {0x3A, 0x5A, 0x92};     // the interface's blue
 inline const sf::Color MON_BLUE_DK{0x27, 0x3E, 0x68};
 inline const sf::Color MON_WHITE  {0xD8, 0xD8, 0xD0};
 inline const sf::Color MON_GOLD   {0xD4, 0xA8, 0x3A};
-inline const sf::Color MON_HELMET {0x4C, 0x6A, 0x9C};
+// The uniform itself: a dusty horizon-blue tunic, a darker steel helmet,
+// white scarf, straps and trim, black trousers and boots.
+inline const sf::Color MON_TUNIC   {0x5E, 0x74, 0x93};
+inline const sf::Color MON_TUNIC_DK{0x41, 0x52, 0x6B};
+inline const sf::Color MON_HELMET  {0x4A, 0x58, 0x68};
+inline const sf::Color MON_CLOTH   {0xEC, 0xEB, 0xE4};
+inline const sf::Color MON_TROUSERS{0x1C, 0x1B, 0x21};
+inline const sf::Color MON_BOOT    {0x10, 0x0F, 0x12};
+// The lieutenant: a peaked cap with a black peak, and his rank on the shoulders.
+inline const sf::Color MON_CAP     {0x41, 0x52, 0x6B};
+inline const sf::Color MON_CAP_BAND{0x41, 0x52, 0x6B};
+inline const sf::Color MON_RANK    {0xA0, 0x8B, 0x5C};      // dull brass
 
 // Rechivii: tan, with field-grey helmets
 inline const sf::Color RCH_TAN    {0xA8, 0x8E, 0x62};

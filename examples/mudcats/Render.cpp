@@ -9,6 +9,10 @@
  * stands, is darkened, and enemies standing in it are not drawn at all.
  * Neither are enemies he can't pick out: lying in grass, under the trees,
  * lost in the mist or in smoke. Their muzzle flashes still give them away.
+ * Roofs hide what's under them until he's close; then they open up and
+ * the same line of sight decides what he sees inside, through doors and
+ * windows. Men he can hear and not see, a shot or a shout or boots close
+ * by, leave a faint ring where the sound came from.
  *
  * Draw order, bottom to top: the ground (with everything stamped into
  * it), weapons lying about, men, blood and earth in the air, the grass
@@ -19,12 +23,17 @@
 #include "Battle.hpp"
 
 #include "Draw.hpp"
+#include "Icons.hpp"
 #include "Palette.hpp"
 #include "Sound.hpp"
 
+#include "../../include/core/Random.hpp"
+
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
 namespace mudcats
 {
@@ -64,14 +73,6 @@ namespace
         t.draw(r);
     }
 
-    // A small picture made of pixels, drawn at `scale`.
-    void glyph(sf::VertexArray& va, const char* const* rows, int n, sf::Vector2f at, float scale, sf::Color c)
-    {
-        for(int y = 0; y < n; ++y)
-            for(int x = 0; rows[y][x]; ++x)
-                if(rows[y][x] == '#')
-                    draw::rect(va, at.x + static_cast<float>(x) * scale, at.y + static_cast<float>(y) * scale, scale, scale, c);
-    }
 
     // The stance icon: how you would look from the side.
     const char* const STAND_ICON[] = {
@@ -122,6 +123,7 @@ namespace
         "#########",
         "##.###.##",
     };
+
 }
 
 // ---------------------------------------------------------------- what you can see
@@ -135,10 +137,12 @@ void Battle::compute_visibility()
         auto& v = m_visible[static_cast<std::size_t>(s.id)];
         if(s.team == me.team) { v = 1; continue; }
         if(s.life != Life::OK && s.life != Life::DOWNED) continue;
-        if(!s.active && s.team == Team::RECHIVII && m_level == LevelId::FIELDS && length(s.pos - me.pos) > 50.0f) continue;
+        // Under a roof that's still shut, from where you are, nobody can be seen. Under one that has
+        // opened up, it's line of sight like anywhere else: through the door, through a window.
         bool const roofed = m_map.under_roof(s.pos);
-        if(s.flash > 0.0f && !roofed && length(s.pos - me.pos) < vision_range() * 1.5f) { v = 1; continue; }
-        if(roofed && !m_map.under_roof(me.pos) && length(s.pos - me.pos) > 30.0f) continue;
+        bool const shut = roofed && m_map.roof_open_at(s.pos, me.pos) < 0.5f;
+        if(shut && length(s.pos - me.pos) > 30.0f) { listen(s, length(s.pos - me.pos)); continue; }
+        if(s.flash > 0.0f && length(s.pos - me.pos) < vision_range() * 1.5f && (!roofed || m_map.line_of_sight(me.pos, s.pos))) { v = 1; continue; }
         float const d = length(s.pos - me.pos);
         if(d < 380.0f && can_spot(me, s, d)) { v = 1; continue; }
         // What a comrade nearby can see, you are told about.
@@ -148,6 +152,42 @@ void Battle::compute_visibility()
             float const od = length(o.pos - s.pos);
             if(od < 160.0f && can_spot(o, s, od)) { v = 1; break; }
         }
+        if(!v) listen(s, d);
+    }
+    // Old sounds fade; a man you can see now needs no mark.
+    std::erase_if(m_heard, [&](const Heard& h)
+    {
+        auto const i = static_cast<std::size_t>(h.id);
+        return h.until < m_real || (i < m_visible.size() && m_visible[i]);
+    });
+}
+
+void Battle::listen(const Soldier& s, float d)
+{
+    // What carries: a shot a long way, a shout less, a man moving only close by,
+    // and a man running on boards or through a doorway further than one creeping.
+    float reach = 0.0f, rough = 0.0f;
+    if(s.flash > 0.0f) { reach = 320.0f; rough = 8.0f; }
+    else if(s.bark_time > 0.0f) { reach = 240.0f; rough = 14.0f; }
+    else
+    {
+        float const speed = length(s.vel);
+        if(speed > 34.0f) { reach = m_map.under_roof(s.pos) ? 150.0f : 110.0f; rough = 12.0f; }
+        else if(speed > 12.0f && s.stance != Stance::PRONE) { reach = 70.0f; rough = 12.0f; }
+    }
+    if(reach <= 0.0f || d > reach || !me().alive()) return;
+    auto it = std::find_if(m_heard.begin(), m_heard.end(), [&](const Heard& h) { return h.id == s.id; });
+    if(it == m_heard.end())
+    {
+        m_heard.push_back({s.id, s.pos + sf::Vector2f{Random::real(-rough, rough), Random::real(-rough, rough)}, m_real, m_real + 1.6f});
+        return;
+    }
+    // Heard again: the mark stays put a moment, then moves to where he is now, roughly.
+    it->until = m_real + 1.6f;
+    if(m_real - it->since > 0.8f)
+    {
+        it->pos = s.pos + sf::Vector2f{Random::real(-rough, rough), Random::real(-rough, rough)};
+        it->since = m_real;
     }
 }
 
@@ -194,7 +234,7 @@ void Battle::render(sf::RenderTarget& target)
     target.setView(target.getDefaultView());
     if(m_grade)
     {
-        float const mist = m_level == LevelId::FIELDS ? m_mist : 0.0f;
+        float const mist = m_level == LevelId::CHARGE ? 0.22f : (m_level == LevelId::FOREST ? 0.08f : 0.0f);   // the charge: a grey morning
         m_grade->setUniform("texture", sf::Shader::CurrentTexture);
         m_grade->setUniform("resolution", sf::Glsl::Vec2{FRAME_F.x, FRAME_F.y});
         m_grade->setUniform("time", m_real);
@@ -206,7 +246,7 @@ void Battle::render(sf::RenderTarget& target)
         m_grade->setUniform("mist", mist);
         m_grade->setUniform("eye", sf::Glsl::Vec2{eye.x, FRAME_F.y - eye.y});
         m_grade->setUniform("reach", vision_range());
-        m_grade->setUniform("rain", m_level == LevelId::TRENCHES ? 1.0f : 0.0f);
+        m_grade->setUniform("rain", 0.0f);
         target.draw(frame, sf::RenderStates(m_grade));
     }
     else target.draw(frame);
@@ -220,13 +260,7 @@ void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
     sf::VertexArray va(sf::PrimitiveType::Triangles);
     const Soldier& me = this->me();
 
-    // Bottles on the range.
-    for(const auto& b : m_map.bottles)
-        if(!b.broken)
-        {
-            draw::rect(va, b.pos.x - 1, b.pos.y - 3, 2, 4, lerp(GRASS, MON_WHITE, 0.3f));
-            draw::rect(va, b.pos.x - 1, b.pos.y - 4, 1, 1, MON_WHITE);
-        }
+    if(m_level == LevelId::FOREST) draw_wagons(va);
 
     // Weapons lying where men dropped them.
     for(const auto& d : m_dropped)
@@ -315,20 +349,39 @@ void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
             sf::Vector2f const p = s->pos + sf::Vector2f{0.0f, -8.0f};
             draw::rect(va, std::floor(p.x), std::floor(p.y), 1, s->leader ? 2.0f : 1.0f, with_alpha(MON_GOLD, s->leader ? 0.85f : 0.55f));
         }
-        else if(s->team == Team::MONTERAN && s->alive() && s->leader && player_leads())
+        else if(s->team == me.team && s->alive() && s->leader && player_leads())
         {
             // Corporals, when you are giving the orders.
             sf::Vector2f const p = s->pos + sf::Vector2f{0.0f, -8.0f};
             bool const picked = m_selected < 0 || m_selected == s->section;
             draw::rect(va, std::floor(p.x), std::floor(p.y), 1, 1, with_alpha(MON_WHITE, picked ? 0.8f : 0.3f));
         }
-        else if(s->team == Team::MONTERAN && s->life == Life::DOWNED && std::fmod(m_real, 1.0f) < 0.5f)
+        else if(s->team == me.team && s->life == Life::DOWNED && std::fmod(m_real, 1.0f) < 0.5f)
         {
             // A wounded man calling: a small red cross.
             sf::Vector2f const p = s->pos + sf::Vector2f{0.0f, -7.0f};
             draw::rect(va, std::floor(p.x) - 1, std::floor(p.y), 3, 1, ALERT);
             draw::rect(va, std::floor(p.x), std::floor(p.y) - 1, 1, 3, ALERT);
         }
+    }
+
+    // The regiment's colours, over the man carrying them: a pole and a red flag
+    // streaming back over his shoulder as he runs.
+    for(const Soldier* s : order)
+    {
+        if(!s->colours || !s->alive()) continue;
+        sf::Vector2f const base = s->pos + sf::Vector2f{1.0f, -2.0f};
+        sf::Vector2f const top = base + sf::Vector2f{0.0f, -15.0f};
+        draw::thick_line(va, base, top, 1.0f, WOOD);
+        float const flutter = std::sin(m_time * 9.0f + s->pos.y) * 1.2f;
+        float const back = s->vel.x < -5.0f ? 1.0f : (s->vel.x > 5.0f ? -1.0f : 1.0f);
+        for(int k = 0; k < 9; ++k)
+        {
+            float const kk = static_cast<float>(k);
+            float const wave = std::sin(m_time * 10.0f - kk * 0.8f) * 1.1f + flutter * kk / 9.0f;
+            draw::rect(va, std::floor(top.x + back * kk), std::floor(top.y + wave), 1, 6, k == 4 ? lerp(RCH_RED, PAPER, 0.5f) : RCH_RED);
+        }
+        draw::rect(va, std::floor(top.x) - 1, std::floor(top.y) - 1, 2, 1, MON_GOLD);
     }
 
     // Grenades and limbs in flight.
@@ -345,7 +398,7 @@ void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
     {
         sf::Vector2f const p = g.pos - sf::Vector2f{0.0f, g.height};
         sf::Vector2f const u = dir(g.angle);
-        sf::Color const coat = g.charred ? CHAR : (g.team == Team::MONTERAN ? MON_BLUE : RCH_TAN);
+        sf::Color const coat = g.charred ? CHAR : (g.team == Team::MONTERAN ? MON_TUNIC : RCH_TAN);
         switch(g.kind)
         {
             case 1: draw::thick_line(va, p - u * 2.0f, p + u * 2.0f, 1.6f, coat); draw::rect(va, std::floor(p.x - u.x * 2.5f), std::floor(p.y - u.y * 2.5f), 1, 1, BLOOD_BRIGHT); break;
@@ -468,10 +521,18 @@ void Battle::draw_shade(const sf::View& view)
     va.clear();
     for(const auto& w : m_map.walls) draw::rect(va, w.position.x, w.position.y, w.size.x, w.size.y, sf::Color::White);
     for(const auto& h : m_map.hedges) draw::rect(va, h.position.x, h.position.y, h.size.x, h.size.y, sf::Color::White);
-    // A roof you are not under is seen from above, whatever is behind its walls.
-    for(const auto& r : m_map.roofs)
-        if(!r.contains(eye)) draw::rect(va, r.position.x - 6, r.position.y - 6, r.size.x + 12, r.size.y + 12, sf::Color::White);
     m_shade.draw(va, sf::RenderStates(sf::BlendNone));
+    va.clear();
+    // A shut roof is seen from above, whatever is behind its walls; as it opens up close by,
+    // what's under it is as dark as your line of sight leaves it.
+    for(const auto& r : m_map.roofs)
+    {
+        float const shut = 1.0f - Map::roof_open(r, eye);
+        if(shut <= 0.0f) continue;
+        auto const g = static_cast<std::uint8_t>(std::round(255.0f * shut));
+        draw::rect(va, r.position.x - 6, r.position.y - 6, r.size.x + 12, r.size.y + 12, sf::Color(g, g, g));
+    }
+    m_shade.draw(va, sf::RenderStates(sf::BlendMax));
     m_shade.display();
 
     m_frame.setView(m_frame.getDefaultView());
@@ -535,40 +596,30 @@ void Battle::draw_markers(sf::RenderTarget& t)
     sf::Vector2f const origin = view.getCenter() - view.getSize() * 0.5f;
     auto to_screen = [&](sf::Vector2f p) { return (p - origin) * 2.0f; };
 
+    // Somebody heard and not seen: a ring that swells and fades where the sound came from.
+    for(const auto& h : m_heard)
+    {
+        sf::Vector2f const p = to_screen(h.pos);
+        if(p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
+        float const age = m_real - h.since;
+        float const fade = std::clamp((h.until - m_real) / 0.6f, 0.0f, 1.0f);
+        float const r = 6.0f + 8.0f * std::min(1.0f, age / 0.5f);
+        sf::CircleShape ring(r, 20);
+        ring.setOrigin({r, r});
+        ring.setPosition(p);
+        ring.setFillColor(sf::Color::Transparent);
+        ring.setOutlineThickness(2.0f);
+        ring.setOutlineColor(with_alpha(PAPER, 0.75f * fade * (1.0f - 0.5f * std::min(1.0f, age / 0.8f))));
+        t.draw(ring);
+        sf::RectangleShape dot({2.0f, 2.0f});
+        dot.setPosition(p - sf::Vector2f{1.0f, 1.0f});
+        dot.setFillColor(with_alpha(PAPER, 0.85f * fade));
+        t.draw(dot);
+    }
+
     // Where the objective is: the next point the platoon is making for.
     sf::Vector2f goal = objective_point();
-    if(m_level == LevelId::TRENCHES)
-    {
-        if(m_stage <= Stage::RANGE) goal = m_map.range_area.contains(me.pos) || m_bottles_left == 0 ? m_map.front_trench_area.getCenter() : m_map.range_area.getCenter();
-        else if(m_stage <= Stage::BARRAGE) goal = m_map.front_trench_area.getCenter();
-        else if(m_stage == Stage::ASSAULT) goal = m_map.enemy_trench_area.getCenter();
-        else if(m_stage == Stage::TRENCH) goal = m_map.bunker_area.getCenter();
-        else goal = m_map.farm_area.getCenter();
-    }
-    else if(m_level == LevelId::FIELDS)
-    {
-        if(m_stage <= Stage::CONTACT) goal = m_map.waypoints.front();
-        else if(m_stage == Stage::WOOD) goal = m_map.wood_area.getCenter();
-        else if(m_stage == Stage::STREAM) goal = m_map.bridge_area.getCenter();
-        else goal = m_map.mill_area.getCenter();
-    }
-    else
-    {
-        if(m_stage == Stage::RAID_CREEP)
-        {
-            // Your group's lane: the form-up point, the far side of the wire, their trench.
-            float band = 0.0f;
-            for(const auto& sec : m_sections) if(sec.id == me.section) band = sec.band;
-            int const wp = m_creep <= 1 ? 2 : (m_creep == 2 ? 3 : 4);
-            goal = m_map.waypoints[static_cast<std::size_t>(wp)] + sf::Vector2f{0.0f, band};
-        }
-        else if(m_stage == Stage::RAID_TRENCH) goal = m_map.enemy_trench_area.getCenter();
-        else if(m_stage == Stage::RAID_HAMLET) goal = m_map.farm_area.getCenter();
-        else if(m_stage == Stage::RAID_DUGOUT) goal = m_map.bunker_area.getCenter();
-        else goal = m_map.front_trench_area.getCenter();
-    }
-    if(m_level == LevelId::HILL) goal = m_map.crest;
-    bool const on_the_hill = m_level == LevelId::HILL && length(me.pos - m_map.crest) < 280.0f;
+    if(m_level == LevelId::CHARGE) goal = me.team == Team::MONTERAN ? sf::Vector2f{410.0f, me.pos.y} : sf::Vector2f{410.0f, me.file_y > 0.0f ? me.file_y : me.pos.y};
 
     // Wounded men of ours, at the edge of the screen when they are off it:
     // a medic needs to know where they are; anyone can drag them.
@@ -577,7 +628,7 @@ void Battle::draw_markers(sf::RenderTarget& t)
         sf::FloatRect const edge({30.0f, 60.0f}, {W - 60.0f, H - 170.0f});
         for(const auto& s : m_soldiers)
         {
-            if(s.team != Team::MONTERAN || s.life != Life::DOWNED || s.is_player) continue;
+            if(s.team != me.team || s.life != Life::DOWNED || s.is_player) continue;
             float const d = length(s.pos - me.pos);
             if(d > (me.role == Role::MEDIC ? 700.0f : 260.0f)) continue;
             sf::Vector2f p = to_screen(s.pos);
@@ -628,8 +679,7 @@ void Battle::draw_markers(sf::RenderTarget& t)
     }
 
     // Once you're there, there's nothing to point at.
-    if(on_the_hill) return;
-    for(const sf::FloatRect* area : {&m_map.front_trench_area, &m_map.farm_area, &m_map.mill_area, &m_map.range_area, &m_map.enemy_trench_area, &m_map.bunker_area, &m_map.hill_area})
+    for(const sf::FloatRect* area : {&m_map.front_trench_area, &m_map.church_area, &m_map.road_area})
         if(area->size.x > 0.0f && area->contains(me.pos) && area->contains(goal)) return;
 
     sf::Vector2f const sp = to_screen(goal);
@@ -731,214 +781,240 @@ void Battle::draw_hud(sf::RenderTarget& t)
     draw_markers(t);
 
     // --- objective, top left -------------------------------------------------------------
-    if(!m_objective.empty())
-    {
-        shadowed(t, f, "OBJECTIVE", 16, {20, 14}, TEXT_FAINT);
-        shadowed(t, f, m_objective, 16, {20, 32}, TEXT);
-    }
-    // The hill: how many so far, and how long until the next.
-    if(m_level == LevelId::HILL && m_stage < Stage::WON)
-    {
-        char line[96];
-        if(m_stage == Stage::HILL_LULL)
-        {
-            float const left = (m_wave == 0 ? FIRST_LULL : LULL) - m_stage_time;
-            std::snprintf(line, sizeof line, "next wave in %d", std::max(0, static_cast<int>(std::ceil(left))));
-            shadowed(t, f, line, 16, {20, 50}, left < 6.0f && std::fmod(m_real, 0.6f) < 0.35f ? ALERT : PAPER_DK);
-        }
-        else
-        {
-            int coming = 0;
-            for(const auto& s : m_soldiers) if(s.team == Team::RECHIVII && s.wave == m_wave && s.fighting() && s.active) ++coming;
-            for(const auto& pd : m_pending) if(pd.kind != 5) ++coming;
-            std::snprintf(line, sizeof line, "wave %d   %d of them left", m_wave, coming);
-            shadowed(t, f, line, 16, {20, 50}, ALERT);
-        }
-        std::snprintf(line, sizeof line, "waves held: %d", m_waves_held);
-        shadowed(t, f, line, 16, {20, 68}, TEXT_FAINT);
-    }
+    if(!m_objective.empty()) shadowed(t, f, m_objective, 16, {16, 12}, TEXT);
 
-    // --- the platoon, top right: a row of pips for each section ---------------------------
+    // How a man is, as a colour: the same everywhere on the HUD.
+    auto state_colour = [](const Soldier& s)
     {
-        float const right = W - 18.0f;
-        float y = 14.0f;
-        shadowed(t, f, "3RD RIFLES, B PLATOON", 16, {right, y}, TEXT_FAINT, 1.0f);
-        y += 22.0f;
-        auto pip_colour = [](const Soldier& s)
+        if(s.life == Life::DEAD || s.life == Life::FLED) return with_alpha(TEXT_FAINT, 0.55f);
+        if(s.life == Life::DOWNED) return ALERT;
+        if(s.burning > 0.0f) return FIRE_ORANGE;
+        if(s.hp < 60.0f || s.lost) return lerp(ALERT, MON_GOLD, 0.5f);
+        if(s.suppression > 0.75f) return PAPER_DK;
+        return MON_WHITE;
+    };
+
+    // --- the platoon, top right: each section a row of men, each man his role ---------------
+    {
+        constexpr float PITCH = 16.0f;
+        float const right = W - 14.0f;
+        float y = 12.0f;
+        bool const theirs = me.team == Team::RECHIVII;
+
+        std::vector<const Section*> shown;
+        for(const auto& sec : m_sections)
+            if(sec.team == me.team && (!theirs || sec.id == me.section)) shown.push_back(&sec);
+        int widest = 1;
+        for(const Section* sec : shown)
         {
-            if(s.life == Life::DEAD) return with_alpha(TEXT_FAINT, 0.35f);
-            if(s.life == Life::DOWNED) return ALERT;
-            if(s.burning > 0.0f) return FIRE_ORANGE;
-            if(s.hp < 60.0f || s.lost) return lerp(ALERT, MON_GOLD, 0.5f);
-            if(s.suppression > 0.75f) return PAPER_DK;
-            return MON_WHITE;
+            int n = 0;
+            for(const auto& s : m_soldiers) if(s.team == me.team && s.section == sec->id) ++n;
+            widest = std::max(widest, n);
+        }
+        float const x0 = right - PITCH * static_cast<float>(widest) + 2.0f;
+
+        sf::VertexArray va(sf::PrimitiveType::Triangles);
+        auto man = [&](const Soldier& s, float x)
+        {
+            sf::Color const c = state_colour(s);
+            icon(va, s.life == Life::DEAD ? ICON_DEAD : role_icon(s.role), {x, y}, c);
+            if(s.leader && s.alive() && s.role != Role::OFFICER) draw::rect(va, x + 4.0f, y - 3.0f, 6.0f, 2.0f, c);
+            if(s.is_player) draw::rect(va, x, y + 16.0f, 14.0f, 2.0f, MON_GOLD);
         };
-        auto row = [&](const std::string& name, int section, bool picked, bool yours, const char* order)
+
+        // The officer over them all.
+        if(!theirs)
+            for(const auto& s : m_soldiers)
+                if(s.team == me.team && s.role == Role::OFFICER) { man(s, x0); y += 24.0f; break; }
+
+        for(const Section* sec : shown)
         {
-            sf::VertexArray pips(sf::PrimitiveType::Triangles);
-            float x = right - 8.0f * 8.0f;
+            bool const picked = (leading && (m_selected < 0 || m_selected == sec->id)) || (player_commands_section() && me.section == sec->id);
+            bool const yours = me.section == sec->id;
+            if(picked && fighting_started())
+                box(t, {x0 - 40.0f, y - 5.0f}, {right - x0 + 46.0f, 24.0f}, with_alpha(MON_GOLD, 0.10f));
+            float x = x0;
             int alive = 0;
             for(const auto& s : m_soldiers)
             {
-                if(s.team != Team::MONTERAN || s.section != section) continue;
+                if(s.team != me.team || s.section != sec->id) continue;
                 if(s.alive()) ++alive;
-                sf::Color c = pip_colour(s);
-                draw::rect(pips, x, y + 4.0f, 6.0f, s.leader && s.alive() ? 10.0f : 8.0f, c);
-                if(s.is_player) draw::rect(pips, x, y + 15.0f, 6.0f, 2.0f, MON_GOLD);
-                x += 8.0f;
+                man(s, x);
+                x += PITCH;
             }
-            t.draw(pips);
-            sf::Color const c = yours ? MON_GOLD : (alive ? TEXT : TEXT_FAINT);
-            std::string const text = (picked ? "> " : "") + name;
-            shadowed(t, f, text, 16, {right - 74.0f, y}, c, 1.0f);
-            if(order && alive) shadowed(t, f, order, 16, {right - 76.0f - text_width(f, text, 16) - 10.0f, y}, TEXT_FAINT, 1.0f);
-            y += 21.0f;
-        };
-        static const char* const order_words[] = {"follow", "hold", "advance", "covering", "charge"};
-        // The lieutenant first.
-        for(const auto& s : m_soldiers)
-            if(s.team == Team::MONTERAN && s.role == Role::OFFICER)
-            {
-                sf::VertexArray pip(sf::PrimitiveType::Triangles);
-                draw::rect(pip, right - 8.0f * 8.0f, y + 4.0f, 6.0f, 10.0f, pip_colour(s));
-                if(s.is_player) draw::rect(pip, right - 8.0f * 8.0f, y + 15.0f, 6.0f, 2.0f, MON_GOLD);
-                t.draw(pip);
-                shadowed(t, f, s.alive() ? "Lt. Varga" : "Lt. Varga, dead", 16, {right - 74.0f, y}, s.is_player ? MON_GOLD : (s.alive() ? TEXT : TEXT_FAINT), 1.0f);
-                y += 21.0f;
-                break;
-            }
-        for(const auto& sec : m_sections)
-        {
-            if(sec.team != Team::MONTERAN) continue;
-            bool const picked = leading && (m_selected < 0 || m_selected == sec.id);
-            row(sec.name, sec.id, picked && m_selected >= 0, me.section == sec.id, fighting_started() ? order_words[static_cast<int>(sec.order)] : nullptr);
+            // The section's number, and what it has been told to do.
+            std::string const number = sec->name.substr(0, sec->name.find(' '));
+            bool const numbered = !number.empty() && std::isdigit(static_cast<unsigned char>(number[0]));
+            if(numbered) shadowed(t, f, number, 16, {x0 - 8.0f, y}, yours ? MON_GOLD : (alive ? TEXT : TEXT_FAINT), 1.0f);
+            if(!theirs && alive && fighting_started())
+                icon(va, order_icon(sec->order), {x0 - 36.0f, y}, with_alpha(TEXT_DIM, 0.9f));
+            y += 24.0f;
         }
-        if(leading && fighting_started())
-        {
-            shadowed(t, f, m_selected < 0 ? "orders to: all" : "orders to: " + m_sections[static_cast<std::size_t>(m_selected)].name, 16, {right, y + 2}, TEXT_FAINT, 1.0f);
-            y += 22.0f;
-        }
+        t.draw(va);
 
-        // Your own section by name: who they are, and how they are.
-        if(me.section >= 0)
+        if(theirs)
         {
-            y += 8.0f;
-            box(t, {right - 220.0f, y - 4.0f}, {222.0f, 1.0f}, with_alpha(MON_GOLD, 0.4f));
+            // A company is too many rows: how many of it are still going. In
+            // the town, how many of them are still coming.
+            int going = 0, stepped = 0;
+            bool const town = m_level == LevelId::TOWN;
             for(const auto& s : m_soldiers)
             {
-                if(s.team != Team::MONTERAN || s.section != me.section) continue;
-                std::string state;
-                sf::Color sc = TEXT_FAINT;
-                if(s.life == Life::DEAD)        { state = "dead";    sc = with_alpha(TEXT_FAINT, 0.6f); }
-                else if(s.life == Life::DOWNED) { state = "DOWN";    sc = ALERT; }
-                else if(s.burning > 0.0f)       { state = "burning"; sc = FIRE_ORANGE; }
-                else if(s.surrendered)          { state = ""; }
-                else if(s.hp < 60.0f || s.lost) { state = "hurt";    sc = lerp(ALERT, TEXT, 0.4f); }
-                else if(s.suppression > 0.75f)  { state = "pinned";  sc = PAPER_DK; }
-                std::string const role = s.role == Role::RIFLEMAN ? "" : std::string(role_name(s.role));
-                std::string who = (s.leader ? "Cpl. " : "") + s.name.substr(s.name.find(' ') + 1);
-                if(s.is_player) who = "> you";
-                sf::Color const nc = s.is_player ? MON_GOLD : (s.life == Life::DEAD ? with_alpha(TEXT_FAINT, 0.6f) : TEXT);
-                shadowed(t, f, who, 16, {right - 220.0f, y}, nc);
-                shadowed(t, f, state.empty() ? role : state, 16, {right, y}, state.empty() ? with_alpha(TEXT_FAINT, 0.8f) : sc, 1.0f);
-                y += 16.0f;
+                if(town ? s.team != Team::MONTERAN : (s.team != Team::RECHIVII || s.line < 0)) continue;
+                ++stepped;
+                if(s.fighting() && (s.morale > 0.0f || town)) ++going;
             }
+            char line[32];
+            std::snprintf(line, sizeof line, "%d / %d", going, stepped);
+            float const tw = text_width(f, line, 16);
+            sf::VertexArray mark(sf::PrimitiveType::Triangles);
+            icon(mark, town ? ICON_RIFLEMAN : ICON_CHARGE, {right - tw - 22.0f, y}, town ? MON_BLUE : RCH_TAN);
+            t.draw(mark);
+            shadowed(t, f, line, 16, {right, y + 1.0f}, TEXT_DIM, 1.0f);
         }
     }
 
-    // --- your man, bottom left ----------------------------------------------------------------
+    // --- your man, bottom left: how he stands, how he is, what he has -----------------------
     {
         const WeaponSpec& w = me.weapon();
-        float const bx = 20.0f, by = H - 92.0f;
-        box(t, {bx - 10, by - 10}, {300, 86}, with_alpha(INK, 0.6f));
-        box(t, {bx - 10, by - 10}, {300, 1}, with_alpha(TEXT_FAINT, 0.5f));
+        float const bx = 16.0f, by = H - 64.0f;
+        float const tx = bx + 40.0f;
+        sf::VertexArray va(sf::PrimitiveType::Triangles);
 
-        // The stance, as a picture.
-        sf::VertexArray icon(sf::PrimitiveType::Triangles);
+        // Health, across the top: a bar, a drop when you're bleeding, a flame when you burn.
+        float const hp = std::clamp(me.hp / 100.0f, 0.0f, 1.0f);
+        bool const blink = std::fmod(m_real, 0.6f) < 0.3f;
+        draw::rect(va, bx, by + 5.0f, 110.0f, 4.0f, with_alpha(INK, 0.9f));
+        draw::rect(va, bx, by + 5.0f, std::round(110.0f * hp), 4.0f,
+                   me.bleeding > 0.0f && blink ? BLOOD_BRIGHT : (hp < 0.4f ? ALERT : lerp(ALERT, MON_WHITE, hp)));
+        float sx = bx + 118.0f;
+        if(me.bleeding > 0.0f || me.life == Life::DOWNED) { icon(va, ICON_DROP, {sx, by}, blink ? BLOOD_BRIGHT : ALERT); sx += 18.0f; }
+        if(me.burning > 0.0f) icon(va, ICON_FIRE, {sx, by}, FIRE_ORANGE);
+
+        // How he stands, as a picture of it.
         const char* const* rows = me.life == Life::DOWNED ? DOWN_ICON
                                 : me.stance == Stance::STAND ? STAND_ICON : me.stance == Stance::CROUCH ? KNEEL_ICON : PRONE_ICON;
-        sf::Color const ic = me.life == Life::DOWNED ? ALERT : (me.stance_change > 0.0f ? TEXT_DIM : MON_WHITE);
-        glyph(icon, rows, 10, {bx, by + 6}, 5.0f, ic);
-        t.draw(icon);
-        std::string const stance_word = me.life == Life::DOWNED ? "down" : me.stance == Stance::STAND ? "standing"
-                                      : me.stance == Stance::CROUCH ? "kneeling" : "prone";
-        shadowed(t, f, stance_word, 16, {bx + 22, by + 58}, TEXT_FAINT, 0.5f);
+        glyph(va, rows, 10, {bx, by + 18.0f}, 3.0f, me.life == Life::DOWNED ? ALERT : (me.stance_change > 0.0f ? TEXT_DIM : MON_WHITE));
 
-        float const tx = bx + 62.0f;
-        shadowed(t, f, me.rank + " " + me.name, 16, {tx, by - 2}, MON_GOLD);
-        shadowed(t, f, std::string(role_name(me.role)) + (me.leader ? ", section leader" : ""), 16, {tx, by + 14}, TEXT_FAINT);
-
-        // Health: a bar, and in words what is wrong.
-        float const hp = std::clamp(me.hp / 100.0f, 0.0f, 1.0f);
-        box(t, {tx, by + 36}, {100, 5}, with_alpha(INK, 0.9f));
-        bool const blink = me.bleeding > 0.0f && std::fmod(m_real, 0.6f) < 0.3f;
-        box(t, {tx, by + 36}, {std::round(100.0f * hp), 5}, blink ? BLOOD_BRIGHT : (hp < 0.4f ? ALERT : lerp(ALERT, MON_WHITE, hp)));
-        std::string health = "unhurt";
-        sf::Color hc = TEXT_DIM;
-        if(me.life == Life::DOWNED) { health = "bleeding out"; hc = ALERT; }
-        else if(me.bleeding > 0.0f) { health = "bleeding"; hc = ALERT; }
-        else if(me.hp < 40.0f) { health = "badly hurt"; hc = ALERT; }
-        else if(me.hp < 75.0f) { health = "wounded"; hc = lerp(ALERT, TEXT, 0.5f); }
-        if(me.lost & (ARM_L | ARM_R)) health += ", no arm";
-        if(me.lost & (LEG_L | LEG_R)) health += ", no leg";
-        if(me.burning > 0.0f) { health = "ON FIRE"; hc = FIRE_ORANGE; }
-        shadowed(t, f, health, 16, {tx + 108, by + 30}, hc);
-
-        // The weapon and what is in it.
-        char buf[96];
-        float const wy = by + 50.0f;
-        if(me.gun == Gun::NONE) shadowed(t, f, "no weapon", 16, {tx, wy}, ALERT);
-        else if(w.flame)
+        // The weapon: what is in it, drawn the way that gun holds its rounds.
+        float const wy = by + 18.0f;
+        float const filled = me.reloading > 0.0f ? std::clamp(1.0f - me.reloading / std::max(0.1f, w.reload), 0.0f, 1.0f) : 1.0f;
+        int const shown_rounds = me.reloading > 0.0f ? static_cast<int>(std::floor(filled * static_cast<float>(w.magazine))) : me.ammo;
+        sf::Color const brass = me.reloading > 0.0f ? lerp(TEXT_FAINT, MON_GOLD, 0.5f) : MON_GOLD;
+        sf::Color const spent = with_alpha(TEXT_FAINT, 0.3f);
+        float ax = tx;
+        switch(me.gun)
         {
-            box(t, {tx, wy + 6}, {100, 5}, with_alpha(INK, 0.9f));
-            box(t, {tx, wy + 6}, {std::round(me.fuel), 5}, FIRE_ORANGE);
-            shadowed(t, f, "fuel", 16, {tx + 108, wy}, TEXT_DIM);
-        }
-        else
-        {
-            // Rounds in the magazine as pips, up to ten; beyond that, a number.
-            sf::VertexArray rounds(sf::PrimitiveType::Triangles);
-            if(w.magazine <= 10)
-            {
+            case Gun::RIFLE:
+            case Gun::SNIPER:
+                // Five rounds in a clip, standing up.
                 for(int i = 0; i < w.magazine; ++i)
-                    draw::rect(rounds, tx + static_cast<float>(i) * 7.0f, wy + 2, 4, 10, i < me.ammo ? MON_GOLD : with_alpha(TEXT_FAINT, 0.4f));
-                t.draw(rounds);
-                std::snprintf(buf, sizeof buf, "+%d", me.spare);
-                shadowed(t, f, me.reloading > 0.0f ? "reloading" : buf, 16, {tx + static_cast<float>(w.magazine) * 7.0f + 6.0f, wy}, TEXT_DIM);
-            }
-            else
+                {
+                    bool const in = i < shown_rounds;
+                    draw::rect(va, ax, wy + 3.0f, 4.0f, 9.0f, in ? brass : spent);
+                    if(in) draw::rect(va, ax + 1.0f, wy, 2.0f, 3.0f, lerp(MON_GOLD, FIRE_ORANGE, 0.6f));
+                    ax += 7.0f;
+                }
+                draw::rect(va, tx - 1.0f, wy + 12.0f, ax - tx, 2.0f, with_alpha(TEXT_FAINT, 0.6f));
+                break;
+            case Gun::PISTOL:
+                // A short magazine of short rounds.
+                for(int i = 0; i < w.magazine; ++i)
+                {
+                    draw::rect(va, ax, wy + 6.0f, 3.0f, 6.0f, i < shown_rounds ? brass : spent);
+                    ax += 5.0f;
+                }
+                break;
+            case Gun::SMG:
+                // The stick magazine, side on, rounds stacked in it.
+                draw::rect(va, ax, wy + 2.0f, 2.0f * static_cast<float>(w.magazine) + 3.0f, 11.0f, with_alpha(INK, 0.9f));
+                for(int i = 0; i < w.magazine; ++i)
+                    draw::rect(va, ax + 2.0f + 2.0f * static_cast<float>(i), wy + 4.0f, 1.0f, 7.0f, i < shown_rounds ? brass : spent);
+                ax += 2.0f * static_cast<float>(w.magazine) + 6.0f;
+                break;
+            case Gun::MG:
             {
-                if(me.reloading > 0.0f) std::snprintf(buf, sizeof buf, "reloading   +%d", me.spare);
-                else std::snprintf(buf, sizeof buf, "%d  +%d", me.ammo, me.spare);
-                shadowed(t, f, buf, 16, {tx, wy}, me.ammo == 0 ? ALERT : TEXT);
+                // The belt, a link for every two rounds, and how hot the barrel is under it.
+                int const links = w.magazine / 2;
+                for(int i = 0; i < links; ++i)
+                    draw::rect(va, ax + 2.0f * static_cast<float>(i), wy + 2.0f, 1.0f, 7.0f, i * 2 < shown_rounds ? brass : spent);
+                float const len = 2.0f * static_cast<float>(links);
+                draw::rect(va, ax, wy + 11.0f, len, 2.0f, with_alpha(INK, 0.9f));
+                draw::rect(va, ax, wy + 11.0f, std::round(len * std::min(1.0f, me.heat)), 2.0f,
+                           me.overheated > 0.0f ? (blink ? ALERT : FIRE_ORANGE) : lerp(MON_GOLD, FIRE_ORANGE, me.heat));
+                ax += len + 6.0f;
+                sf::Color const legs = me.deployed ? MON_WHITE : (me.deploying > 0.0f ? (blink ? MON_WHITE : TEXT_FAINT) : with_alpha(TEXT_FAINT, 0.5f));
+                icon(va, ICON_BIPOD, {ax, wy}, legs);
+                ax += 18.0f;
+                break;
             }
-            if(me.has_mg())
+            case Gun::FLAMER:
             {
-                box(t, {tx + 108, wy + 6}, {60, 5}, with_alpha(INK, 0.9f));
-                box(t, {tx + 108, wy + 6}, {std::round(60.0f * std::min(1.0f, me.heat)), 5}, me.overheated > 0.0f ? ALERT : lerp(MON_GOLD, FIRE_ORANGE, me.heat));
-                shadowed(t, f, me.deployed ? "set up" : (me.deploying > 0.0f ? "setting up" : "packed"), 16, {tx + 174, wy}, TEXT_FAINT);
+                // The two tanks on his back, emptying from the top.
+                float const fuel = std::clamp(me.fuel / 100.0f, 0.0f, 1.0f);
+                for(int k = 0; k < 2; ++k)
+                {
+                    float const x = ax + static_cast<float>(k) * 10.0f;
+                    draw::rect(va, x, wy, 8.0f, 14.0f, with_alpha(INK, 0.9f));
+                    float const h = std::round(12.0f * fuel);
+                    draw::rect(va, x + 1.0f, wy + 13.0f - h, 6.0f, h, fuel < 0.2f && blink ? ALERT : FIRE_ORANGE);
+                }
+                ax += 26.0f;
+                break;
+            }
+            default:
+                break;
+        }
+        bool const has_reserve = me.gun != Gun::NONE && me.gun != Gun::FLAMER;
+        if(has_reserve) ax += 3.0f;
+
+        // Everything else he carries, a picture and how many.
+        struct Kit { const char* const* rows; sf::Color colour; int count; };
+        std::vector<Kit> kit;
+        kit.reserve(8);
+        if(me.grenades)  kit.push_back({ICON_GRENADE, lerp(MON_WHITE, SANDBAG, 0.4f), me.grenades});
+        if(me.smokes)    kit.push_back({ICON_SMOKE, TEXT_DIM, me.smokes});
+        if(me.flares)    kit.push_back({ICON_FLARE, ALERT, me.flares});
+        if(me.satchels)  kit.push_back({ICON_SATCHEL, SANDBAG, me.satchels});
+        if(me.role == Role::RADIOMAN) kit.push_back({ICON_RADIO, MON_WHITE, me.missions});
+        if(me.role == Role::MEDIC) kit.push_back({ICON_KIT, MON_WHITE, me.medkits});
+        else if(me.bandages) kit.push_back({ICON_BANDAGE, MON_WHITE, me.bandages});
+
+        float kx = tx;
+        float const ky = by + 34.0f;
+        std::vector<std::pair<std::string, float>> counts;
+        for(const Kit& k : kit)
+        {
+            icon(va, k.rows, {kx, ky}, k.count ? k.colour : with_alpha(k.colour, 0.35f));
+            kx += 16.0f;
+            std::string const n = std::to_string(k.count);
+            counts.push_back({n, kx});
+            kx += text_width(f, n, 16) + 10.0f;
+            // The radio's next call: a shell for high explosive, a cloud for smoke.
+            if(k.rows == ICON_RADIO)
+            {
+                icon(va, m_smoke_mission ? ICON_SMOKE : ICON_SHELL, {kx - 4.0f, ky}, m_smoke_mission ? TEXT_DIM : MON_GOLD);
+                kx += 18.0f;
             }
         }
-        // Everything else he carries.
-        std::string kit;
-        if(me.grenades) kit += "G " + std::to_string(me.grenades) + "  ";
-        if(me.smokes) kit += "T smoke " + std::to_string(me.smokes) + "  ";
-        if(me.flares) kit += "X flare " + std::to_string(me.flares) + "  ";
-        if(me.satchels) kit += "V satchel " + std::to_string(me.satchels) + "  ";
-        if(me.role == Role::RADIOMAN) kit += "V call " + std::to_string(me.missions) + (m_smoke_mission ? " smoke (B)  " : " HE (B)  ");
-        if(m_level == LevelId::HILL) kit += "H dig, bags " + std::to_string(me.bags) + "  ";
-        if(me.role == Role::MEDIC) kit += "kits " + std::to_string(me.medkits);
-        else if(me.bandages) kit += "F bandage";
-        shadowed(t, f, kit, 16, {tx, by + 64}, TEXT_FAINT);
+
+        // A shadow behind it all, as wide as it needs to be.
+        std::string const reserve = std::to_string(me.spare);
+        float const width = std::max({bx + 138.0f, ax + (has_reserve ? text_width(f, reserve, 16) + 4.0f : 0.0f), kx}) - bx + 12.0f;
+        box(t, {bx - 8.0f, by - 6.0f}, {width, 66.0f}, with_alpha(INK, 0.45f));
+        t.draw(va);
+        if(has_reserve) shadowed(t, f, reserve, 16, {ax, wy + 1.0f}, me.spare == 0 && me.ammo == 0 ? ALERT : TEXT_DIM);
+        else if(me.gun == Gun::NONE) shadowed(t, f, "-", 16, {ax, wy + 1.0f}, ALERT);
+        for(const auto& [n, x] : counts) shadowed(t, f, n, 16, {x, ky + 1.0f}, TEXT_DIM);
 
         // The radio, when a call is going.
         for(const auto& m : m_missions)
         {
             if(m.caller != me.id) continue;
-            static const char* const steps[] = {"on the set: calling...", "ranging round in the air", "V on the target: fire for effect", "salvo on the way"};
+            static const char* const steps[] = {"calling...", "ranging round", "V on target", "salvo coming"};
             std::string line = steps[std::clamp(m.step, 0, 3)];
             if(m.step == 2) line += "  " + std::to_string(static_cast<int>(std::ceil(m.timer)));
-            shadowed(t, f, line, 16, {bx - 2, by - 30}, std::fmod(m_real, 0.8f) < 0.5f ? MON_GOLD : TEXT_DIM);
+            shadowed(t, f, line, 16, {bx - 2.0f, by - 26.0f}, std::fmod(m_real, 0.8f) < 0.5f ? MON_GOLD : TEXT_DIM);
         }
     }
 
@@ -947,13 +1023,6 @@ void Battle::draw_hud(sf::RenderTarget& t)
     {
         sf::Vector2f const p = to_screen(me.pos) + sf::Vector2f{0.0f, 26.0f};
         shadowed(t, f, prompt, 16, p, with_alpha(MON_WHITE, 0.9f), 0.5f);
-    }
-    // Digging: how far along.
-    if(me.digging > 0.0f)
-    {
-        sf::Vector2f const p = to_screen(me.pos) + sf::Vector2f{-20.0f, 44.0f};
-        box(t, p, {40, 3}, with_alpha(INK, 0.8f));
-        box(t, p, {std::round(40.0f * (1.0f - me.digging / std::max(0.1f, me.dig_total))), 3}, SANDBAG);
     }
     // Cutting wire: how far along.
     if(me.cutting > 0.0f)
@@ -978,11 +1047,20 @@ void Battle::draw_hud(sf::RenderTarget& t)
         shadowed(t, f, m_takeover_text, 32, {W * 0.5f, H * 0.5f - 70}, with_alpha(TEXT, a), 0.5f);
     }
 
-    // --- orders, bottom right, when they are yours to give ---------------------------------------
-    if(leading && me.alive() && fighting_started())
+    // --- orders, bottom right, when they are yours to give: the five, and their keys ----------
+    if((leading || player_commands_section()) && me.alive() && fighting_started())
     {
-        shadowed(t, f, "tab  section", 16, {W - 18, H - 46}, TEXT_FAINT, 1.0f);
-        shadowed(t, f, "1 follow   2 hold   3 advance   4 cover   5 charge", 16, {W - 18, H - 28}, TEXT_FAINT, 1.0f);
+        static const Order orders[] = {Order::FOLLOW, Order::HOLD, Order::ADVANCE, Order::SUPPRESS, Order::CHARGE};
+        sf::VertexArray va(sf::PrimitiveType::Triangles);
+        float x = W - 14.0f - 5.0f * 26.0f + 12.0f;
+        float const y = H - 44.0f;
+        for(int i = 0; i < 5; ++i)
+        {
+            icon(va, order_icon(orders[i]), {x + static_cast<float>(i) * 26.0f, y}, TEXT_DIM);
+            shadowed(t, f, std::to_string(i + 1), 16, {x + static_cast<float>(i) * 26.0f + 7.0f, y + 17.0f}, TEXT_FAINT, 0.5f);
+        }
+        t.draw(va);
+        if(leading) shadowed(t, f, "tab", 16, {x - 12.0f, y + 17.0f}, TEXT_FAINT, 1.0f);
     }
 
     // --- dialogue, hints, notices ------------------------------------------------------------------
@@ -1009,39 +1087,59 @@ void Battle::draw_hud(sf::RenderTarget& t)
     if(m_stage == Stage::WON || m_stage == Stage::LOST)
     {
         float const a = std::clamp((m_end_timer - 1.0f) / 1.0f, 0.0f, 1.0f);
-        const char* const won = m_level == LevelId::TRENCHES ? "THE FARM IS TAKEN" : (m_level == LevelId::FIELDS ? "THE MILL IS TAKEN" : "BACK BEFORE FIRST LIGHT");
-        const char* const lost = m_level == LevelId::RAID ? "THE RAID HAS FAILED" : (m_level == LevelId::HILL ? "HILL 312 HAS FALLEN" : "THE ATTACK HAS FAILED");
-        shadowed(t, f, m_stage == Stage::WON ? won : lost, 32, {W * 0.5f, 150}, with_alpha(TEXT, a), 0.5f);
-        if(m_level == LevelId::HILL)
+        const char* won = me.team == Team::MONTERAN ? "THE COLUMN IS THROUGH" : "THE COLUMN IS DESTROYED";
+        const char* lost = me.team == Team::MONTERAN ? "THE COLUMN IS LOST" : "THE AMBUSH HAS FAILED";
+        if(m_level == LevelId::CHARGE)
         {
-            char line[64];
-            std::snprintf(line, sizeof line, "held for %d %s", m_waves_held, m_waves_held == 1 ? "wave" : "waves");
-            shadowed(t, f, line, 16, {W * 0.5f, 196}, with_alpha(PAPER_DK, a), 0.5f);
+            won = me.team == Team::MONTERAN ? "THE CHARGE IS BROKEN" : "THEIR TRENCH IS TAKEN";
+            lost = me.team == Team::MONTERAN ? "THE TRENCH IS OVERRUN" : "THE CHARGE HAS FAILED";
         }
+        if(m_level == LevelId::TOWN)
+        {
+            won = me.team == Team::MONTERAN ? "KALVO IS TAKEN" : "KALVO IS HELD";
+            lost = me.team == Team::MONTERAN ? "THE ATTACK HAS FAILED" : "KALVO HAS FALLEN";
+        }
+        shadowed(t, f, m_stage == Stage::WON ? won : lost, 32, {W * 0.5f, 150}, with_alpha(TEXT, a), 0.5f);
     }
 
     if(m_paused)
     {
-        box(t, {0, 0}, {W, H}, with_alpha(INK, 0.78f));
-        shadowed(t, f, "PAUSED", 32, {W * 0.5f, 90}, TEXT, 0.5f);
-        shadowed(t, f, "esc  back to it        q  quit to the briefing        m  music on or off", 16, {W * 0.5f, 140}, TEXT_DIM, 0.5f);
+        box(t, {0, 0}, {W, H}, with_alpha(INK, 0.88f));
+        shadowed(t, f, "PAUSED", 32, {W * 0.5f, 70}, TEXT, 0.5f);
+
+        // Sound, on the left: drag a bar, or up and down to pick one and left and right to change it.
+        auto& bank = SoundBank::get();
+        static const char* const names[] = {"master", "music", "effects", "voices"};
+        shadowed(t, f, "SOUND", 16, {sound_bar(0).position.x, 156}, TEXT_FAINT);
+        for(int i = 0; i < SoundBank::BUSES; ++i)
+        {
+            sf::FloatRect const bar = sound_bar(i);
+            float const v = bank.volume(static_cast<SoundBank::Bus>(i));
+            bool const on = i == m_sound_row;
+            shadowed(t, f, names[i], 16, {bar.position.x - 14.0f, bar.position.y - 5.0f}, on ? MON_GOLD : TEXT_DIM, 1.0f);
+            box(t, bar.position, bar.size, with_alpha(PAPER_DK, 0.25f));
+            box(t, bar.position, {std::round(bar.size.x * v), bar.size.y}, on ? MON_GOLD : MON_WHITE);
+            box(t, {bar.position.x + std::round(bar.size.x * v) - 2.0f, bar.position.y - 4.0f}, {4.0f, bar.size.y + 8.0f}, on ? MON_GOLD : MON_WHITE);
+            shadowed(t, f, std::to_string(static_cast<int>(std::round(v * 100.0f))), 16, {bar.position.x + bar.size.x + 14.0f, bar.position.y - 5.0f}, TEXT_FAINT);
+        }
+        if(bank.music_muted()) shadowed(t, f, "music off (m)", 16, {sound_bar(0).position.x, sound_bar(3).position.y + 30.0f}, ALERT);
+
+        // The keys, on the right.
         const char* const keys[][2] = {
-            {"wasd", "move"}, {"shift", "run (gets you up first)"}, {"mouse", "aim"},
-            {"left click", "fire"}, {"right click", "steady aim, look further, set up a machine gun"},
-            {"middle click", "bayonet"}, {"c / z", "kneel / lie down"}, {"r", "reload"},
-            {"g / t", "grenade / smoke grenade"}, {"x", "red flare for the guns (officer)"},
-            {"v", "radioman: call the guns   sapper: satchel charge"}, {"b", "radioman: high explosive or smoke"},
-            {"e", "treat, drag, cut wire, take a weapon or ammunition"}, {"f", "bandage yourself"},
-            {"h", "the hill: dig in. Sandbags in front, or lying down, a foxhole"},
-            {"tab, 1 to 5", "orders, when you lead"},
+            {"wasd, shift", "move, run"}, {"mouse, left click", "aim, fire"}, {"right click", "steady aim, set up a gun"},
+            {"middle click", "bayonet"}, {"c / z", "kneel / lie down"}, {"r", "reload"}, {"g / t", "grenade / smoke"},
+            {"x", "red flare (officer)"}, {"v", "call the guns, satchel"}, {"b", "shells or smoke (radio)"},
+            {"e", "treat, drag, cut, take"}, {"f", "bandage yourself"}, {"tab, 1 to 5", "orders"},
         };
-        float y = 172.0f;
+        float y = 156.0f;
+        float const kx = W * 0.5f + 150.0f;
         for(const auto& k : keys)
         {
-            shadowed(t, f, k[0], 16, {W * 0.5f - 12.0f, y}, TEXT, 1.0f);
-            shadowed(t, f, k[1], 16, {W * 0.5f + 12.0f, y}, TEXT_DIM);
+            shadowed(t, f, k[0], 16, {kx - 12.0f, y}, TEXT, 1.0f);
+            shadowed(t, f, k[1], 16, {kx + 12.0f, y}, TEXT_DIM);
             y += 19.0f;
         }
+        shadowed(t, f, "esc  back        q  quit to the briefing        m  music", 16, {W * 0.5f, H - 64}, TEXT_DIM, 0.5f);
         char line[96];
         std::snprintf(line, sizeof line, "%s, %s", level_name(m_level), difficulty_name(Campaign::current().difficulty));
         shadowed(t, f, line, 16, {W * 0.5f, H - 40}, TEXT_FAINT, 0.5f);

@@ -4,90 +4,115 @@
 make EXAMPLE=mudcats run
 ```
 
-A platoon's day, top-down. B Platoon of the Monteran 3rd Rifles, twenty-five
-men in three sections and a lieutenant, against about forty Rechivii,
-somewhere on the Ochre front in the spring of 1936. It's a slice of what combat in Mud
-Cats could look like, built to see how the framework holds up with it.
+A platoon's day, top-down, three times over. Somewhere on the Ochre front
+in the spring of 1936, the Monterans and the Rechivii fight over a meadow,
+a market town and a forest road, and you pick which side you're on, who
+you go in as, and how hard it is. Then you're one man in it: the battle
+goes on around you whatever you do, and you can turn it.
 
-![The Ochre line: the assault](../../docs/media/mudcats.gif)
+It's built on this framework, to see how the framework holds up with a
+real game on it. Everything is drawn from rectangles and circles, and every
+sound and nearly all the music is synthesised in code.
 
-## Where
+![The Sava meadow: the charge reaches the trench](../../docs/media/mudcats_charge.gif)
 
-You pick the place on the briefing screen. There are four.
+## Playing it
 
-**The Ochre line**, in the rain. It starts quietly behind the lines. You walk
-up through the reserve trench, stop at the firing range to break some bottles
-and get used to aiming, and join the others in the front trench. Then comes a
-scout at the wire, our guns on their line, the whistle, and the assault:
-across no man's land under a machine gun, into their trench, past a bunker
-and into a farmhouse. After that you have to hold it, because they come back
-for it.
+The title screen leads to the briefing. On the left you pick the battle,
+the side, the difficulty, and who you go in as. On the right is the order
+you'd be handed: a black-and-white staff map of the ground with the units
+and the plan drawn on it, and the briefing under it. It's written for your
+side, and the map only shows what your side knows. The escort's map has a
+question mark in the trees where the ambush's map has the ambush.
 
-**Halvek fields**, at dawn, in a mist. The platoon marches up a sunken lane
-to hold a mill by a bridge, and nobody knows where the Rechivii are until
-someone fires from a wood. Then it's hedgerow to hedgerow: tall grass and
-wheat to crawl through, trees to hide under, a stream that's slow and cold
-and has no cover at all, and the mill to take and keep. The mist burns off
-as the morning goes on, so you see further, and so do they.
+![The briefing: the Lesna road, from the ambush's side](../../docs/media/mudcats_briefing.png)
 
-![Halvek fields: contact in the mist](../../docs/media/mudcats_fields.gif)
+The first time you play, a card explains how it works. It's under "how to
+play" on the title and the briefing after that. Settings (sound levels,
+window size, fullscreen) are there too, and F11 switches fullscreen
+anywhere.
 
-**The Dravo raid**, at night. A smaller one: the lieutenant and two
-groups of stormtroopers, ten men, against a trench that's mostly asleep.
-You crawl up the slope in the dark, lie still while the sappers cut two
-lanes through their wire, slip into the trench and bomb both dugouts and
-both machine guns at once. Then they know you're there. White flares go up
-over the slope every few seconds, you clear the cottages and the barn,
-put a satchel charge against the wall of their command dugout, and get
-back across the slope to our ditch under their guns, before their reserve
-arrives. If anyone sees you on the way in, the stealth is over early.
+## The battles
 
-![The Dravo raid: bombs down the dugout stairs](../../docs/media/mudcats_raid.gif)
+**The Sava meadow**, on a grey morning. About a hundred and forty Rechivii
+grenadiers in two lines at the edge of a wood, with their officers, a
+colour-bearer and the drums, against thirty men of B Platoon in a shallow
+trench at the other end of the meadow, with two machine guns and a line of
+wire nobody finished. Their guns shell the trench while they form up, then
+they walk out across the open, and when the front of the line is close
+enough the whole field roars "Urraaa!" and runs the rest of the way with
+the bayonet. Shoot the colour-bearer and someone picks the flag up, twice;
+after that it stays down, and the men around it lose heart. The charge
+breaks when they've lost too many, sooner without their officers or their
+colours. If enough of them get into the trench and the Monterans are down
+to a handful, the trench is overrun.
 
-**Hill 312**, from the afternoon into the night. Sixteen of you dug in on a
-hilltop: a ring of trench round the crest, gun pits, foxholes on the
-forward slopes, a dump of ammunition and sandbags in the middle. They come
-up it in waves, and it doesn't end until there's nobody left to hold it.
+**Kalvo**, at dusk. A market town: a main street of terraced houses runs
+east from the fields to a square, a cross-street cuts it in two, and at the
+far end of the square is the church, its tower looking straight back down
+the street. The Monterans take it block by block, through the houses and
+yards because a machine gun behind a barricade covers the street, then the
+square, then the church, and then hold the church against the
+counter-attack that comes through the graveyard. The Rechivii fall back a
+block at a time and win if the attack costs too much to go on, or hasn't
+taken the church by dark. Nearly every fight here happens through a
+doorway or a window.
 
-- **The waves.** Twenty-five men in the first, five more in each after
-  that. Riflemen first, then
-  machine guns that set up on the slope to keep your heads down, then
-  snipers and mortars hanging back, then their own stormtroopers and
-  flamethrowers. Later waves come from two or three sides at once, and the
-  lieutenant turns the sections to meet each one.
-- **The lulls.** You get 45 seconds to dig in before the first wave. After
-  that, when the rush is down, whatever is left of the wave goes back where
-  it came from, and you get ten seconds: enough to fill up at the dump and
-  get back to the trench. Every third lull a few replacements walk up the
-  back slope.
-- **The light.** The afternoon goes, then the evening. By the seventh wave
-  it's full dark, and white flares go up over whoever is coming.
-- **The score.** The debrief tells you how many waves you held.
-- **The music.** Once the first wave comes, the combat track is
-  Misanthropy, and it doesn't let go in the lulls.
+![Kalvo: into the first houses](../../docs/media/mudcats_town.gif)
 
-![Hill 312: a wave coming up the spur](../../docs/media/mudcats_hill.gif)
+**The Lesna road**, at midday. Six wagons of shells and rations going up to
+the front through a forest, with B Platoon walking beside them. Thirty
+Rechivii lie in the bracken north of the road where the trees come
+closest, behind logs they've dragged up, with a machine gun among them and
+riflemen behind a pine felled across the track further on. A mine under the
+road is the signal, unless somebody in the column walks onto one of them
+first. Once it's sprung the wagons stop where they are, and the only place
+on the road to get out of the fire is the ditch along the south side. A
+little later an assault group comes out of the trees for the wagons with
+grenades, satchel charges and a flamethrower. Burn four of the six and the
+ambush has done what it came for; lose too many men before that, and it
+breaks and melts back into the forest.
 
-You also pick who you go in as and how hard it is. There are nine classes:
-rifleman, officer, medic, flamethrower and machine gunner, plus these four:
+![The Lesna road: the ambush](../../docs/media/mudcats_forest.gif)
 
+## Your squad
+
+You're one man in a section. Your section follows you; everyone else gets
+on with it. The other sections find cover, bound forward, give covering
+fire and fall back on their own, and go after the objective whatever you
+do. On the Monteran side, if you're the officer your orders go to the
+whole platoon (Tab picks a section), and if you're a corporal they go to
+your own section.
+
+If the lieutenant goes down, the most senior corporal takes over the
+platoon, not you. If your corporal goes down, the next man takes over the
+section, and if that's you, the section is yours to give orders to. If
+your man dies you take over another from your section, and only when it's
+gone, someone from another.
+
+There are nine classes, and every one is playable in every battle, on
+either side:
+
+- **Rifleman**: a bolt-action rifle, five rounds, a bayonet, two grenades.
+- **Officer**: a submachine gun, orders, smoke to cover a bound, and red
+  flares to bring down the guns.
+- **Medic**: a pistol and eight field dressings. Only he gets a man who is
+  down back on his feet. Wounded men crawl to him.
+- **Flamethrower**: burns through any cover, up close. Slow, short of fuel,
+  shot at first, and his tanks can burst.
+- **Machine gunner**: has to set up to fire, and pins a whole section with
+  one burst.
+- **Radioman**: the set reaches the guns. V calls a fire mission at the
+  cursor: a ranging round first, then V again on target for a salvo. B
+  switches between high explosive and smoke.
 - **Stormtrooper**: a submachine gun, a bag of grenades, and no patience.
-- **Radioman**: carries the set. V calls a fire mission at the cursor: a
-  ranging round first, then V again on target for a full salvo. B switches
-  between high explosive and smoke. The guns don't care whose men are
-  under them.
-- **Sniper**: a scoped rifle that reaches much further than anything
-  else, hard to spot lying down.
+- **Sniper**: a scoped rifle that reaches much further than anything else,
+  and hard to spot lying down.
 - **Sapper**: wire cutters (E at the wire) and two satchel charges (V),
-  which go through walls close up.
+  which go through walls, or a wagon.
 
-The Rechivii have them too. There are snipers in their lines and in the
-woods, flamethrowers in their trenches and the mill, stormtroopers in their
-counter-attacks, and on the Ochre line, the fields and the hill, mortars.
-
-Every class is playable on every level. Recruit, Regular or Veteran
-change how well they shoot and how much a hit takes out of you. If your man dies you
-take over the nearest one still standing, until there's nobody left.
+Recruit, Regular and Veteran change how well the other side shoots and how
+much a hit takes out of you.
 
 ## Controls
 
@@ -106,102 +131,144 @@ take over the nearest one still standing, until there's nobody left.
 | X | red flare: the guns put four shells round the cursor (officer only, and they're not precise) |
 | V | radioman: call the guns on the cursor. Sapper: satchel charge |
 | B | radioman: switch the next call between high explosive and smoke |
-| H | the hill: dig in. Standing or kneeling, a row of sandbags in front of you (you carry three; refill at the dump). Lying down, a foxhole where you are |
-| E | treat a wounded man if you're the medic (a prompt shows when you're close enough), drag him if you're not; cut wire if you're a sapper or stormtrooper; take a weapon or a dead man's rounds; fill up at an ammunition crate. When you're down, E calls for a medic |
+| E | treat a wounded man if you're the medic, drag him if you're not; cut wire; take a weapon or a dead man's rounds; fill up at an ammunition crate. When you're down, E calls for a medic |
 | F | bandage yourself |
-| Tab, 1 to 5 | orders, if you're leading: Tab picks a section (or all of them), then follow, hold, advance to the cursor, covering fire on the cursor, or fix bayonets and charge |
-| Esc | pause, with all the keys |
+| Tab, 1 to 5 | orders, if you lead: Tab picks a section (officer only), then follow, hold, advance to the cursor, covering fire on the cursor, or fix bayonets and charge |
+| Esc | pause: the sound levels and all the keys |
 | M | music on or off |
+| F11 | fullscreen |
 
 ## What makes it tick
 
-- **Sections, not men.** The lieutenant gives orders to sections, and each
-  section's corporal finds his men cover around where they're sent. The
-  sections leapfrog: one moves while the other two keep the enemy's heads
-  down, then the next goes. Lose the corporal and the most senior man left
-  takes over. Lose the lieutenant and the platoon looks to you.
-- **Your section.** The men of your own section wear gold armbands, have a
-  small gold mark over them, and are listed with their state in the corner.
-  The sections move as groups around their corporals, and the next bound
-  forward waits for you: nothing gets taken while you're somewhere else.
-- **Mortars.** Theirs drop bombs on whatever their riflemen can see. The
-  first lands well off, and each one after comes closer, so a man who stays
-  put gets walked onto. Every bomb's flash gives the tube away, and a red
-  mark shows where. As the radioman, put the cursor on the mark, even at the
-  edge of the screen, and press V to call the guns on it. Your AI radioman
-  does it himself.
-- **Digging in.** Bags you fill are real cover: they stop rounds and block
-  the way, for both sides. A foxhole is a shell hole you dug yourself.
-- **The hill is a hill.** From higher up you see further, and climbing it is
-  slow work.
-- **Suppression.** Every round that passes close frightens whoever it passes,
-  hit or miss. Frightened men aim worse, lie down and stop moving. You take a
-  position the old way: pin it with fire and move someone else up while its
-  head is down. That goes for both sides.
-- **Cover is real.** Trenches, sandbags, low walls and shell holes stop
-  rounds, more often the lower you are. Hedges hide you but mostly don't stop
-  anything. Explosions only care about walls. Fire doesn't care about
-  anything, and the stream puts it out.
-- **Wounds, not hit points.** Men get wounded and keep going, lose arms and
-  legs, go down and bleed out unless the medic reaches them in time, burn, or
-  are killed outright. Wounded men crawl toward the medic, and a man with
-  no medic near puts his own field dressing on a mate. Crosses at the edge
-  of the screen show where your wounded are. A man who loses an arm drops
-  his rifle. The dead, the
-  blood and the craters stay on the field.
+- **Sections, not men.** Orders go to sections, and each section's
+  corporal finds his men cover around where they're sent. The sections
+  leapfrog: one moves while the others keep the enemy's heads down, then
+  the next goes.
+- **Suppression.** Every round that passes close frightens whoever it
+  passes, hit or miss. Frightened men aim worse, lie down and stop moving.
+  You take a position the old way: pin it with fire and move someone else
+  up while its head is down. That goes for both sides.
+- **Cover is real.** Trenches, ditches, sandbags, low walls, logs, wagons
+  and shell holes stop rounds, more often the lower you are. Hedges and
+  bracken hide you but mostly don't stop anything. Trees stop what hits
+  the trunk. Explosions only care about walls. Fire doesn't care about
+  anything.
+- **Wounds, not hit points.** Men get wounded and keep going, lose arms
+  and legs, go down and bleed out unless the medic reaches them in time,
+  burn, or are killed outright. Wounded men crawl toward the medic.
+  Crosses at the edge of the screen show where your wounded are. The dead,
+  the blood and the craters stay on the field.
 - **You only see what you can see.** Walls and hedges hide what's behind
   them, and enemies there aren't drawn. Nor are men lying in tall grass or
-  under the trees until you're close, or anyone in smoke or past the edge of
-  the mist. Muzzle flashes still give them away.
+  bracken until you're close, or anyone in smoke. Muzzle flashes still
+  give them away. Men lying still in ambush are very hard to see at all.
+- **Seeing into buildings.** From a distance a roof hides everything under
+  it. Get close and it opens up, and you see inside as far as your line of
+  sight reaches through the door and the windows.
+- **Hearing what you can't see.** A shot, a shout, or a man running close
+  by leaves a pale ring where the sound came from, roughly.
 - **Weapons stay where they fall.** Out of ammunition, you can take a dead
-  man's rounds, or his weapon. Men out of rounds ask the man next to them.
-- **Men break.** With their officer dead and half of them gone, Rechivii
-  start to run. Caught close with nowhere to go, some put their hands up.
-  The debrief remembers what happened to them.
+  man's rounds, or his weapon.
+- **Men break.** With their officer dead and half of them gone, men start
+  to run. Caught close with nowhere to go, some put their hands up. The
+  debrief remembers what happened to them.
 
-Every visible effect, from muzzle flashes and every round in the air to
-blood, dust, flame, smoke screens and the rain, is the framework's particle
-system. Rounds are hot streaks, tracers glow, and near misses kick dirt up
-around you. At night the field is dark except for what's burning or under
-a flare, and the flashes, flames and tracers light it up. Blood
-and earth are thrown up into the air, and wherever each drop comes down it
-stains the ground for good.
+## The HUD
 
-Everything is drawn from rectangles and circles, with no sprites. All the
-sounds and both pieces of music come out of `tools/sfx/generate_mudcats.py`:
-layered gunshots that roll away across the fields, a small formant
-synthesiser for the voices, quiet music for the quiet parts and something
-heavier and darker for the fighting. The one exception is the hill's
-combat track, Misanthropy: `tools/sfx/make_hill_loop.py` cuts
-`assets/music/misanthropy.mp3` down to one clean cycle, so it loops without
-a seam, brings it up to level, and writes `assets/mudcats/music_hill_loop.ogg`.
+- **Top right, the platoon.** One row per section, one small picture per
+  man showing his role. Its colour is how he is: white for fine, amber for
+  hurt, grey for pinned, orange for burning, red for down, a man lying flat
+  for dead. A bar over a man marks the corporal, gold under him marks you,
+  and the picture left of each row shows what that section was last told
+  to do.
+- **Bottom left, you.** Your health, a picture of how you're standing, and
+  what's in your gun, drawn the way that gun holds it. Under it, what else
+  you carry.
+- **Bottom right, orders**, when they're yours to give.
+
+## The sound
+
+The voices come from a small formant synthesiser: men's voices, low and
+rough. Each take of a cry belongs to one of a handful of men, from a deep
+voice with a big chest to a lighter one, and every soldier also gets his
+own pitch, a little above or below the next man's, so a section sounds
+like several men and the same man sounds like himself all day. When a lot
+of men are screaming at once you hear the loudest few, and each voice
+already playing makes the next a little quieter, so a crowd sounds bigger
+rather than louder.
+
+Music plays on the title and in the fighting, and nowhere else: the
+briefing, the debrief and the quiet before a battle have only their own
+sounds. Each battle has its own combat track. On the meadow it's war
+drums and brass, with the Rechivii drums across the field kept in time
+with it. In Kalvo, low strings and a tolling bell. On the Lesna road,
+something that lands like an ambush: it cuts in at once on a brass
+stinger, then a distorted bass hammers away under war drums, diminished
+brass stabs and a horn line climbing like an alarm. All of it comes out
+of `tools/sfx/generate_mudcats.py`.
+
+Your settings are kept in `settings.txt`: in `%APPDATA%\MudCats` on
+Windows, `~/Library/Application Support/MudCats` on macOS, and
+`~/.config/mudcats` on Linux.
+
+## Building it for Linux, macOS and Windows
+
+The Makefile is the quick way on Linux, and works on macOS (Homebrew SFML)
+and on Windows under MSYS2. To build something you can hand to someone
+else, use CMake: it downloads SFML 3 and links it in statically, so the
+result runs on a machine with nothing installed.
+
+```
+cmake -B build-cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build-cmake --config Release
+cmake --build build-cmake --config Release --target package
+```
+
+The last line makes `MudCats-0.13.0-<system>.zip`: the game with its
+assets, shaders, this README and the licence. On Windows that's
+`MudCats.exe` with its icon and no console window; on macOS, `Mud Cats.app`;
+on Linux, `MudCats`. The game finds its assets next to itself, so it can be
+started from anywhere. On Linux, CMake needs SFML's usual development
+packages first; on Debian or Ubuntu that's `libx11-dev libxrandr-dev
+libxcursor-dev libxi-dev libudev-dev libgl1-mesa-dev libfreetype-dev`.
+
+macOS will warn about an app from an unidentified developer, since it
+isn't signed: right click, Open, the first time.
 
 ## Files
 
 | | |
 |---|---|
-| `Battle.cpp` | setup, input, the platoon and its sections, the levels' scripts |
-| `Hill.cpp` | Hill 312's waves, digging in, and mortars |
+| `main.cpp` | finds the assets, sets up the window from your settings, and the scenes |
+| `Screens.cpp` | the title, the briefing with its staff maps, the settings, how to play and credits panels, the debrief |
+| `Settings.cpp` | your sound levels, window size and fullscreen, kept between runs |
+| `Battle.cpp` | setup, input, the platoon and its sections, the stages of each battle |
+| `Charge.cpp` | the Sava meadow: the two lines, the charge, the colours, and how it breaks |
+| `Town.cpp` | Kalvo: the defence in depth, falling back, reinforcements, and how the attack breaks |
+| `Forest.cpp` | the Lesna road: the column, the wagons, the mine, the ambush and the assault group |
+| `Mortar.cpp` | mortars and their crews |
 | `Combat.cpp` | weapons, bullets, wounds, gore, grenades, satchels, smoke, flares, fire, shells, fire missions, the bayonet |
 | `Effects.cpp` | everything drawn with the particle systems |
 | `AI.cpp` | how everyone who isn't you decides what to do, and what they can see |
 | `Render.cpp` | the field, the people, the HUD, the compass and markers |
-| `Map.cpp` | the four battlefields' geometry, cover points, digging and A* paths |
-| `Soldier.cpp` | the soldier data, the weapons, and how a man is drawn, from above and in profile |
-| `Screens.cpp` | the briefing and the debrief |
-| `Sound.cpp` | positional one-shots, loops, the two pieces of music |
+| `Icons.hpp` | the HUD's little pictures: roles, orders, kit |
+| `Map.cpp` | the meadow's geometry, cover points and A* paths |
+| `MapTown.cpp`, `MapForest.cpp` | Kalvo's and the Lesna road's ground, and how it's drawn |
+| `Soldier.cpp` | the soldier data, the weapons, and how a man is drawn |
+| `Sound.cpp` | positional one-shots, loops, the music and its combat tracks, how voices are mixed |
 
 ## Switches for working on it
 
 ```
-MUDCATS_STAGE=2 make EXAMPLE=mudcats run     # trenches: the barrage, just before the whistle
-MUDCATS_STAGE=3 make EXAMPLE=mudcats run     # trenches: their trench already taken
-MUDCATS_STAGE=4 make EXAMPLE=mudcats run     # trenches: in the farmhouse, waiting for the counter-attack
 MUDCATS_AUTOPLAY=1 make EXAMPLE=mudcats run  # your man fights on his own (for recording)
 MUDCATS_SPEED=3 make EXAMPLE=mudcats run     # three times faster
+MUDCATS_STAGE=1 make EXAMPLE=mudcats run     # start part way in
 ```
 
-On the fields, `MUDCATS_STAGE` 1 to 3 starts at first contact, at the
-stream, and in the mill. On the raid, 1 starts at their wire and 2 in their
-trench with the alarm already up. On the hill, `MUDCATS_STAGE=N` starts just
-before wave N.
+On the meadow, `MUDCATS_STAGE` 1 starts as the lines step off and 2 just
+as they break into the run. In Kalvo, 1 starts at the cross-street, 2 at
+the edge of the square and 3 in the church with the counter-attack coming.
+On the Lesna road, 1 starts with the column a few seconds short of the
+mine, and 2 right on it.
+
+There's room for 256 men on a field, which the meadow uses most of.
