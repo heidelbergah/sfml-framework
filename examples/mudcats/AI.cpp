@@ -278,7 +278,7 @@ void Battle::medic_logic(Soldier& s)
             s.treating = patient->id;
             s.treat_time = patient->life == Life::DOWNED ? 3.2f : 1.6f;
             SoundBank::get().play_at("bandage", s.pos, 0.6f);
-            bark(s, s.team == Team::MONTERAN ? "Hold still. I've got you." : "Tov, tov...", false);
+            shout(s, "treating", false);
         }
         s.goal = s.pos;
         s.stance = Stance::CROUCH;
@@ -288,7 +288,7 @@ void Battle::medic_logic(Soldier& s)
         s.goal = patient->pos;
         s.path.clear();
         s.cover_index = -1;
-        if(s.bark_cooldown <= 0.0f && s.team == Team::MONTERAN) bark(s, "Coming! Stay down!", true);
+        if(s.bark_cooldown <= 0.0f && s.team == Team::MONTERAN) shout(s, "coming", true);
     }
 }
 
@@ -321,7 +321,7 @@ bool Battle::scavenge(Soldier& s)
         if(best_d < 8.0f)
         {
             if(pick_up(s, d))
-                bark(s, s.team == Team::MONTERAN ? "Got some! Got some rounds!" : "Est!", false);
+                shout(s, "got_rounds", false);
             s.want_pickup = -1;
             return false;
         }
@@ -331,7 +331,7 @@ bool Battle::scavenge(Soldier& s)
             s.goal = d.pos;
             s.path.clear();
             s.cover_index = -1;
-            if(s.team == Team::MONTERAN) bark(s, "I'm out! Need ammunition!", true);
+            if(s.team == Team::MONTERAN) shout(s, "out_of_ammo", true);
         }
         return true;
     }
@@ -383,8 +383,7 @@ void Battle::think(Soldier& s, float dt)
             s.reaction = Random::real(0.35f, 0.9f) + s.suppression * 0.8f;
             if(s.bark_cooldown <= 0.0f && Random::chance(0.5f))
             {
-                static const char* const ours[] = {"Contact!", "There! Front!", "Movement, there!", "I see one!"};
-                bark(s, s.team == Team::MONTERAN ? ours[Random::integer(0, 3)] : "Kesh! Kesh!", true);
+                shout(s, "contact", true);
             }
         }
         s.target = target;
@@ -397,8 +396,8 @@ void Battle::think(Soldier& s, float dt)
     // One of the escort sees them first: the ambush is sprung early.
     if(target >= 0 && !m_alarm && s.team == Team::MONTERAN)
     {
-        bark(s, "In the trees! Ambush! Ambush!", true);
-        raise_alarm("One of the escort saw them in the trees");
+        shout(s, "ambush_seen", true);
+        raise_alarm(tr("alarm.seen"));
     }
 
     // --- grenades landing nearby: get away from them --------------------------------
@@ -408,7 +407,7 @@ void Battle::think(Soldier& s, float dt)
         float const d = length(g.pos - s.pos);
         if(d < 36.0f && !(s.has_mg() && s.deployed))
         {
-            bark(s, s.team == Team::MONTERAN ? "Grenade!" : "Vrak! Vrak!", true);
+            shout(s, "grenade_seen", true);
             s.goal = s.pos + unit(s.pos - g.pos) * 48.0f;
             s.path.clear();
             s.cover_index = -1;
@@ -441,7 +440,7 @@ void Battle::think(Soldier& s, float dt)
         s.deployed = false;
         s.serving = -1;
         if(s.path.empty() || s.repath <= 0.0f) { s.path = m_map.find_path(s.pos, s.goal); s.repath = 3.0f; }
-        if(homeward ? length(s.pos - s.home) < 24.0f : s.pos.x > m_map.size.x - 20.0f) { s.life = Life::FLED; s.fate = "Ran"; }
+        if(homeward ? length(s.pos - s.home) < 24.0f : s.pos.x > m_map.size.x - 20.0f) s.life = Life::FLED;
         return;
     }
 
@@ -468,7 +467,7 @@ void Battle::think(Soldier& s, float dt)
                 s.cutting = s.role == Role::SAPPER ? 2.5f : 4.0f;
                 s.cut_at = pt;
                 s.vel = {};
-                bark(s, "Cutting! Cover me!", false);
+                shout(s, "cutting", false);
             }
             else if(length(s.goal - pt) > 6.0f && s.path.size() < 2)
             {
@@ -504,7 +503,7 @@ void Battle::think(Soldier& s, float dt)
                     s.goal = s.pos;
                     s.stance = Stance::CROUCH;
                     SoundBank::get().play_at("bandage", s.pos, 0.6f);
-                    bark(s, "Hold on. Dressing on you, hold on.", false);
+                    shout(s, "dressing", false);
                 }
                 else
                 {
@@ -593,14 +592,14 @@ void Battle::think(Soldier& s, float dt)
                 s.cover_index = c;
                 s.goal = c >= 0 ? m_map.cover[static_cast<std::size_t>(c)].pos : hop;
                 s.path.clear();
-                if(Random::chance(0.3f)) bark(s, "Toven! Toven!", true);
+                if(Random::chance(0.3f)) shout(s, "toven", true);
             }
             else if((best < 30.0f && s.gun == Gun::RIFLE && Random::chance(0.5f)) || (storm && best < 50.0f && Random::chance(0.6f)))
             {
                 s.charge_until = m_time + 4.0f;
                 s.goal = aim_for;
                 s.path.clear();
-                bark(s, "Urraaa!", true);
+                shout(s, "urra", true);
             }
         }
     }

@@ -34,32 +34,31 @@ namespace
 
     constexpr float RUN_FROM_SHORTCUT = 900.0f;     // MUDCATS_STAGE=2 on the charge: the lines put here
 
-    const char* const RECHIVII_NAMES[] = {
-        "Oslev", "Brannik", "Dvorek", "Halst", "Mirov", "Tesk", "Vadim", "Kosar", "Rudan", "Zelny",
-        "Pavek", "Strom", "Ilko", "Gerd", "Yaro", "Lutz", "Borsk", "Kalen", "Matvo", "Resk",
-        "Dravo", "Imre", "Sobek", "Varn", "Tolya", "Kresh", "Andrik", "Pellan", "Gosta", "Vey",
-        "Hollin", "Radek", "Siro", "Mavik", "Darko", "Lesh", "Orvan", "Tibor", "Zavic", "Nemo"};
-
-    const char* const MONTERAN_RIFLEMEN[] = {
-        "Ilie Brandt", "Oren Mazur", "Paolo Serra", "Viktor Ames", "Luca Fenn", "Radu Pell", "Ion Carver",
-        "Mihai Stoll", "Andrei Holm", "Simon Lark", "Dario Kesh", "Nico Varro", "Teo Danes", "Emeric Volt",
-        "Gaspar Wren", "Iosif Brann", "Matei Lusk"};
-
 }
 
-const char* difficulty_name(int d)
+std::string difficulty_name(int d)
 {
-    return d <= 0 ? "Recruit" : (d == 1 ? "Regular" : "Veteran");
+    return tr("difficulty." + std::to_string(std::clamp(d, 0, 2)));
 }
 
-const char* level_name(LevelId level)
+const char* level_key(LevelId level)
 {
     switch(level)
     {
-        case LevelId::TOWN:     return "Kalvo";
-        case LevelId::FOREST:   return "The Lesna road";
-        default:                return "The Sava meadow";
+        case LevelId::TOWN:     return "town";
+        case LevelId::FOREST:   return "forest";
+        default:                return "charge";
     }
+}
+
+const char* side_key(Team team)
+{
+    return team == Team::MONTERAN ? "monteran" : "rechivii";
+}
+
+std::string level_name(LevelId level)
+{
+    return tr(std::string("levels.") + level_key(level) + ".name");
 }
 
 Battle::Battle()
@@ -85,8 +84,8 @@ void Battle::on_enter()
     m_level = c.level;
     c.won = false;
     c.time = 0.0f;
-    c.prisoners = c.prisoners_shot = 0;
-    c.log.clear();
+    c.wagons_lost = 0;
+    m_next_name[0] = m_next_name[1] = 0;
 
     c.playing = c.side;
     build_world();
@@ -289,14 +288,14 @@ void Battle::pick_player(int section)
     m_soldiers[static_cast<std::size_t>(m_player)].is_player = true;
 }
 
-Soldier& Battle::add(Team team, Role role, std::string rank, std::string name, sf::Vector2f pos, int section)
+Soldier& Battle::add(Team team, Role role, Rank rank, std::string name, sf::Vector2f pos, int section)
 {
     Soldier s;
     s.id      = static_cast<int>(m_soldiers.size());
     s.team    = team;
     s.role    = role;
     s.gun     = default_gun(role);
-    s.rank    = std::move(rank);
+    s.rank    = rank;
     s.name    = std::move(name);
     s.pos     = pos;
     s.goal    = pos;
@@ -316,10 +315,21 @@ Soldier& Battle::add(Team team, Role role, std::string rank, std::string name, s
     return m_soldiers.back();
 }
 
-namespace
+std::string Battle::next_name(Team team)
 {
-    // A section's men, in order: who leads it, then the rest.
-    struct Member { Role role; const char* rank; const char* name; };
+    // Down the list for that side, skipping anyone already on the field
+    // (your section and the lieutenant are named by hand).
+    const auto& names = list(team == Team::MONTERAN ? "names.monteran.men" : "names.rechivii.men");
+    if(names.empty()) return "?";
+    std::size_t& next = m_next_name[team == Team::MONTERAN ? 0 : 1];
+    for(std::size_t tries = 0; tries < names.size(); ++tries)
+    {
+        const std::string& name = names[next++ % names.size()];
+        bool taken = false;
+        for(const auto& s : m_soldiers) if(s.team == team && s.name == name) taken = true;
+        if(!taken) return name;
+    }
+    return names[next++ % names.size()];
 }
 
 // ---------------------------------------------------------------- helpers
@@ -379,7 +389,7 @@ bool Battle::player_commands_section() const
 void Battle::say(const Soldier& who, const std::string& text, float time)
 {
     if(!who.alive()) return;
-    say(who.rank + " " + who.name.substr(who.name.find(' ') + 1), text, who.team, time);
+    say(short_name(who), text, who.team, time);
     SoundBank::get().play_at("bark", who.pos, 0.6f, 0.04f, who.voice);
 }
 
@@ -410,12 +420,10 @@ void Battle::bark(Soldier& s, const std::string& text, bool voice)
     if(voice) SoundBank::get().play_at("bark", s.pos, 0.55f, 0.04f, s.voice);
 }
 
-void Battle::log(const std::string& line)
+void Battle::shout(Soldier& s, std::string_view key, bool voice)
 {
-    int const secs = static_cast<int>(m_time);
-    char stamp[16];
-    std::snprintf(stamp, sizeof stamp, "%d:%02d  ", secs / 60, secs % 60);
-    Campaign::current().log.push_back(stamp + line);
+    std::string const own = std::string("barks.") + side_key(s.team) + "." + std::string(key);
+    bark(s, pick(has_text(own) ? own : "barks.monteran." + std::string(key)), voice);
 }
 
 // ---------------------------------------------------------------- orders
@@ -483,7 +491,6 @@ void Battle::order_section(int section, Order order, sf::Vector2f point, sf::Vec
 void Battle::order_from_player(Order order)
 {
     Soldier& p = *player();
-    static const char* const words[] = {"On me!", "Hold here!", "Move up! Go!", "Covering fire, there!", "Fix bayonets! Charge!"};
     // A section leader orders his own section; only the lieutenant has the others.
     int const only = player_leads() ? m_selected : p.section;
     for(auto& sec : m_sections)
@@ -495,7 +502,7 @@ void Battle::order_from_player(Order order)
         order_section(sec.id, order, m_mouse_world + sf::Vector2f{0.0f, band}, m_mouse_world);
     }
     // The lieutenant's own runners, if he is not you.
-    bark(p, words[static_cast<int>(order)], true);
+    bark(p, item("orders.words", static_cast<std::size_t>(order)), true);
     p.bark_cooldown = 0.0f;
     if(order == Order::ADVANCE || order == Order::CHARGE) SoundBank::get().play_at("whistle", p.pos, 0.7f);
     if(order == Order::CHARGE) SoundBank::get().play_at("charge_cry", p.pos, 0.9f, 0.0f, p.voice);
@@ -507,13 +514,12 @@ void Battle::promote(int section)
     // The most senior man left takes over: a corporal if there is one.
     Soldier* best = nullptr;
     for(auto& s : m_soldiers)
-        if(s.section == section && s.fighting() && (!best || (s.rank == "Cpl." && best->rank != "Cpl."))) best = &s;
+        if(s.section == section && s.fighting() && (!best || (s.rank == Rank::CORPORAL && best->rank != Rank::CORPORAL))) best = &s;
     if(!best) return;
     best->leader = true;
     if(best->team == Team::MONTERAN)
     {
-        std::string const who = best->rank + " " + best->name.substr(best->name.find(' ') + 1);
-        notice(who + " takes " + m_sections[static_cast<std::size_t>(section)].name, 3.0f);
+        notice(tr("hud.notice.takes_section", {{"name", short_name(*best)}, {"section", m_sections[static_cast<std::size_t>(section)].name}}), 3.0f);
     }
 }
 
@@ -619,7 +625,7 @@ void Battle::leapfrog(Soldier& lt, int limit)
             m_waypoint = std::max(m_waypoint, sec->at);
             m_waypoint_time = 0.0f;
             m_cover_until = m_time + 2.0f;
-            if(Soldier* cpl = section_leader(sec->id)) bark(*cpl, "In position!", false);
+            if(Soldier* cpl = section_leader(sec->id)) bark(*cpl, tr("barks.monteran.in_position"), false);
         }
         return;
     }
@@ -637,7 +643,7 @@ void Battle::leapfrog(Soldier& lt, int limit)
         {
             float const d = cpl ? length(m_assault_at - cpl->pos) : 999.0f;
             order_section(sec.id, d < 90.0f ? Order::CHARGE : Order::ADVANCE, m_assault_at);
-            bark(lt, d < 90.0f ? "Get in there! Go!" : "Work round them! Go!", true);
+            bark(lt, tr(d < 90.0f ? "barks.monteran.get_in" : "barks.monteran.work_round"), true);
         }
         else
         {
@@ -646,21 +652,20 @@ void Battle::leapfrog(Soldier& lt, int limit)
             order_section(sec.id, charge ? Order::CHARGE : Order::ADVANCE, point_of(sec.heading, sec));
             if(charge)
             {
-                bark(lt, "Fix bayonets! Charge!", true);
+                bark(lt, tr("barks.monteran.fix_bayonets"), true);
                 SoundBank::get().play_at("whistle", lt.pos, 0.9f);
                 SoundBank::get().play_at("charge_cry", lt.pos, 0.9f, 0.0f, lt.voice);
             }
             else if(cpl)
             {
-                static const char* const calls[] = {"Up! Next cover, go!", "Move! Move!", "On me! Keep low!", "Go, go! Don't stop in the open!"};
-                bark(*cpl, calls[m_bounding % 4], true);
+                bark(*cpl, item("barks.monteran.bound", static_cast<std::size_t>(m_bounding)), true);
             }
             // In the town, open ground is a street to cross: the corporal smokes it first.
             if(m_level == LevelId::TOWN && cpl && cpl->smokes > 0 && (sec.heading == 4 || sec.heading == 7) && (!cpl->is_player || m_autoplay))
             {
                 sf::Vector2f const across = point_of(sec.heading, sec);
                 throw_grenade(*cpl, cpl->pos + (across - cpl->pos) * 0.55f + sf::Vector2f{0.0f, sec.band > 0.0f ? -30.0f : 30.0f}, true);
-                bark(*cpl, "Smoke! Wait for it... now, go!", true);
+                bark(*cpl, tr("barks.monteran.smoke_wait"), true);
             }
             // The lieutenant keeps with the rearmost.
             int rear = sec.heading;
@@ -742,7 +747,7 @@ void Battle::leapfrog(Soldier& lt, int limit)
             if(m_keep_up > 4.0f)
             {
                 m_keep_up = 0.0f;
-                if(Soldier* cpl = section_leader(mine->id)) { cpl->bark_cooldown = 0.0f; bark(*cpl, "Come on! Keep up with us!", true); }
+                if(Soldier* cpl = section_leader(mine->id)) { cpl->bark_cooldown = 0.0f; bark(*cpl, tr("barks.monteran.keep_up"), true); }
             }
             m_cover_until = m_time + 0.25f;
             m_assault = false;
@@ -758,7 +763,7 @@ void Battle::leapfrog(Soldier& lt, int limit)
         if(sec != go)
         {
             order_section(sec->id, Order::SUPPRESS, {}, threat);
-            if(Soldier* cpl = section_leader(sec->id); cpl && Random::chance(0.5f)) bark(*cpl, "Covering fire! Keep their heads down!", true);
+            if(Soldier* cpl = section_leader(sec->id); cpl && Random::chance(0.5f)) bark(*cpl, tr("barks.monteran.covering_fire"), true);
         }
     go->heading = heading;
     m_bound_wait = go->id;
@@ -845,11 +850,11 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
                 break;
             case S::T:
                 if(p->alive() && p->smokes > 0) throw_grenade(*p, m_mouse_world, true);
-                else if(p->alive()) notice("No smoke grenades", 1.5f);
+                else if(p->alive()) notice(tr("hud.notice.no_smoke"), 1.5f);
                 break;
             case S::X:
                 if(p->alive() && p->flares > 0) fire_flare(*p, m_mouse_world);
-                else if(p->alive() && p->role == Role::OFFICER) notice("No flares left", 1.5f);
+                else if(p->alive() && p->role == Role::OFFICER) notice(tr("hud.notice.no_flares"), 1.5f);
                 break;
             case S::V:
                 // Each man's own trick: the radio, the satchel charge.
@@ -868,13 +873,13 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
                 }
                 else if(p->satchels > 0) place_satchel(*p, m_mouse_world);
                 else if(p->role == Role::OFFICER && p->flares > 0) fire_flare(*p, m_mouse_world);
-                else if(p->role == Role::SAPPER) notice("No satchel charges left", 1.5f);
+                else if(p->role == Role::SAPPER) notice(tr("hud.notice.no_satchels"), 1.5f);
                 break;
             case S::B:
                 if(p->alive() && p->role == Role::RADIOMAN)
                 {
                     m_smoke_mission = !m_smoke_mission;
-                    notice(m_smoke_mission ? "Next call: smoke" : "Next call: high explosive", 1.8f);
+                    notice(tr(m_smoke_mission ? "hud.notice.next_smoke" : "hud.notice.next_shells"), 1.8f);
                     SoundBank::get().play("ui_hover", 0.6f);
                 }
                 break;
@@ -882,7 +887,7 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
                 if(p->life == Life::DOWNED)
                 {
                     SoundBank::get().play_at("medic_call", p->pos, 0.8f, 0.02f, p->voice);
-                    bark(*p, "Medic!", false);
+                    bark(*p, tr("barks.monteran.medic"), false);
                     for(auto& o : m_soldiers)                   // a medic hears it
                         if(o.team == p->team && o.role == Role::MEDIC && o.alive() && length(o.pos - p->pos) < 400.0f) o.think = 0.0f;
                     break;
@@ -897,14 +902,14 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
                 }
                 break;
             case S::Space:
-                if(p->life == Life::DOWNED) { kill(*p, -1, "Bled out in the mud"); take_over(); }
+                if(p->life == Life::DOWNED) { kill(*p, -1); take_over(); }
                 break;
             case S::Tab:
                 if(leading)
                 {
                     int const sections = static_cast<int>(std::count_if(m_sections.begin(), m_sections.end(), [](const Section& s) { return s.team == Team::MONTERAN; }));
                     m_selected = m_selected + 1 >= sections ? -1 : m_selected + 1;
-                    notice(m_selected < 0 ? "Orders to: the whole platoon" : "Orders to: " + m_sections[static_cast<std::size_t>(m_selected)].name, 1.8f);
+                    notice(m_selected < 0 ? tr("hud.notice.orders_all") : tr("hud.notice.orders_to", {{"section", m_sections[static_cast<std::size_t>(m_selected)].name}}), 1.8f);
                     SoundBank::get().play("ui_hover", 0.6f);
                 }
                 break;
@@ -1008,14 +1013,14 @@ void Battle::interact(Soldier& p)
             p.vel = {};
             if(p.stance == Stance::STAND) p.stance = Stance::CROUCH;
             SoundBank::get().play_at("bandage", p.pos, 0.8f);
-            hint(std::string("Treating ") + near->name + ". Keep still.", 3.0f);
+            hint(tr("hints.treating", {{"name", near->name}}), 3.0f);
         }
         else if(near->life == Life::DOWNED && near->dragged_by < 0)
         {
             p.dragging = near->id;
             near->dragged_by = p.id;
             p.stance = Stance::CROUCH;
-            hint("Dragging. E again to let go. Get him to a medic, or to cover.", 4.0f);
+            hint(tr("hints.dragging"), 4.0f);
         }
         return;
     }
@@ -1028,7 +1033,7 @@ void Battle::interact(Soldier& p)
         p.cut_at = wire_at;
         p.vel = {};
         if(p.stance == Stance::STAND) p.stance = Stance::CROUCH;
-        hint("Cutting. Keep still. E again to stop.", 3.0f);
+        hint(tr("hints.cutting"), 3.0f);
         return;
     }
 
@@ -1041,7 +1046,7 @@ void Battle::interact(Soldier& p)
             if(w.flame) p.fuel = 100.0f;
             p.grenades = std::max(p.grenades, 2);
             SoundBank::get().play_at("ammo_pickup", p.pos, 0.8f);
-            notice("Filled your pouches", 2.0f);
+            notice(tr("hud.notice.filled_up"), 2.0f);
             return;
         }
 
@@ -1058,9 +1063,9 @@ std::string Battle::interact_prompt() const
     // What E would do, said over your head, so you never have to guess.
     const Soldier& p = me();
     if(!p.alive()) return "";
-    if(p.dragging >= 0) return "E  let go";
-    if(p.cutting > 0.0f) return "cutting...";
-    if(p.treating >= 0) return "treating...";
+    if(p.dragging >= 0) return tr("hud.prompt.let_go");
+    if(p.cutting > 0.0f) return tr("hud.prompt.cutting");
+    if(p.treating >= 0) return tr("hud.prompt.treating");
     const Soldier* near = nullptr;
     float best = 22.0f;
     for(const auto& o : m_soldiers)
@@ -1070,14 +1075,14 @@ std::string Battle::interact_prompt() const
         float const d = std::hypot(o.pos.x - p.pos.x, o.pos.y - p.pos.y);
         if(needs && d < best) { best = d; near = &o; }
     }
-    std::string const who = near ? near->name.substr(near->name.find(' ') + 1) : "";
-    if(near && p.role == Role::MEDIC && p.medkits > 0) return "E  treat " + who;
-    if(near && near->life == Life::DOWNED && near->dragged_by < 0) return "E  drag " + who;
-    if(p.cuts_wire() && m_map.near_wire(p.pos, 12.0f)) return "E  cut the wire";
-    for(auto c : m_map.crates) if(std::hypot(c.x - p.pos.x, c.y - p.pos.y) < 18.0f) return "E  fill up";
+    std::string const who = near ? surname(*near) : "";
+    if(near && p.role == Role::MEDIC && p.medkits > 0) return tr("hud.prompt.treat", {{"name", who}});
+    if(near && near->life == Life::DOWNED && near->dragged_by < 0) return tr("hud.prompt.drag", {{"name", who}});
+    if(p.cuts_wire() && m_map.near_wire(p.pos, 12.0f)) return tr("hud.prompt.cut_wire");
+    for(auto c : m_map.crates) if(std::hypot(c.x - p.pos.x, c.y - p.pos.y) < 18.0f) return tr("hud.prompt.fill_up");
     for(const auto& d : m_dropped)
         if(!d.taken && std::hypot(d.pos.x - p.pos.x, d.pos.y - p.pos.y) < 16.0f)
-            return d.gun == p.gun ? "E  take his rounds" : std::string("E  take the ") + gun_name(d.gun);
+            return d.gun == p.gun ? tr("hud.prompt.take_rounds") : tr("hud.prompt.take_weapon", {{"weapon", gun_name(d.gun)}});
     return "";
 }
 
@@ -1168,7 +1173,7 @@ void Battle::player_input(float dt)
     // A click while it's still coming up fires as soon as it's there.
     if(can && p.ready > 0.6f && (w.automatic ? m_trigger : m_trigger_pressed)) { p.firing = true; m_trigger_pressed = false; }
     if(m_trigger_pressed && p.has_mg() && !p.deployed && p.deploying <= 0.0f)
-        hint("Right click to set the gun up first. It fires lying or kneeling, not from the hip.", 3.0f);
+        hint(tr("hints.set_up_gun"), 3.0f);
     if(!can) m_trigger_pressed = false;
 
     // --- bandaging yourself ---------------------------------------------------------
@@ -1180,7 +1185,7 @@ void Battle::player_input(float dt)
             --p.bandages;
             p.bleeding = 0.0f;
             p.bandaged = true;
-            hint("Bandaged. The bleeding has stopped.", 2.5f);
+            hint(tr("hints.bandaged"), 2.5f);
         }
     }
 }
@@ -1194,7 +1199,9 @@ void Battle::update(sf::Time delta_time)
 
     m_time += dt;
     m_stage_time += dt;
-    Campaign::current().time += dt;
+    // How long the engagement lasted: from the first shots to the end.
+    float& fought = Campaign::current().time;
+    if(m_stage != Stage::WON && m_stage != Stage::LOST && (fought > 0.0f || fighting_started())) fought += dt;
 
     if(!m_autoplay) player_input(dt);
     else m_mouse_world = player()->pos + dir(player()->aim) * 60.0f;
@@ -1299,7 +1306,7 @@ void Battle::set_stage(Stage stage)
     bool const you_lead = p.role == Role::OFFICER && p.alive();
     bool const ai_lt = lt && !lt->is_player;
     auto all_rechivii = [this](auto&& f) { for(auto& s : m_soldiers) if(s.team == Team::RECHIVII) f(s); };
-    std::string const lead_hint = "Tab picks a section.  1 follow  2 hold  3 advance  4 covering fire  5 charge, all at the cursor";
+    std::string const lead_hint = tr("hints.lead_orders");
 
     switch(stage)
     {
@@ -1307,26 +1314,25 @@ void Battle::set_stage(Stage stage)
         case Stage::CHARGE_FORM:
             if(p.team == Team::MONTERAN)
             {
-                m_objective = "Hold the trench";
-                if(ai_lt) say(*lt, "Heads down while their guns are at it. When it lifts, they'll come. All of them.", 5.0f);
-                hint("Stay low in the trench while the shells come. When they step off, make every round count.", 8.0f);
+                m_objective = tr("levels.charge.objective.monteran");
+                if(ai_lt) say(*lt, tr("levels.charge.form.monteran_lt"), 5.0f);
+                hint(tr("levels.charge.form.monteran_hint"), 8.0f);
             }
             else
             {
-                m_objective = "Take their trench";
-                say("Capt.", "Bayonets. Nobody fires till we're on them. Keep your place in the line.", Team::RECHIVII, 5.0f);
-                hint("Keep with the line. Middle click is the bayonet. Shift runs, once the whistles go.", 8.0f);
+                m_objective = tr("levels.charge.objective.rechivii");
+                say(tr("speakers.rch_captain"), tr("levels.charge.form.rechivii_captain"), Team::RECHIVII, 5.0f);
+                hint(tr("levels.charge.form.rechivii_hint"), 8.0f);
             }
             break;
         case Stage::CHARGE_WALK:
             SoundBank::get().play_at("whistle", {2380.0f, 550.0f}, 1.0f);
             if(p.team == Team::MONTERAN)
             {
-                m_objective = "Hold the trench";
-                if(ai_lt) say(*lt, "There they are. Stand to! Wait for them, wait for it...", 4.0f);
+                m_objective = tr("levels.charge.objective.monteran");
+                if(ai_lt) say(*lt, tr("levels.charge.walk.monteran_lt"), 4.0f);
             }
-            else say("Capt.", "Forward! At the walk!", Team::RECHIVII, 3.0f);
-            log("The Rechivii stepped off across the Sava meadow");
+            else say(tr("speakers.rch_captain"), tr("levels.charge.walk.rechivii_captain"), Team::RECHIVII, 3.0f);
             m_combat_heat = 0.7f;
             break;
         case Stage::CHARGE_RUN:
@@ -1350,9 +1356,9 @@ void Battle::set_stage(Stage stage)
                 }
                 if(who) m_later.push_back({Random::real(0.1f, 4.0f), "war_cry", who->pos, Random::real(0.5f, 0.9f), who->voice});
             }
-            for(auto& s : m_soldiers) if(s.team == Team::RECHIVII && s.line >= 0 && s.fighting() && Random::chance(0.25f)) bark(s, "Urraaa!", false);
-            if(p.team == Team::MONTERAN && ai_lt) say(*lt, "Here they come! Fire! Fire!", 3.0f);
-            else if(p.team == Team::RECHIVII) say("Capt.", "Urraaa! At them!", Team::RECHIVII, 3.0f);
+            for(auto& s : m_soldiers) if(s.team == Team::RECHIVII && s.line >= 0 && s.fighting() && Random::chance(0.25f)) bark(s, pick("barks.rechivii.urra"), false);
+            if(p.team == Team::MONTERAN && ai_lt) say(*lt, tr("levels.charge.run.monteran_lt"), 3.0f);
+            else if(p.team == Team::RECHIVII) say(tr("speakers.rch_captain"), tr("levels.charge.run.rechivii_captain"), Team::RECHIVII, 3.0f);
             m_combat_heat = 1.0f;
             break;
         }
@@ -1361,9 +1367,9 @@ void Battle::set_stage(Stage stage)
         case Stage::TOWN_ENTER:
             if(p.team == Team::MONTERAN)
             {
-                m_objective = "Into the town";
-                if(ai_lt) say(*lt, "Kalvo. They're in the houses, all the way up to the church. We take it street by street.", 5.5f);
-                hint(you_lead ? lead_hint : "In a town you fight from the houses: through doors and windows, and through the walls where they're broken.", 9.0f);
+                m_objective = tr("levels.town.enter.monteran_objective");
+                if(ai_lt) say(*lt, tr("levels.town.enter.monteran_lt"), 5.5f);
+                hint(you_lead ? lead_hint : tr("levels.town.enter.monteran_hint"), 9.0f);
                 for(auto& sec : m_sections)
                     if(sec.team == Team::MONTERAN)
                     {
@@ -1373,9 +1379,9 @@ void Battle::set_stage(Stage stage)
             }
             else
             {
-                m_objective = "Hold the first houses";
-                say("Lt.", "Stand to. They'll come in from the fields. Nobody leaves his window.", Team::RECHIVII, 5.0f);
-                hint("Fight from the windows: they let you see out and shoot out. Stay back from them when you can, and listen.", 9.0f);
+                m_objective = tr("levels.town.enter.rechivii_objective");
+                say(tr("speakers.rch_lieutenant"), tr("levels.town.enter.rechivii_lt"), Team::RECHIVII, 5.0f);
+                hint(tr("levels.town.enter.rechivii_hint"), 9.0f);
                 for(auto& sec : m_sections)
                     if(sec.team == Team::MONTERAN)
                     {
@@ -1385,24 +1391,22 @@ void Battle::set_stage(Stage stage)
             }
             break;
         case Stage::TOWN_STREET:
-            m_objective = p.team == Team::MONTERAN ? "Clear the first block" : "Hold the first houses";
-            if(p.team == Team::MONTERAN && ai_lt) say(*lt, "Not the street, the gun's on it! Through the houses and the yards. Go!", 4.0f);
+            m_objective = tr(p.team == Team::MONTERAN ? "levels.town.street.monteran_objective" : "levels.town.street.rechivii_objective");
+            if(p.team == Team::MONTERAN && ai_lt) say(*lt, tr("levels.town.street.monteran_lt"), 4.0f);
             m_waypoint = 0;
             m_waypoint_time = 3.0f;
             m_combat_heat = std::max(m_combat_heat, 0.7f);
-            log("B Platoon went into Kalvo");
             break;
         case Stage::TOWN_CROSS:
-            m_objective = p.team == Team::MONTERAN ? "Cross the street. Clear the second block" : "Hold the second block";
-            if(p.team == Team::MONTERAN && ai_lt) say(*lt, "Across the cross-street, one section at a time. Smoke if you've got it!", 4.5f);
+            m_objective = tr(p.team == Team::MONTERAN ? "levels.town.cross.monteran_objective" : "levels.town.cross.rechivii_objective");
+            if(p.team == Team::MONTERAN && ai_lt) say(*lt, tr("levels.town.cross.monteran_lt"), 4.5f);
             all_rechivii([this](Soldier& s) { if(s.section == m_town_sections[1]) s.active = true; });
             town_fall_back(m_town_sections[0], m_town_sections[1]);
             town_reinforce(8);
-            log("The first block was taken");
             break;
         case Stage::TOWN_SQUARE:
-            m_objective = p.team == Team::MONTERAN ? "Take the church" : "Hold the square and the church";
-            if(p.team == Team::MONTERAN && ai_lt) say(*lt, "The square. That tower's got a gun in it. Keep out of its line, round the sides, and in!", 5.0f);
+            m_objective = tr(p.team == Team::MONTERAN ? "levels.town.square.monteran_objective" : "levels.town.square.rechivii_objective");
+            if(p.team == Team::MONTERAN && ai_lt) say(*lt, tr("levels.town.square.monteran_lt"), 5.0f);
             all_rechivii([this](Soldier& s)
             {
                 if(s.section == m_town_sections[2] || s.section == m_town_sections[3] || s.serving >= 0 || (s.role == Role::OFFICER && !s.reserve)) s.active = true;
@@ -1416,30 +1420,28 @@ void Battle::set_stage(Stage stage)
                                                   : sf::Vector2f{Random::real(1560, 1880), Random::real(236, 262)};
                 m_shells.push_back({t, 4.0f + static_cast<float>(i) * 0.8f + Random::real(0.0f, 0.4f), false, 1});
             }
-            if(p.team == Team::MONTERAN) say("Runner", "The battery's on the church, Lieutenant! Heads down, then go!", Team::MONTERAN, 4.0f);
-            else say("Capt.", "Their guns! Down, everyone down!", Team::RECHIVII, 3.5f);
-            log("The second block was taken. The fight moved into the square");
+            if(p.team == Team::MONTERAN) say(tr("speakers.runner"), tr("levels.town.square.runner"), Team::MONTERAN, 4.0f);
+            else say(tr("speakers.rch_captain"), tr("levels.town.square.rechivii_captain"), Team::RECHIVII, 3.5f);
             break;
 
         // ======================================================== the Lesna road
         case Stage::FOREST_MARCH:
             if(p.team == Team::MONTERAN)
             {
-                m_objective = "Get the column through";
-                hint("You're walking with the wagons. If it starts, get down behind one and find out where it's coming from.", 9.0f);
+                m_objective = tr("levels.forest.march.monteran_objective");
+                hint(tr("levels.forest.march.monteran_hint"), 9.0f);
             }
             else
             {
-                m_objective = "Wait for the mine";
-                say("Lt.", "Here they come. Nobody moves. Nobody fires before the mine. Then the wagons, all of them.", Team::RECHIVII, 5.5f);
-                hint("Lie still: lying down in the ferns they won't see you till they're on top of you. The mine is the signal.", 9.0f);
+                m_objective = tr("levels.forest.march.rechivii_objective");
+                say(tr("speakers.rch_lieutenant"), tr("levels.forest.march.rechivii_lt"), Team::RECHIVII, 5.5f);
+                hint(tr("levels.forest.march.rechivii_hint"), 9.0f);
             }
-            log("The column came up the Lesna road");
             break;
         case Stage::FOREST_AMBUSH:
         {
             halt_column();
-            m_objective = p.team == Team::MONTERAN ? "Get behind the wagons. Fight them off" : "Shoot up the column";
+            m_objective = tr(p.team == Team::MONTERAN ? "levels.forest.ambush.monteran_objective" : "levels.forest.ambush.rechivii_objective");
             for(auto& s : m_soldiers)
                 if(s.team == Team::MONTERAN && s.alive())
                 {
@@ -1458,36 +1460,33 @@ void Battle::set_stage(Stage stage)
             m_waypoint_time = 4.0f;
             if(p.team == Team::MONTERAN)
             {
-                if(ai_lt) say(*lt, "Ambush! Left side! Down behind the wagons and fire!", 3.5f);
-                else say("Cpl. Orban", "Ambush! In the trees! Get down!", Team::MONTERAN, 3.5f);
+                if(ai_lt) say(*lt, tr("levels.forest.ambush.monteran_lt"), 3.5f);
+                else say(tr("speakers.orban"), tr("levels.forest.ambush.orban"), Team::MONTERAN, 3.5f);
             }
-            else say("Lt.", "Fire! Fire! Kill the horses!", Team::RECHIVII, 3.0f);
+            else say(tr("speakers.rch_lieutenant"), tr("levels.forest.ambush.rechivii_lt"), Team::RECHIVII, 3.0f);
             m_combat_heat = 1.0f;
-            log("The ambush was sprung");
             break;
         }
         case Stage::FOREST_PUSH:
-            m_objective = p.team == Team::MONTERAN ? "Keep them off the wagons" : (p.raider ? "Burn the wagons" : "Cover the assault group");
+            m_objective = tr(p.team == Team::MONTERAN ? "levels.forest.push.monteran_objective" : (p.raider ? "levels.forest.push.raider_objective" : "levels.forest.push.rechivii_objective"));
             all_rechivii([](Soldier& s) { if(s.reserve) { s.active = true; s.alerted = true; } });
             SoundBank::get().play_at("whistle", sf::Vector2f{1520.0f, 200.0f}, 0.8f);
             if(p.team == Team::MONTERAN)
             {
                 Soldier* any = nullptr;
                 for(auto& s : m_soldiers) if(s.team == Team::MONTERAN && s.fighting() && !s.is_player) any = &s;
-                if(any) say(*any, "More of them! They're coming for the wagons!");
+                if(any) say(*any, tr("levels.forest.push.monteran_seen"));
             }
-            else say("Lt.", "Assault group, go! Burn them!", Team::RECHIVII, 3.0f);
-            log("Their assault group went for the wagons");
+            else say(tr("speakers.rch_lieutenant"), tr("levels.forest.push.rechivii_lt"), Team::RECHIVII, 3.0f);
             break;
 
         // ======================================================== both
         case Stage::COUNTER:
         {
-            m_objective = m_level == LevelId::TOWN ? (p.team == Team::MONTERAN ? "Hold the church" : "Retake the church") : (p.team == Team::MONTERAN ? "Hold the column" : "Hit them again");
+            m_objective = tr(std::string("levels.") + level_key(m_level) + ".counter." + side_key(p.team) + "_objective");
             if(m_level == LevelId::TOWN)
             {
-                log("The church was taken");
-                if(p.team == Team::RECHIVII) say("Capt.", "The reserve is coming up through the graveyard. We take it back. Now!", Team::RECHIVII, 4.5f);
+                if(p.team == Team::RECHIVII) say(tr("speakers.rch_captain"), tr("levels.town.counter.rechivii_captain"), Team::RECHIVII, 4.5f);
             }
             all_rechivii([](Soldier& s) { if(s.reserve && !s.has_post) s.active = true; });
             // Everyone into cover around the objective, facing the way they'll come.
@@ -1498,52 +1497,25 @@ void Battle::set_stage(Stage stage)
             Soldier* any = nullptr;
             for(auto& s : m_soldiers) if(s.team == Team::MONTERAN && s.alive() && !s.is_player) any = &s;
             if(any && any->team == Team::MONTERAN && p.team == Team::MONTERAN)
-                say(*any, m_level == LevelId::TOWN ? "In the graveyard! They're coming back through the graves!" : "More of them, in the trees! Here they come!");
+                say(*any, tr(m_level == LevelId::TOWN ? "levels.town.counter.monteran_seen" : "levels.forest.counter.monteran_seen"));
             m_combat_heat = 1.0f;
             break;
         }
         case Stage::WON:
+        {
             m_objective = "";
             Campaign::current().won = true;
-            if(m_level == LevelId::TOWN)
-            {
-                if(p.team == Team::MONTERAN) say(lt && lt->alive() ? lt->rank + " " + lt->name.substr(lt->name.find(' ') + 1) : "", "Kalvo's ours. Get the wounded into the church. Somebody stop that bell rope swinging.", Team::MONTERAN, 5.5f);
-                else say("", "They've gone back to the fields. Kalvo is still ours.", Team::RECHIVII, 5.0f);
-                SoundBank::get().play("church_bell", 0.5f, 0.0f);
-                m_end_timer = 0.0f;
-                break;
-            }
-            if(m_level == LevelId::CHARGE)
-            {
-                if(p.team == Team::MONTERAN) say(lt && lt->alive() ? lt->rank + " " + lt->name.substr(lt->name.find(' ') + 1) : "", "They've gone. Look at the field. Just look at it.", Team::MONTERAN, 5.0f);
-                else say("", "Their trench is ours. The meadow is ours.", Team::RECHIVII, 5.0f);
-                SoundBank::get().play_at("whistle", p.pos, 0.6f);
-                m_end_timer = 0.0f;
-                break;
-            }
-            // The Lesna road.
-            if(p.team == Team::MONTERAN) say(lt && lt->alive() ? lt->rank + " " + lt->name.substr(lt->name.find(' ') + 1) : "", "Get the wagons moving. Wounded on the carts. We're not stopping again till we're out of these trees.", Team::MONTERAN, 5.5f);
-            else say("", "The column is burning. Back into the trees, before their guns find us.", Team::RECHIVII, 5.0f);
-            SoundBank::get().play_at("whistle", p.pos, 0.6f);
+            std::string const at = std::string("levels.") + level_key(m_level) + ".won.";
+            if(p.team == Team::MONTERAN) say(lt && lt->alive() ? short_name(*lt) : "", tr(at + "monteran"), Team::MONTERAN, 5.5f);
+            else say("", tr(at + "rechivii"), Team::RECHIVII, 5.0f);
+            if(m_level == LevelId::TOWN) SoundBank::get().play("church_bell", 0.5f, 0.0f);
+            else SoundBank::get().play_at("whistle", p.pos, 0.6f);
             m_end_timer = 0.0f;
             break;
+        }
         case Stage::LOST:
             m_objective = "";
-            if(m_level == LevelId::CHARGE)
-            {
-                if(p.team == Team::MONTERAN) say("", "The trench is lost.", Team::MONTERAN, 6.0f);
-                else say("", "The charge has failed.", Team::RECHIVII, 6.0f);
-            }
-            else if(m_level == LevelId::TOWN)
-            {
-                if(p.team == Team::MONTERAN) { say("", "The attack on Kalvo has failed.", Team::MONTERAN, 6.0f); log("B Platoon was destroyed in the streets of Kalvo"); }
-                else say("", "Kalvo has fallen.", Team::RECHIVII, 6.0f);
-            }
-            else
-            {
-                if(p.team == Team::MONTERAN) say("", "The column is lost.", Team::MONTERAN, 6.0f);
-                else say("", "The ambush has failed.", Team::RECHIVII, 6.0f);
-            }
+            say("", tr(std::string("levels.") + level_key(m_level) + ".lost." + side_key(p.team)), p.team, 6.0f);
             m_end_timer = 0.0f;
             break;
     }
@@ -1594,7 +1566,7 @@ void Battle::update_script(float dt)
                 if(m_level != LevelId::CHARGE && no_officer && lost * 2 >= total && Random::chance(0.18f + 0.4f * s.suppression))
                 {
                     s.morale = 0.0f;
-                    bark(s, "Hesh! Hesh!", true);
+                    bark(s, tr("barks.rechivii.flee"), true);
                     continue;
                 }
             }
@@ -1606,13 +1578,8 @@ void Battle::update_script(float dt)
     if(!m_officer_dead_noted && fighting && !officer(Team::MONTERAN) && p.team == Team::MONTERAN && p.role != Role::OFFICER)
     {
         m_officer_dead_noted = true;
-        if(Soldier* cpl = acting_commander())
-        {
-            std::string const who = cpl->rank + " " + cpl->name.substr(cpl->name.find(' ') + 1);
-            say("", "Lt. Varga is down. " + who + " has the platoon.", Team::MONTERAN, 4.5f);
-            log("Lt. Varga fell. " + who + " took the platoon");
-        }
-        else say("", "Lt. Varga is down.", Team::MONTERAN, 4.0f);
+        if(Soldier* cpl = acting_commander()) say("", tr("lieutenant_down.has_platoon", {{"name", short_name(*cpl)}}), Team::MONTERAN, 4.5f);
+        else say("", tr("lieutenant_down.down"), Team::MONTERAN, 4.0f);
     }
 
     // The section yours to lead, the moment it is: tell the player once.
@@ -1620,8 +1587,8 @@ void Battle::update_script(float dt)
     {
         m_section_hint_given = true;
         m_selected = p.section;
-        notice("You lead " + m_sections[static_cast<std::size_t>(p.section)].name, 3.0f);
-        hint("Your section follows your orders now: 1 follow  2 hold  3 advance  4 covering fire  5 charge, at the cursor. The rest of the platoon fights on without you.", 12.0f);
+        notice(tr("hud.notice.you_lead", {{"section", m_sections[static_cast<std::size_t>(p.section)].name}}), 3.0f);
+        hint(tr("hints.section_orders"), 12.0f);
     }
 
     // Your man has died: someone else picks up the fight.
@@ -1670,7 +1637,6 @@ void Battle::raise_alarm(const std::string& why)
     if(!why.empty())
     {
         notice(why, 3.0f);
-        log(why);
     }
     m_combat_heat = 1.0f;
     SoundBank::get().punch_in();
@@ -1695,38 +1661,29 @@ void Battle::take_over()
     best->path.clear();
     m_player = best->id;
     m_takeover = 4.0f;
-    m_takeover_text = std::string("You are ") + best->rank + " " + best->name + ", " + role_name(best->role);
+    m_takeover_text = tr("hud.you_are", {{"rank", rank_name(best->rank)}, {"name", best->name}, {"role", role_name(best->role)}});
     m_trigger = m_aiming = false;
     m_camera.set_transition(TransitionFunction::EaseInOutQuad);
 }
 
 void Battle::finish()
 {
+    // What the debrief shows: the losses on both sides, and how long it took.
     Campaign& c = Campaign::current();
-    c.platoon.clear();
-    c.enemy_dead = c.enemy_fled = 0;
-    // Whose names go on the debrief: the platoon; or, from the other side of
-    // the charge, your own section and the officers.
     Team const side = me().team;
-    int const section = me().section;
-    for(auto& s : m_soldiers)
+    c.ours = c.theirs = Losses{};
+    c.wagons_lost = m_level == LevelId::FOREST ? wagons_lost() : 0;
+    for(const auto& s : m_soldiers)
     {
-        bool const listed = side == Team::MONTERAN ? s.team == Team::MONTERAN
-                          : s.team == side && (s.section == section || s.role == Role::OFFICER || s.is_player);
-        if(s.team != side) { if(s.life == Life::FLED && !s.surrendered) ++c.enemy_fled; else if(!s.alive() && s.active && !s.surrendered) ++c.enemy_dead; continue; }
-        if(listed)
-        {
-            Soldier copy = s;
-            if(copy.fate.empty())
-            {
-                if(copy.life == Life::DOWNED) copy.fate = "Carried back to the aid post";
-                else if(copy.lost & (ARM_L | ARM_R)) copy.fate = "Survived, lost an arm";
-                else if(copy.lost & (LEG_L | LEG_R)) copy.fate = "Survived, lost a leg";
-                else if(copy.hp < 60.0f) copy.fate = "Wounded, survived";
-                else copy.fate = "Survived";
-            }
-            c.platoon.push_back(copy);
-        }
+        // A reserve that never came into it isn't counted.
+        if(!s.active && s.alive()) continue;
+        Losses& l = s.team == side ? c.ours : c.theirs;
+        ++l.total;
+        if(s.surrendered) ++l.captured;
+        else if(s.life == Life::DEAD) ++l.killed;
+        // Ambushers who did what they came for and went back into the trees didn't run.
+        else if(s.life == Life::FLED && !(m_level == LevelId::FOREST && m_forest_outcome == 2 && s.team == Team::RECHIVII)) ++l.fled;
+        else if(s.life == Life::DOWNED || s.lost || s.hp < 60.0f) ++l.wounded;
     }
 }
 

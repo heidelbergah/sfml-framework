@@ -75,6 +75,18 @@ breaks and melts back into the forest.
 
 ![The Lesna road: the ambush](../../docs/media/mudcats_forest.gif)
 
+## After the battle
+
+The debrief puts what it cost on the left: how long the fighting lasted,
+and for both sides how many men were killed, wounded, taken prisoner or
+ran, out of how many went in (and on the Lesna road, how many wagons
+burned). On the right is your own side's newspaper, in its next edition.
+The Monteran Courier and the Voice of the Rechiv each report the battle
+the way a paper at war would: a win is a triumph, a defeat is a gallant
+stand or a shortened line, with your real numbers in the story and the
+staff map of the ground beside it. From there you can fight it again, go
+back to the briefing, or to the title.
+
 ## Your squad
 
 You're one man in a section. Your section follows you; everyone else gets
@@ -171,7 +183,7 @@ much a hit takes out of you.
   man's rounds, or his weapon.
 - **Men break.** With their officer dead and half of them gone, men start
   to run. Caught close with nowhere to go, some put their hands up. The
-  debrief remembers what happened to them.
+  debrief counts them.
 
 ## The HUD
 
@@ -211,6 +223,22 @@ Your settings are kept in `settings.txt`: in `%APPDATA%\MudCats` on
 Windows, `~/Library/Application Support/MudCats` on macOS, and
 `~/.config/mudcats` on Linux.
 
+## The words
+
+Every word the game shows or says is in one file,
+`assets/mudcats/text/en.json`: the menus, the briefings, the HUD, what the
+officers say and what men shout, the soldiers' names, the newspapers.
+Change a line there and run the game again; nothing needs rebuilding. Each
+line is found by its path through the file, like
+`levels.town.won.monteran`. Where there's a list (the headlines, or the
+shouts when a man is hit) one is picked at random, so a list can be made
+longer. Words in braces, like `{minutes}`, are filled in by the game.
+
+If a line goes missing the game shows its key in brackets instead of
+crashing, and `python3 tools/text/check_text.py` lists every key the code
+asks for that the file doesn't have. Running the game with
+`MUDCATS_TEXT_CHECK=1` reports each missing key once as it comes up.
+
 ## Building it for Linux, macOS and Windows
 
 The Makefile is the quick way on Linux, and works on macOS (Homebrew SFML)
@@ -224,7 +252,7 @@ cmake --build build-cmake --config Release
 cmake --build build-cmake --config Release --target package
 ```
 
-The last line makes `MudCats-0.13.0-<system>.zip`: the game with its
+The last line makes `MudCats-0.14.0-<system>.zip`: the game with its
 assets, shaders, this README and the licence. On Windows that's
 `MudCats.exe` with its icon and no console window; on macOS, `Mud Cats.app`;
 on Linux, `MudCats`. The game finds its assets next to itself, so it can be
@@ -240,7 +268,8 @@ isn't signed: right click, Open, the first time.
 | | |
 |---|---|
 | `main.cpp` | finds the assets, sets up the window from your settings, and the scenes |
-| `Screens.cpp` | the title, the briefing with its staff maps, the settings, how to play and credits panels, the debrief |
+| `Screens.cpp` | the title, the briefing with its staff maps, the settings, how to play and credits panels, the debrief and its newspaper |
+| `Text.cpp` | reads `assets/mudcats/text/en.json`, and looks lines up in it |
 | `Settings.cpp` | your sound levels, window size and fullscreen, kept between runs |
 | `Battle.cpp` | setup, input, the platoon and its sections, the stages of each battle |
 | `Charge.cpp` | the Sava meadow: the two lines, the charge, the colours, and how it breaks |

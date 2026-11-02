@@ -7,6 +7,7 @@
 #include "Soldier.hpp"
 #include "Draw.hpp"
 #include "Palette.hpp"
+#include "Text.hpp"
 
 #include <cmath>
 
@@ -15,14 +16,14 @@ namespace mudcats
 
 namespace
 {
-    //                       name                  mag  spare  intv    reload dmg     speed   range   spread  kick    auto   flame  sound     far          reload          tracer suppress
-    const WeaponSpec RIFLE {"Bolt-action rifle",    5,  40,  1.10f,  2.4f, 78.0f,  760.0f, 470.0f, 0.020f, 0.050f, false, false, "rifle",  "rifle_far", "rifle_reload", 0, 0.30f};
-    const WeaponSpec SMG   {"Submachine gun",      30,  90,  0.085f, 2.2f, 32.0f,  520.0f, 240.0f, 0.050f, 0.016f, true,  false, "smg",    "smg_far",   "smg_reload",   0, 0.13f};
-    const WeaponSpec PISTOL{"Service pistol",       8,  24,  0.32f,  1.6f, 30.0f,  460.0f, 180.0f, 0.045f, 0.060f, false, false, "pistol", "smg_far",   "pistol_reload",0, 0.10f};
-    const WeaponSpec MG    {"Machine gun",        100, 200,  0.08f,  4.2f, 40.0f,  740.0f, 620.0f, 0.014f, 0.0025f, true, false, "mg",     "mg_far",    "mg_reload",    3, 0.30f};
-    const WeaponSpec FLAMER{"Flamethrower",       100,   0,  0.03f,  0.0f,  0.0f,  150.0f,  78.0f, 0.110f, 0.000f, true,  true,  "",       "",          "",             0, 0.35f};
-    const WeaponSpec SNIPER{"Scoped rifle",         5,  30,  1.60f,  2.8f, 115.0f, 900.0f, 900.0f, 0.004f, 0.060f, false, false, "sniper", "rifle_far", "rifle_reload", 0, 0.40f};
-    const WeaponSpec BARE  {"Nothing",              0,   0,  1.00f,  0.0f,  0.0f,    1.0f,   0.0f, 0.000f, 0.000f, false, false, "",       "",          "",             0, 0.00f};
+    //                       name (text key)       mag  spare  intv    reload dmg     speed   range   spread  kick    auto   flame  sound     far          reload          tracer suppress
+    const WeaponSpec RIFLE {"weapons.rifle",       5,  40,  1.10f,  2.4f, 78.0f,  760.0f, 470.0f, 0.020f, 0.050f, false, false, "rifle",  "rifle_far", "rifle_reload", 0, 0.30f};
+    const WeaponSpec SMG   {"weapons.smg",         30,  90,  0.085f, 2.2f, 32.0f,  520.0f, 240.0f, 0.050f, 0.016f, true,  false, "smg",    "smg_far",   "smg_reload",   0, 0.13f};
+    const WeaponSpec PISTOL{"weapons.pistol",       8,  24,  0.32f,  1.6f, 30.0f,  460.0f, 180.0f, 0.045f, 0.060f, false, false, "pistol", "smg_far",   "pistol_reload",0, 0.10f};
+    const WeaponSpec MG    {"weapons.mg",         100, 200,  0.08f,  4.2f, 40.0f,  740.0f, 620.0f, 0.014f, 0.0025f, true, false, "mg",     "mg_far",    "mg_reload",    3, 0.30f};
+    const WeaponSpec FLAMER{"weapons.flamer",     100,   0,  0.03f,  0.0f,  0.0f,  150.0f,  78.0f, 0.110f, 0.000f, true,  true,  "",       "",          "",             0, 0.35f};
+    const WeaponSpec SNIPER{"weapons.sniper",       5,  30,  1.60f,  2.8f, 115.0f, 900.0f, 900.0f, 0.004f, 0.060f, false, false, "sniper", "rifle_far", "rifle_reload", 0, 0.40f};
+    const WeaponSpec BARE  {"weapons.none",         0,   0,  1.00f,  0.0f,  0.0f,    1.0f,   0.0f, 0.000f, 0.000f, false, false, "",       "",          "",             0, 0.00f};
 
     sf::Vector2f dir(float a) { return {std::cos(a), std::sin(a)}; }
 }
@@ -55,25 +56,57 @@ Gun default_gun(Role role)
     }
 }
 
-const char* gun_name(Gun gun)
+std::string gun_name(Gun gun)
 {
-    return weapon_spec(gun).name;
+    return tr(weapon_spec(gun).key);
 }
 
-const char* role_name(Role role)
+const char* role_key(Role role)
 {
     switch(role)
     {
-        case Role::OFFICER:      return "Officer";
-        case Role::MEDIC:        return "Medic";
-        case Role::GUNNER:       return "Machine gunner";
-        case Role::FLAMER:       return "Flamethrower";
-        case Role::RADIOMAN:     return "Radioman";
-        case Role::STORMTROOPER: return "Stormtrooper";
-        case Role::SNIPER:       return "Sniper";
-        case Role::SAPPER:       return "Sapper";
-        default:                 return "Rifleman";
+        case Role::OFFICER:      return "officer";
+        case Role::MEDIC:        return "medic";
+        case Role::GUNNER:       return "gunner";
+        case Role::FLAMER:       return "flamer";
+        case Role::RADIOMAN:     return "radioman";
+        case Role::STORMTROOPER: return "stormtrooper";
+        case Role::SNIPER:       return "sniper";
+        case Role::SAPPER:       return "sapper";
+        default:                 return "rifleman";
     }
+}
+
+std::string role_name(Role role)
+{
+    return tr(std::string("roles.") + role_key(role) + ".name");
+}
+
+std::string rank_name(Rank rank)
+{
+    switch(rank)
+    {
+        case Rank::CORPORAL:   return tr("ranks.corporal");
+        case Rank::LIEUTENANT: return tr("ranks.lieutenant");
+        case Rank::CAPTAIN:    return tr("ranks.captain");
+        default:               return tr("ranks.private");
+    }
+}
+
+std::string surname(const Soldier& s)
+{
+    std::size_t const space = s.name.rfind(' ');
+    return space == std::string::npos ? s.name : s.name.substr(space + 1);
+}
+
+std::string short_name(const Soldier& s)
+{
+    return rank_name(s.rank) + " " + surname(s);
+}
+
+std::string full_name(const Soldier& s)
+{
+    return rank_name(s.rank) + " " + s.name;
 }
 
 sf::Color uniform_colour(Team team)

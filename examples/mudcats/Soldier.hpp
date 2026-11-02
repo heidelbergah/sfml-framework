@@ -30,6 +30,7 @@ enum class Stance : std::uint8_t { STAND, CROUCH, PRONE };
 enum class Life : std::uint8_t { OK, DOWNED, DEAD, FLED };
 enum class Order : std::uint8_t { FOLLOW, HOLD, ADVANCE, SUPPRESS, CHARGE };
 enum class Gun : std::uint8_t { RIFLE, SMG, PISTOL, MG, FLAMER, SNIPER, NONE };
+enum class Rank : std::uint8_t { PRIVATE, CORPORAL, LIEUTENANT, CAPTAIN };
 
 enum Limb : std::uint8_t
 {
@@ -38,7 +39,7 @@ enum Limb : std::uint8_t
 
 struct WeaponSpec
 {
-    const char* name;
+    const char* key;        // its name, under weapons. in the text
     int   magazine;
     int   spare;            // rounds carried besides the magazine
     float interval;         // seconds between shots
@@ -59,8 +60,11 @@ struct WeaponSpec
 
 [[nodiscard]] const WeaponSpec& weapon_spec(Gun gun);
 [[nodiscard]] Gun default_gun(Role role);
-[[nodiscard]] const char* role_name(Role role);
-[[nodiscard]] const char* gun_name(Gun gun);
+// Names, from the text file (see Text.hpp).
+[[nodiscard]] std::string role_name(Role role);
+[[nodiscard]] const char* role_key(Role role);          // "rifleman", ...: its entry under roles.
+[[nodiscard]] std::string gun_name(Gun gun);
+[[nodiscard]] std::string rank_name(Rank rank);
 
 struct Soldier
 {
@@ -69,7 +73,7 @@ struct Soldier
     Role        role{Role::RIFLEMAN};
     Gun         gun{Gun::RIFLE};        // what he carries now; he can pick up another
     std::string name;
-    std::string rank;
+    Rank        rank{Rank::PRIVATE};
     int         section{-1};
     bool        leader{false};          // leads his section
 
@@ -165,7 +169,6 @@ struct Soldier
     bool         alerted{true};     // false: asleep in a dugout, or a sentry who hasn't noticed yet
     sf::Vector2f home;              // where a man who breaks runs to (zero: off to the east)
     int          serving{-1};       // crewing a mortar: its index
-    bool         support{false};    // the hill: a gun or a sniper hanging back, not in the rush
     int          line{-1};          // the charge: which line he steps off with (0 first, 1 second)
     float        file_y{0.0f};      // the charge: his place along the line
     bool         colours{false};    // the charge: he carries the regiment's colours
@@ -175,7 +178,6 @@ struct Soldier
 
     // --- record --------------------------------------------------------------------
     int         kills{0};
-    std::string fate;
 
     [[nodiscard]] bool alive() const { return life == Life::OK; }
     [[nodiscard]] bool fighting() const { return life == Life::OK && !surrendered; }
@@ -198,6 +200,11 @@ void draw_soldier(sf::VertexArray& va, const Soldier& s, float time);
 void draw_shadow(sf::VertexArray& va, const Soldier& s);
 
 [[nodiscard]] sf::Color uniform_colour(Team team);
+
+// "Cpl. Orban": his rank and surname. full_name: "Cpl. Petru Orban". surname: "Orban".
+[[nodiscard]] std::string short_name(const Soldier& s);
+[[nodiscard]] std::string surname(const Soldier& s);
+[[nodiscard]] std::string full_name(const Soldier& s);
 
 }
 

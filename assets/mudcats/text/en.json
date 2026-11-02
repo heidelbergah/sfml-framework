@@ -1,0 +1,747 @@
+{
+    "_about": "Every word Mud Cats shows or says, in English. Keys are looked up by the code as dotted paths (\"title.menu.play\"). Text in {braces} is filled in by the game: keep the braces and the name inside them. A list ([...]) is either picked from at random or used in order; each section says which. Names of people appear in a few lines of dialogue as well as under names: change both together.",
+
+    "game": {
+        "title": "MUD CATS",
+        "subtitle": "",
+        "version": "DEMO"
+    },
+
+    "difficulty": ["Recruit", "Regular", "Veteran"],
+
+    "sides": {
+        "monteran": "Monteran",
+        "rechivii": "Rechivii"
+    },
+
+    "ranks": {
+        "private": "Pvt.",
+        "corporal": "Cpl.",
+        "lieutenant": "Lt.",
+        "captain": "Capt."
+    },
+
+    "roles": {
+        "_about": "Each class: its name, how it's said in a sentence, and its card on the briefing (a tag and three lines).",
+        "rifleman":     { "name": "Rifleman",       "tag": "Rifle, 2 Grenades",                     "lines": ["Every section is built around you.", "Equipped with a rifle, bayonet, and a", "couple of grenades, many of you are strong."] },
+        "officer":      { "name": "Officer",        "tag": "Submachine Gun",                        "lines": ["The platoon is in your direct hands.", "You shine leading behind the line, not", "ahead of it. Make the right choices and", "you'll all go home."] },
+        "medic":        { "name": "Medic",          "tag": "Pistol, Medkit",                        "lines": ["You are the person people call for when", "the bullets start flying. Rank matters", "little when someones life is at stake.", "Your men need you."] },
+        "flamer":       { "name": "Flamer",         "tag": "Flamethrower",                          "lines": ["Nothing behind cover is safe from you.", "Let your brothers build a path for you,", "and clean up the problem holding you back."] },
+        "gunner":       { "name": "Machine Gunner", "tag": "Machine Gun",                           "lines": ["You are what lets your men move.", "Whether you're providing surppressing cover or", "defending against waves, you are what keeps", "heads down."] },
+        "radioman":     { "name": "Radioman",       "tag": "Rifle, 2 Grenades, Radio",              "lines": ["You are the direct means of communication", "with the rest of the Army. Despite the", "giant target on your back, you have great potential."] },
+        "stormtrooper": { "name": "Stormtrooper",   "tag": "Submachine Gun, 5 Grenades",            "lines": ["You are the knight of the battlefield.", "Feared and revered by all you face. You", "shine up close and personal. If a position", "needs taking, it will be you at the front."] },
+        "sniper":       { "name": "Sniper",         "tag": "Rifle (Scoped)",                        "lines": ["Lying back and far from the front, you", "are still feared. You're the one who takes", "out the important adversaries. Don't miss!"] },
+        "sapper":       { "name": "Sapper",         "tag": "Rifle, Wire Cutters, 2 Satchel Charge", "lines": ["If your squad is blocked, you build a", "way forward. For as long as you're on your", "feet, you keep your men moving", "forwards and protected."] }
+    },
+
+    "weapons": {
+        "rifle": "bolt-action rifle",
+        "smg": "submachine gun",
+        "pistol": "service pistol",
+        "mg": "machine gun",
+        "flamer": "flamethrower",
+        "sniper": "scoped rifle",
+        "none": "nothing"
+    },
+
+    "controls": {
+        "_about": "The keys, as the how-to-play card and the pause screen list them. Each entry is [keys, what they do].",
+        "how_to": [
+            ["wasd", "move"], ["shift", "run"], ["mouse", "aim"], ["left click", "fire"],
+            ["right click", "steady aim; set up a gun"], ["middle click", "bayonet"], ["c / z", "kneel / lie down"],
+            ["r", "reload"], ["g / t", "grenade / smoke"], ["e", "treat, drag, cut, take"], ["f", "bandage yourself"],
+            ["v", "call the guns (radio); satchel"], ["x", "red flare (officer)"], ["tab, 1 to 5", "orders"],
+            ["esc", "pause, sound levels"], ["f11", "fullscreen"]
+        ],
+        "pause": [
+            ["wasd, shift", "move, run"], ["mouse, left click", "aim, fire"], ["right click", "steady aim, set up a gun"],
+            ["middle click", "bayonet"], ["c / z", "kneel / lie down"], ["r", "reload"], ["g / t", "grenade / smoke"],
+            ["x", "red flare (officer)"], ["v", "call the guns, satchel"], ["b", "shells or smoke (radio)"],
+            ["e", "treat, drag, cut, take"], ["f", "bandage yourself"], ["tab, 1 to 5", "orders"]
+        ]
+    },
+
+    "title": {
+        "menu": {
+            "play": "PLAY",
+            "how_to": "HOW TO PLAY",
+            "settings": "SETTINGS",
+            "credits": "CREDITS",
+            "quit": "QUIT"
+        },
+        "footer": "F11  fullscreen     M  music"
+    },
+
+    "briefing": {
+        "battle": "BATTLE",
+        "side": "SIDE",
+        "difficulty": "DIFFICULTY",
+        "go_in_as": "GO IN AS",
+        "back": "back",
+        "settings": "settings",
+        "how_to": "how to play",
+        "enter": "enter",
+        "unit": {
+            "monteran": "B PLATOON, 3RD MONTERAN RIFLES",
+            "rechivii": "2ND COMPANY, 9TH RECHIVII GRENADIERS"
+        },
+        "scale": "1 : 10 000",
+        "north": "N",
+        "yards": "200 yds",
+        "situation": "SITUATION",
+        "mission": "MISSION",
+        "notes": "NOTES"
+    },
+
+    "settings": {
+        "title": "SETTINGS",
+        "sound": "SOUND",
+        "buses": ["master", "music", "effects", "voices"],
+        "display": "DISPLAY",
+        "fullscreen": "fullscreen",
+        "window": "{width}x{height}",
+        "f11": "F11 switches fullscreen anywhere",
+        "how_to": "how to play",
+        "done": "done",
+        "keys": "arrows to change     esc  back"
+    },
+
+    "how_to": {
+        "title": "HOW TO PLAY",
+        "_about": "The paragraphs on the left of the card, in order.",
+        "idea": [
+            "You are one man in a platoon. The battle goes on around you whatever you do: the sections find cover, move up, fire and fall back on their own, and you can turn the tides.",
+            "Lying down makes you hard to hit and hard to see. Moving makes you easy to see, as does firing.",
+            "A man who goes down isn't dead yet. A medic can get him up, and you can drag him. If you go down, call for one, or bandage yourself.",
+            "If your man dies, you take over another in your squad, until there's nobody left."
+        ],
+        "go_on": "any key to go on"
+    },
+
+    "credits": {
+        "title": "MUD CATS",
+        "subtitle": "an infantry demo",
+        "_about": "Each entry is [what, who]. An entry with an empty second half is a line on its own.",
+        "lines": [
+            ["made by", "James Bouchat"],
+            ["sound and music", "James Bouchat"],
+            ["built on", "sfml-framework, and SFML 3"],
+            ["type", "Pixel Operator, Jayvee Enaguas (CC0)"],
+            ["text files", "nlohmann/json (MIT)"],
+            ["", ""],
+            ["Mud Cats is an entirely fictional game. None of the events,", ""],
+            ["battles, or nations are based on, or has, direct real-world parallels.", ""]
+        ],
+        "back": "any key to go back"
+    },
+
+    "pause": {
+        "title": "PAUSED",
+        "sound": "SOUND",
+        "music_off": "music off (m)",
+        "keys": "esc  back        q  quit to the briefing        m  music",
+        "where": "{level}, {difficulty}"
+    },
+
+    "hud": {
+        "_about": "Things the HUD says: prompts, notices, and the screen when you're down.",
+        "yards": "{n} yd",
+        "compass": { "n": "N", "e": "E", "s": "S", "w": "W", "ne": "ne", "se": "se", "sw": "sw", "nw": "nw" },
+        "mortar": "mortar",
+        "charge_count": "{going} / {stepped}",
+        "radio_steps": ["calling...", "ranging round", "V on target", "salvo coming"],
+        "bleeding_out": "BLEEDING OUT   {n}",
+        "down_keys": "E  call for a medic      WASD  crawl      space  let go",
+        "tab": "tab",
+        "you_are": "You are {rank} {name}, {role}",
+        "prompt": {
+            "let_go": "E  let go",
+            "cutting": "cutting...",
+            "treating": "treating...",
+            "treat": "E  treat {name}",
+            "drag": "E  drag {name}",
+            "cut_wire": "E  cut the wire",
+            "fill_up": "E  fill up",
+            "take_rounds": "E  take rounds",
+            "take_weapon": "E  take {weapon}"
+        },
+        "notice": {
+            "no_smoke": "No smoke grenades",
+            "no_flares": "No flares left",
+            "no_satchels": "No satchel charges left",
+            "next_smoke": "Next call: smoke",
+            "next_shells": "Next call: high explosive",
+            "orders_all": "Orders to: the whole platoon",
+            "orders_to": "Orders to: {section}",
+            "filled_up": "Filled your pouches",
+            "out_of_ammo": "Out of ammunition. E on a crate, or on a fallen man's weapon",
+            "one_arm": "You can't hold that with one arm",
+            "took_rounds": "Took {n} rounds",
+            "picked_up": "Picked up a {weapon}",
+            "wire_cut": "Wire's cut",
+            "gave_you": "{name} gave you a magazine",
+            "battery_empty": "The battery has nothing more for you",
+            "stop_for_set": "Stop moving to use the set",
+            "call_lost": "You moved off the set. The call is lost.",
+            "battery_moved_on": "The battery has moved on to other targets",
+            "takes_section": "{name} takes {section}",
+            "you_lead": "You lead {section}"
+        }
+    },
+
+    "hints": {
+        "_about": "The longer lines at the bottom of the screen that tell you how something works.",
+        "treating": "Treating {name}. Keep still.",
+        "dragging": "Dragging. E again to let go. Get him to a medic, or to cover.",
+        "cutting": "Cutting. Keep still. E again to stop.",
+        "set_up_gun": "Right click to set the gun up first. It fires lying or kneeling, not from the hip.",
+        "bandaged": "Bandaged. The bleeding has stopped.",
+        "lead_orders": "Tab picks a section.  1 follow  2 hold  3 advance  4 covering fire  5 charge, all at the cursor",
+        "section_orders": "Your section follows your orders now: 1 follow  2 hold  3 advance  4 covering fire  5 charge, at the cursor. The rest of the platoon fights on without you.",
+        "barrel_hot": "The barrel is too hot. Wait for it to cool. Fire in bursts.",
+        "danger_close": "Danger close. The guns are not that accurate.",
+        "gun_set_up": "Right click sets it up. It only fires set up.",
+        "bleeding": "You are bleeding. F to bandage yourself",
+        "hit": "You are hit.",
+        "down": "You are down and bleeding. E calls for a medic, WASD crawls. Space gives up.",
+        "on_fire": "You are on fire. Z to drop and roll.",
+        "patched_up": "{name} patched you up. Get back into it.",
+        "calling": "Calling. Keep still. Watch where the ranging round falls.",
+        "ranging_down": "Ranging round down. V on the target to fire for effect.",
+        "mortar": "Mortar! The flash marks it. Put the cursor on it and V to call the guns on it."
+    },
+
+    "orders": {
+        "_about": "What you shout when you give each order, in order: follow, hold, advance, covering fire, charge.",
+        "words": ["On me!", "Hold here!", "Move up! Go!", "Covering fire, there!", "Fix bayonets! Charge!"]
+    },
+
+    "barks": {
+        "_about": "Short shouts over men's heads. Where there's a list, one is picked at random. The Rechivii shout in their own language.",
+        "monteran": {
+            "treating": "Hold still. I've got you.",
+            "coming": "Coming! Stay down!",
+            "got_rounds": "Got some! Got some rounds!",
+            "out_of_ammo": "I'm out! Need ammunition!",
+            "contact": ["Contact!", "There! Front!", "Movement, there!", "I see one!"],
+            "ambush_seen": "In the trees! Ambush! Ambush!",
+            "grenade_seen": "Grenade!",
+            "cutting": "Cutting! Cover me!",
+            "dressing": "Hold on. Dressing on you, hold on.",
+            "in_position": "In position!",
+            "get_in": "Get in there! Go!",
+            "work_round": "Work round them! Go!",
+            "fix_bayonets": "Fix bayonets! Charge!",
+            "bound": ["Up! Next cover, go!", "Move! Move!", "On me! Keep low!", "Go, go! Don't stop in the open!"],
+            "smoke_wait": "Smoke! Wait for it... now, go!",
+            "keep_up": "Come on! Keep up with us!",
+            "covering_fire": "Covering fire! Keep their heads down!",
+            "medic": "Medic!",
+            "reloading": "Reloading!",
+            "smoke_out": "Smoke! Smoke out!",
+            "grenade_out": "Grenade out!",
+            "red_flare": "Red flare! Guns, on that!",
+            "hit": ["I'm hit!", "Agh! God!", "My arm, my fucking arm!", "Ahh, Christ!", "I'm hit, I'm hit!"],
+            "medic_medic": "Medic! Medic!",
+            "man_down": "Man down!",
+            "mate_dead": ["No! No...", "He's gone.", "Fuck...", "Leave him! Leave him!"],
+            "burning": "I'm burning! Help me!",
+            "gap": "Through! Gap here!",
+            "you_live": "You'll live. Go!",
+            "take_these": "Here! Take these!",
+            "charge_set": "Charge set! Get clear!",
+            "fire_for_effect": "On target! Fire for effect!",
+            "smoke_for_effect": "Smoke, fire for effect!",
+            "fire_mission": ["Fire mission! Grid on my mark!", "Battery, fire mission! Ranging!", "Guns, guns, this is Varga's lot!"],
+            "shot_over": "Shot, over!",
+            "mortar_seen": "Mortar, there! Calling it in!",
+            "fall_back": "Fall back! Get out!",
+            "get_back": "Back! Get back!"
+        },
+        "rechivii": {
+            "treating": "Tov, tov...",
+            "got_rounds": "Est!",
+            "contact": "Kesh! Kesh!",
+            "grenade_seen": "Vrak! Vrak!",
+            "toven": "Toven! Toven!",
+            "urra": "Urraaa!",
+            "reloading": "Vash!",
+            "smoke_out": "Dym!",
+            "grenade_out": "Vrak!",
+            "hit": ["Ahh!", "Mama!", "Bozhe!"],
+            "surrender": ["Sdayus! Sdayus!", "Don't shoot! Don't!", "Sdayus, n-no! Please!"],
+            "burning": "AAAH!",
+            "take_these": "Derzhi!",
+            "charge_set": "Vzryv!",
+            "flee": "Hesh! Hesh!",
+            "colours": "Znamya! Za mnoy!",
+            "back": "Nazad! Nazad!",
+            "fire": "Ogon! Ogon!",
+            "to_the_wagons": "K povozkam! The wagons!",
+            "done_back": "Nazad! Done, back!"
+        }
+    },
+
+    "speakers": {
+        "_about": "Who a line of dialogue is from, when it isn't a soldier on the field.",
+        "rch_lieutenant": "Lt.",
+        "rch_captain": "Capt.",
+        "runner": "Runner",
+        "varga": "Lt. Varga",
+        "dacre": "Pvt. Dacre",
+        "orban": "Cpl. Orban"
+    },
+
+    "sections": {
+        "monteran": ["1 Section", "2 Section", "3 Section"],
+        "charge_line": "{line} line, {n} section",
+        "charge_lines": ["first", "second"],
+        "town": {
+            "first_houses": "the first houses",
+            "second_block": "the second block",
+            "square": "the square",
+            "church": "the church",
+            "reserve": "reserve"
+        },
+        "forest": {
+            "line": "the ambush line",
+            "block": "the block",
+            "assault": "the assault group"
+        }
+    },
+
+    "alarm": {
+        "shot_from_column": "A shot from the column! Ambush!",
+        "sprung": "The ambush is sprung!",
+        "explosion_on_road": "An explosion on the road! Ambush!",
+        "explosion": "The explosion woke them.",
+        "seen": "One of the escort saw them in the trees",
+        "walked_into": "You've walked right into them! Ambush!",
+        "in_the_trees": "Ambush! In the trees!"
+    },
+
+    "lieutenant_down": {
+        "has_platoon": "Lt. Varga is down. {name} has the platoon.",
+        "down": "Lt. Varga is down."
+    },
+
+    "levels": {
+        "_about": "Each battle: its name and date, its briefing for each side, what's drawn on its map, and what's said in it, stage by stage.",
+
+        "charge": {
+            "name": "The Sava meadow",
+            "when": "morning",
+            "sheet": "THE SAVA MEADOW",
+            "dated": "0540, 14 MAY 1936",
+            "date": "14 May",
+            "paper_date": "Thursday, 14 May 1936",
+            "go": { "monteran": "STAND TO", "rechivii": "FIX BAYONETS" },
+            "orders": {
+                "monteran": {
+                    "situation": "B Platoon dug in overnight along the west edge of the Sava meadow: a shallow trench, two machine guns, wire nobody finished. Since before dawn the Rechivii have been massing in the wood across the field, with drums.",
+                    "mission": "Hold the trench.",
+                    "notes": "Their guns shell you first. Keep low. Then two lines of grenadiers walk out of the wood and run the last of it with the bayonet. Let them come into the open before you fire. Kill the colour-bearer and the men round him lose heart."
+                },
+                "rechivii": {
+                    "situation": "The Monterans dug in across the Sava meadow last night: a shallow trench, two machine guns, a little wire. Our guns will shell it while we form up at the edge of the wood.",
+                    "mission": "Two lines of grenadiers cross the meadow and take their trench with the bayonet.",
+                    "notes": "Keep your place in the line, at a walk. When the officers whistle again, run, and don't stop until you're in their trench."
+                }
+            },
+            "map": { "hold": "HOLD", "objective": "OBJ", "hq": "HQ", "first": "I", "second": "II", "wood": "WOOD" },
+            "objective": { "monteran": "Hold the trench", "rechivii": "Take their trench" },
+            "form": {
+                "monteran_lt": "Heads down while their guns are at it. When it lifts, they'll come. All of them.",
+                "monteran_hint": "Stay low in the trench while the shells come. When they step off, make every round count.",
+                "rechivii_captain": "Bayonets. Nobody fires till we're on them. Keep your place in the line.",
+                "rechivii_hint": "Keep with the line. Middle click is the bayonet. Shift runs, once the whistles go."
+            },
+            "walk": {
+                "monteran_lt": "There they are. Stand to! Wait for them, wait for it...",
+                "rechivii_captain": "Forward! At the walk!"
+            },
+            "run": {
+                "monteran_lt": "Here they come! Fire! Fire!",
+                "rechivii_captain": "Urraaa! At them!"
+            },
+            "colours": {
+                "theirs_down": "Their colours are down!",
+                "ours_down": "The colours are down!"
+            },
+            "broke": {
+                "rechivii": "The charge has broken. They're running.",
+                "monteran_lt": "They're breaking! They're going back!"
+            },
+            "won": {
+                "monteran": "They've gone. Look at the field. Just look at it.",
+                "rechivii": "Their trench is ours. The meadow is ours."
+            },
+            "lost": {
+                "monteran": "The trench is lost.",
+                "rechivii": "The charge has failed."
+            },
+            "ending": {
+                "monteran_won": "THE CHARGE IS BROKEN",
+                "monteran_lost": "THE TRENCH IS OVERRUN",
+                "rechivii_won": "THEIR TRENCH IS TAKEN",
+                "rechivii_lost": "THE CHARGE HAS FAILED"
+            }
+        },
+
+        "town": {
+            "name": "Kalvo",
+            "when": "dusk",
+            "sheet": "KALVO",
+            "dated": "1930, 17 MAY 1936",
+            "date": "17 May",
+            "paper_date": "Monday, 18 May 1936",
+            "go": { "monteran": "INTO THE TOWN", "rechivii": "TO THE WINDOWS" },
+            "orders": {
+                "monteran": {
+                    "situation": "Kalvo, a market town on the road east, at dusk. The Rechivii hold the houses all the way up the main street to the church. A gun behind a barricade covers the street, another the square, a third is in the church tower.",
+                    "mission": "Take the town block by block, then the square and the church. Hold the church against the counter-attack.",
+                    "notes": "Keep off the street. Go through the houses and the yards, through the walls where they're broken. The battery puts a salvo on the church when you reach the square."
+                },
+                "rechivii": {
+                    "situation": "Kalvo, at dusk. A Monteran platoon is coming in from the fields to the west, and there'll be more behind it.",
+                    "mission": "Hold the first houses, then fall back block by block to the square and the church. Make every street cost them. Hold until dark.",
+                    "notes": "Fight from the windows and stay back from them. When a block is lost its men fall back to the next one, and so do you. The reserve waits in the graveyard."
+                }
+            },
+            "map": { "hold": "HOLD", "objective": "OBJ", "hq": "HQ", "reserve": "RES", "church": "CHURCH" },
+            "enter": {
+                "monteran_objective": "Into the town",
+                "monteran_lt": "Kalvo. They're in the houses, all the way up to the church. We take it street by street.",
+                "monteran_hint": "In a town you fight from the houses: through doors and windows, and through the walls where they're broken.",
+                "rechivii_objective": "Hold the first houses",
+                "rechivii_lt": "Stand to. They'll come in from the fields. Nobody leaves his window.",
+                "rechivii_hint": "Fight from the windows: they let you see out and shoot out. Stay back from them when you can, and listen."
+            },
+            "street": {
+                "monteran_objective": "Clear the first block",
+                "rechivii_objective": "Hold the first houses",
+                "monteran_lt": "Not the street, the gun's on it! Through the houses and the yards. Go!"
+            },
+            "cross": {
+                "monteran_objective": "Cross the street. Clear the second block",
+                "rechivii_objective": "Hold the second block",
+                "monteran_lt": "Across the cross-street, one section at a time. Smoke if you've got it!"
+            },
+            "square": {
+                "monteran_objective": "Take the church",
+                "rechivii_objective": "Hold the square and the church",
+                "monteran_lt": "The square. That tower's got a gun in it. Keep out of its line, round the sides, and in!",
+                "runner": "The battery's on the church, Lieutenant! Heads down, then go!",
+                "rechivii_captain": "Their guns! Down, everyone down!"
+            },
+            "counter": {
+                "monteran_objective": "Hold the church",
+                "rechivii_objective": "Retake the church",
+                "rechivii_captain": "The reserve is coming up through the graveyard. We take it back. Now!",
+                "monteran_seen": "In the graveyard! They're coming back through the graves!"
+            },
+            "reinforcements": {
+                "monteran": "Men from C Platoon coming up behind you",
+                "rechivii": "More of them, coming up the street"
+            },
+            "fall_back": {
+                "notice": "Fall back!",
+                "to_second": "Back! Over the cross-street, into the next houses!",
+                "to_square": "Back to the square! The town hall, the fountain, go!",
+                "to_church": "Into the church! Hold the church!"
+            },
+            "attack_breaks": {
+                "late_lt": "That's enough. Pull back, all of you. We'll come again tomorrow.",
+                "spent_lt": "Back! Back out of it! Get the wounded out!",
+                "called_off": "The attack is called off",
+                "they_pull_back": "They're pulling back!",
+                "pull_back": "Pull back! Pull back!"
+            },
+            "won": {
+                "monteran": "Kalvo's ours. Get the wounded into the church. Somebody stop that bell rope swinging.",
+                "rechivii": "They've gone back to the fields. Kalvo is still ours."
+            },
+            "lost": {
+                "monteran": "The attack on Kalvo has failed.",
+                "rechivii": "Kalvo has fallen."
+            },
+            "ending": {
+                "monteran_won": "KALVO IS TAKEN",
+                "monteran_lost": "THE ATTACK HAS FAILED",
+                "rechivii_won": "KALVO IS HELD",
+                "rechivii_lost": "KALVO HAS FALLEN"
+            }
+        },
+
+        "forest": {
+            "name": "The Lesna road",
+            "when": "midday",
+            "sheet": "THE LESNA ROAD",
+            "dated": "1200, 21 MAY 1936",
+            "date": "21 May",
+            "paper_date": "Thursday, 21 May 1936",
+            "go": { "monteran": "MARCH", "rechivii": "LIE IN WAIT" },
+            "orders": {
+                "monteran": {
+                    "situation": "Six wagons of shells and rations for the Lesna front go up the forest road at midday. Rechivii patrols have been reported in the woods north of the road.",
+                    "mission": "B Platoon escorts the column through. Get at least three wagons out the far side.",
+                    "notes": "If it starts, get off the road and down into the ditch on the south side. Then find them, and keep them off the wagons."
+                },
+                "rechivii": {
+                    "situation": "A Monteran supply column, six wagons with a platoon for escort, comes up the Lesna road at midday. Where the trees come closest we lie in the bracken north of the road.",
+                    "mission": "Burn the column. Four wagons destroyed and the job is done.",
+                    "notes": "Nobody moves and nobody fires before the mine goes up under the lead wagon. Then the line shoots up the escort, and the assault group goes in with grenades, satchels and the flamethrower."
+                }
+            },
+            "map": { "objective": "OBJ", "kill_zone": "KILL ZONE", "hq": "HQ", "escort": "ESCORT", "block": "BLOCK", "assault": "ASSLT", "mine": "MINE", "patrols": "PATROLS REPORTED" },
+            "march": {
+                "monteran_objective": "Get the column through",
+                "monteran_hint": "You're walking with the wagons. If it starts, get down behind one and find out where it's coming from.",
+                "rechivii_objective": "Wait for the mine",
+                "rechivii_lt": "Here they come. Nobody moves. Nobody fires before the mine. Then the wagons, all of them.",
+                "rechivii_hint": "Lie still: lying down in the ferns they won't see you till they're on top of you. The mine is the signal.",
+                "varga": "Keep closed up. Eyes on the trees, both sides. No telling what's out there...",
+                "dacre": "Quiet, isn't it? Wish it was like this all the time.",
+                "rechivii_wait": "Nobody moves. Nobody fires. Wait for the mine."
+            },
+            "ambush": {
+                "monteran_objective": "Get behind the wagons. Fight them off",
+                "rechivii_objective": "Shoot up the column",
+                "monteran_lt": "Ambush! Left side! Down behind the wagons and fire!",
+                "orban": "Ambush! In the trees! Get down!",
+                "rechivii_lt": "Fire! Fire! Kill the horses!"
+            },
+            "push": {
+                "monteran_objective": "Keep them off the wagons",
+                "raider_objective": "Burn the wagons",
+                "rechivii_objective": "Cover the assault group",
+                "monteran_seen": "More of them! They're coming for the wagons!",
+                "rechivii_lt": "Assault group, go! Burn them!"
+            },
+            "counter": {
+                "monteran_objective": "Hold the column",
+                "rechivii_objective": "Hit them again",
+                "monteran_seen": "More of them, in the trees! Here they come!"
+            },
+            "wagons": {
+                "burning": "A wagon's burning!",
+                "lost_one": "{n} wagon lost",
+                "lost_many": "{n} wagons lost",
+                "of_needed": "{n} of {needed} wagons burning"
+            },
+            "outcome": {
+                "rechivii_beaten": "Back! Back into the trees!",
+                "monteran_won": "They're running!",
+                "rechivii_done": "Enough. Back into the trees!",
+                "monteran_lost": "The column's finished..."
+            },
+            "won": {
+                "monteran": "Get the wagons moving. Wounded on the carts. We're not stopping again till we're out of these trees.",
+                "rechivii": "The column is burning. Back into the trees, before their guns find us."
+            },
+            "lost": {
+                "monteran": "The column is lost.",
+                "rechivii": "The ambush has failed."
+            },
+            "ending": {
+                "monteran_won": "THE COLUMN IS THROUGH",
+                "monteran_lost": "THE COLUMN IS LOST",
+                "rechivii_won": "THE COLUMN IS DESTROYED",
+                "rechivii_lost": "THE AMBUSH HAS FAILED"
+            }
+        }
+    },
+
+    "debrief": {
+        "won": "VICTORY",
+        "lost": "DEFEAT",
+        "where": "{level}, {difficulty}",
+        "duration": "Fighting lasted {time}",
+        "time": "{minutes} min {seconds} s",
+        "time_short": "{seconds} s",
+        "no_fight": "No shots were fired",
+        "losses": "LOSSES",
+        "of": "of {total}",
+        "wagons": "Wagons lost: {n} of {total}",
+        "columns": ["", "killed", "wounded", "captured", "fled"],
+        "again": "fight it again",
+        "briefing": "the briefing",
+        "title": "the title",
+        "keys": "enter  fight it again     b  briefing     esc  title"
+    },
+
+    "newspaper": {
+        "_about": "The paper from your own side that reports the battle. Each battle has a headline, a subhead and a story for each side, won and lost; where there's a list, one is picked at random. The story's paragraphs are used in order. Filled in: {place}, {date}, {our_killed}, {our_wounded}, {their_killed}, {their_captured}, {their_fled}, {minutes} (as '12 minutes'), {wagons} (a number), {wagon_count} (as '3 wagons'), {wagons_saved}.",
+        "monteran": {
+            "masthead": "THE MONTERAN COURIER",
+            "motto": "For King and Province",
+            "price": "Price 5 centimes",
+            "edition": "Evening edition"
+        },
+        "rechivii": {
+            "masthead": "VOICE OF THE RECHIV",
+            "motto": "The people's army, the people's word",
+            "price": "2 kopa",
+            "edition": "Front edition"
+        },
+        "map_caption": "The ground, from the staff's own map.",
+        "minutes_one": "1 minute",
+        "minutes_many": "{n} minutes",
+        "wagons_none": "no wagons",
+        "wagons_one": "one wagon",
+        "wagons_many": "{n} wagons",
+        "charge": {
+            "monteran": {
+                "won": {
+                    "headline": ["MEADOW HELD", "THE LINE STANDS", "CHARGE SMASHED AT THE SAVA"],
+                    "subhead": "Rechivii grenadiers broken in the open; B Platoon holds its trench",
+                    "story": [
+                        "Before dawn on {date} two lines of Rechivii grenadiers came out of the wood across the Sava meadow, drums beating, to throw our men out of the trench they had dug only the night before.",
+                        "They did not reach it. Platoon fire and our machine guns cut the lines to pieces in the open, and after {minutes} the survivors were running back for the trees. Some {their_killed} of the enemy lie in the meadow; {their_captured} were taken prisoner.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. The Courier salutes them."
+                    ]
+                },
+                "lost": {
+                    "headline": ["HEAVY FIGHTING ON THE SAVA", "GALLANT STAND AT THE MEADOW"],
+                    "subhead": "B Platoon gives ground only after a stubborn defence",
+                    "story": [
+                        "The enemy made a determined attack on our positions along the Sava meadow on {date}, in great numbers and with the bayonet.",
+                        "Our men held the trench for {minutes} against odds of four and five to one, and inflicted losses the enemy will not soon replace: some {their_killed} of them fell in front of our wire.",
+                        "The position has been given up for the present. Our losses, {our_killed} killed and {our_wounded} wounded, are being made good."
+                    ]
+                }
+            },
+            "rechivii": {
+                "won": {
+                    "headline": ["SAVA MEADOW TAKEN", "BAYONETS CARRY THE DAY"],
+                    "subhead": "Our grenadiers storm the Monteran trench at first light",
+                    "story": [
+                        "At first light on {date} the grenadiers of the 9th crossed the Sava meadow under fire and took the enemy's trench with the bayonet, as their fathers did.",
+                        "The Monterans held out for {minutes}. {their_killed} of them were killed and {their_captured} surrendered; the rest ran.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. Every one of them will be remembered."
+                    ]
+                },
+                "lost": {
+                    "headline": ["FIERCE ACTION ON THE SAVA", "GRENADIERS PROBE ENEMY LINE"],
+                    "subhead": "A bold attack draws the enemy's strength",
+                    "story": [
+                        "On {date} the grenadiers of the 9th made a bold advance across the Sava meadow against the Monteran line.",
+                        "In {minutes} of fierce fighting the enemy was made to show all his guns and suffered heavily, losing {their_killed} killed.",
+                        "Our men have returned to their positions, from which the advance will be resumed. Our losses: {our_killed} killed, {our_wounded} wounded."
+                    ]
+                }
+            }
+        },
+        "town": {
+            "monteran": {
+                "won": {
+                    "headline": ["KALVO FREED", "THE FLAG OVER KALVO"],
+                    "subhead": "House by house to the church: the town is ours",
+                    "story": [
+                        "On the evening of {date} B Platoon fought its way into Kalvo from the fields, clearing the enemy from the houses one block at a time.",
+                        "After {minutes} of fighting at close quarters, through doorways and over garden walls, the church was taken and the enemy's counter-attack thrown back through the graveyard. {their_killed} of the enemy were killed and {their_captured} taken prisoner.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. The people of Kalvo came out to greet them."
+                    ]
+                },
+                "lost": {
+                    "headline": ["STREET FIGHTING AT KALVO", "KALVO: THE ENEMY DIGS IN"],
+                    "subhead": "Our troops press the enemy hard in the town",
+                    "story": [
+                        "Our troops attacked the enemy in Kalvo on the evening of {date}, and fought for the town house by house for {minutes}.",
+                        "The enemy, in strongly fortified houses, has been made to pay dearly: {their_killed} of his men fell.",
+                        "Our men have withdrawn to the fields to reorganise. Our losses were {our_killed} killed and {our_wounded} wounded."
+                    ]
+                }
+            },
+            "rechivii": {
+                "won": {
+                    "headline": ["KALVO STANDS", "THE MONTERANS THROWN BACK AT KALVO"],
+                    "subhead": "Every street cost them; the church never fell",
+                    "story": [
+                        "The Monterans came into Kalvo from the fields on the evening of {date}, and found every window held.",
+                        "For {minutes} our men fought them from house to house and gave ground only a street at a time. In the end the enemy had no strength left to go on: {their_killed} of them were killed and {their_captured} taken prisoner.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. Kalvo is ours."
+                    ]
+                },
+                "lost": {
+                    "headline": ["KALVO: A SHORTENED LINE", "DEFENDERS OF KALVO FIGHT TO THE LAST"],
+                    "subhead": "Our troops fall back in good order",
+                    "story": [
+                        "On the evening of {date} the enemy threw great numbers against our garrison in Kalvo.",
+                        "Our men held them in the streets for {minutes} and killed {their_killed} of them before falling back, by order, to a stronger line.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. Kalvo will be ours again."
+                    ]
+                }
+            }
+        },
+        "forest": {
+            "monteran": {
+                "won": {
+                    "headline": ["AMBUSH BEATEN OFF", "THE COLUMN GETS THROUGH"],
+                    "subhead": "Escort fights off bandit attack on the Lesna road",
+                    "story": [
+                        "At midday on {date} a supply column on its way to the Lesna front was attacked in the forest by a strong party of Rechivii lying in wait beside the road.",
+                        "Our escort took cover and fought them off in {minutes} of hard fighting. {their_killed} of the attackers were killed and {their_captured} taken prisoner; the rest fled into the trees.",
+                        "{wagons_saved} of the six wagons reached the front. Our losses were {our_killed} killed and {our_wounded} wounded."
+                    ]
+                },
+                "lost": {
+                    "headline": ["OUTRAGE ON THE LESNA ROAD", "COLUMN ATTACKED IN THE FOREST"],
+                    "subhead": "Escort fights to the last against a cowardly ambush",
+                    "story": [
+                        "On {date} a supply column on the Lesna road was set upon from the trees by an enemy who did not dare to show himself in the open.",
+                        "The escort fought for {minutes} and accounted for {their_killed} of the attackers, but lost {wagon_count} to the fire.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. The road will be made safe."
+                    ]
+                }
+            },
+            "rechivii": {
+                "won": {
+                    "headline": ["ENEMY COLUMN DESTROYED", "FIRE ON THE LESNA ROAD"],
+                    "subhead": "Our forest fighters burn a supply column",
+                    "story": [
+                        "At midday on {date} our men lay in wait in the forest beside the Lesna road for a Monteran supply column.",
+                        "At the signal they opened fire, and within {minutes} the enemy's wagons were burning: {wagons} of the six, with the shells and food in them. {their_killed} of the escort were killed and {their_captured} taken prisoner.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. The enemy at the Lesna front will go hungry tonight."
+                    ]
+                },
+                "lost": {
+                    "headline": ["RAID ON THE LESNA ROAD", "OUR FIGHTERS STRIKE IN THE FOREST"],
+                    "subhead": "The enemy's road is no longer safe",
+                    "story": [
+                        "On {date} our men attacked a Monteran column on the Lesna road from the forest.",
+                        "In {minutes} of fighting they killed {their_killed} of the escort and burned {wagons} of its wagons before withdrawing into the trees as planned.",
+                        "Our losses were {our_killed} killed and {our_wounded} wounded. There will be other columns."
+                    ]
+                }
+            }
+        }
+    },
+
+    "names": {
+        "_about": "Who fights. The lieutenant and your section are the same men in every battle; everyone else is taken from the lists in order.",
+        "monteran": {
+            "lieutenant": "Aurel Varga",
+            "your_section": ["Petru Orban", "Emil Rell", "Anselm Kray", "Dorian Vosk", "Teodor Halm", "Tomas Dacre", "Lio Marchetti", "Benedek Sorn"],
+            "men": [
+                "Ilie Brandt", "Oren Mazur", "Paolo Serra", "Radu Kesh", "Radu Pell", "Viktor Ames", "Luca Fenn", "Ion Carver",
+                "Mihai Stoll", "Andrei Holm", "Simon Lark", "Dario Kesh", "Nico Varro", "Teo Danes", "Emeric Volt",
+                "Gaspar Wren", "Iosif Brann", "Matei Lusk", "Felix Arno", "Grigore Pask", "Adrian Kell", "Sorin Vey",
+                "Petre Lund", "Cosmin Dral", "Anton Bors", "Silviu Rand", "Marek Haas", "Tudor Ivo", "Cyril Moss",
+                "Eugen Falk", "Horia Dunn", "Laszlo Penn", "Ovidiu Crane", "Remus Tal", "Stefan Ward", "Vasile Orr",
+                "Bogdan Leif", "Costin Hale"
+            ]
+        },
+        "rechivii": {
+            "men": [
+                "Oslev", "Brannik", "Dvorek", "Halst", "Mirov", "Tesk", "Vadim", "Kosar", "Rudan", "Zelny",
+                "Pavek", "Strom", "Ilko", "Gerd", "Yaro", "Lutz", "Borsk", "Kalen", "Matvo", "Resk",
+                "Dravo", "Imre", "Sobek", "Varn", "Tolya", "Kresh", "Andrik", "Pellan", "Gosta", "Vey",
+                "Hollin", "Radek", "Siro", "Mavik", "Darko", "Lesh", "Orvan", "Tibor", "Zavic", "Nemo",
+                "Kuzma", "Bodan", "Elek", "Fedko", "Grisha", "Hrin", "Isko", "Jurek", "Kolya", "Lev",
+                "Milo", "Nikolai", "Oleg", "Pyotr", "Rostik", "Semyon", "Taras", "Ustin", "Vlas", "Yegor",
+                "Arkady", "Bogdan", "Danil", "Efim", "Foma", "Gleb", "Ignat", "Kirill", "Luka", "Makar"
+            ]
+        }
+    }
+}

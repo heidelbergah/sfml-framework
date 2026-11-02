@@ -46,19 +46,6 @@ namespace
     constexpr float RUN_FROM = 820.0f;          // where the whistles go: about four hundred yards out
     constexpr float FORM_TIME = 24.0f;          // their shells on us, while they form up
     constexpr float SECOND_LINE_DELAY = 9.0f;
-
-    const char* const THEIRS[] = {
-        "Oslev", "Brannik", "Dvorek", "Halst", "Mirov", "Tesk", "Vadim", "Kosar", "Rudan", "Zelny",
-        "Pavek", "Strom", "Ilko", "Gerd", "Yaro", "Lutz", "Borsk", "Kalen", "Matvo", "Resk",
-        "Dravo", "Imre", "Sobek", "Varn", "Tolya", "Kresh", "Andrik", "Pellan", "Gosta", "Vey",
-        "Hollin", "Radek", "Siro", "Mavik", "Darko", "Lesh", "Orvan", "Tibor", "Zavic", "Nemo",
-        "Kuzma", "Bodan", "Elek", "Fedko", "Grisha", "Hrin", "Isko", "Jurek", "Kolya", "Lev",
-        "Milo", "Nikolai", "Oleg", "Pyotr", "Rostik", "Semyon", "Taras", "Ustin", "Vlas", "Yegor"};
-
-    const char* const OURS[] = {
-        "Viktor Ames", "Luca Fenn", "Ion Carver", "Mihai Stoll", "Andrei Holm", "Simon Lark", "Dario Kesh",
-        "Nico Varro", "Teo Danes", "Emeric Volt", "Gaspar Wren", "Iosif Brann", "Matei Lusk", "Anton Bors",
-        "Silviu Rand", "Marek Haas"};
 }
 
 Team Battle::ours() const
@@ -74,28 +61,30 @@ void Battle::spawn_charge()
     Campaign const& c = Campaign::current();
 
     // --- us: a lieutenant and two sections in a shallow trench -----------------------------
-    int const one = add_section(Team::MONTERAN, "1 Section", 0.0f);
-    int const two = add_section(Team::MONTERAN, "2 Section", 0.0f);
-    add(Team::MONTERAN, Role::OFFICER, "Lt.", "Aurel Varga", {394.0f, 560.0f}, -1);
-    struct M { Role role; const char* rank; const char* name; };
+    int const one = add_section(Team::MONTERAN, item("sections.monteran", 0), 0.0f);
+    int const two = add_section(Team::MONTERAN, item("sections.monteran", 1), 0.0f);
+    add(Team::MONTERAN, Role::OFFICER, Rank::LIEUTENANT, tr("names.monteran.lieutenant"), {394.0f, 560.0f}, -1);
+    // Your own section's men are named in the text file, in this order; everyone else comes off the list.
+    struct M { Role role; Rank rank; };
     const M first[] = {
-        {Role::RIFLEMAN, "Cpl.", "Petru Orban"}, {Role::RIFLEMAN, "Pvt.", "Emil Rell"}, {Role::GUNNER, "Cpl.", "Anselm Kray"},
-        {Role::FLAMER, "Pvt.", "Dorian Vosk"},   {Role::MEDIC, "Pvt.", "Teodor Halm"},  {Role::RADIOMAN, "Pvt.", "Tomas Dacre"},
-        {Role::STORMTROOPER, "Pvt.", "Lio Marchetti"}, {Role::RIFLEMAN, "Pvt.", "Benedek Sorn"}};
+        {Role::RIFLEMAN, Rank::CORPORAL}, {Role::RIFLEMAN, Rank::PRIVATE}, {Role::GUNNER, Rank::CORPORAL},
+        {Role::FLAMER, Rank::PRIVATE},    {Role::MEDIC, Rank::PRIVATE},    {Role::RADIOMAN, Rank::PRIVATE},
+        {Role::STORMTROOPER, Rank::PRIVATE}, {Role::RIFLEMAN, Rank::PRIVATE}};
     const M second[] = {
-        {Role::RIFLEMAN, "Cpl.", "Ilie Brandt"}, {Role::GUNNER, "Pvt.", "Oren Mazur"}, {Role::SNIPER, "Pvt.", "Paolo Serra"},
-        {Role::STORMTROOPER, "Pvt.", "Radu Kesh"}, {Role::SAPPER, "Pvt.", "Radu Pell"}};
-    std::size_t name = 0;
-    auto section = [&](int id, const M* named, int named_count, int total)
+        {Role::RIFLEMAN, Rank::CORPORAL}, {Role::GUNNER, Rank::PRIVATE}, {Role::SNIPER, Rank::PRIVATE},
+        {Role::STORMTROOPER, Rank::PRIVATE}, {Role::SAPPER, Rank::PRIVATE}};
+    auto section = [&](int id, const M* named, int named_count, int total, bool yours)
     {
         for(int i = 0; i < total; ++i)
         {
-            if(i < named_count) add(Team::MONTERAN, named[i].role, named[i].rank, named[i].name, {}, id).leader = i == 0;
-            else add(Team::MONTERAN, Role::RIFLEMAN, "Pvt.", OURS[name++ % 16], {}, id);
+            Role const role = i < named_count ? named[i].role : Role::RIFLEMAN;
+            Rank const rank = i < named_count ? named[i].rank : Rank::PRIVATE;
+            std::string name = yours && i < named_count ? item("names.monteran.your_section", static_cast<std::size_t>(i)) : next_name(Team::MONTERAN);
+            add(Team::MONTERAN, role, rank, std::move(name), {}, id).leader = i == 0;
         }
     };
-    section(one, first, 8, 14);
-    section(two, second, 5, 15);
+    section(one, first, 8, 14, true);
+    section(two, second, 5, 15, false);
 
     // Everyone to a place on the fire step, the guns in their pits.
     auto trench_spot = [this](float y)
@@ -133,9 +122,7 @@ void Battle::spawn_charge()
     }
 
     // --- them: two lines, the colours in the first ---------------------------------------
-    int n = 0;
-    auto their_name = [&]() { return std::string(THEIRS[n++ % 60]); };
-    int const support = add_section(Team::RECHIVII, "the guns", 0.0f);
+    auto their_name = [&]() { return next_name(Team::RECHIVII); };
     int player_section = -1;
     for(int line = 0; line < 2; ++line)
     {
@@ -144,7 +131,7 @@ void Battle::spawn_charge()
         int const per = line == 0 ? 14 : 13;
         for(int sec_i = 0; sec_i < sections; ++sec_i)
         {
-            int const sec = add_section(Team::RECHIVII, std::string(line == 0 ? "first line, " : "second line, ") + std::to_string(sec_i + 1) + " section", 0.0f);
+            int const sec = add_section(Team::RECHIVII, tr("sections.charge_line", {{"line", item("sections.charge_lines", static_cast<std::size_t>(line))}, {"n", std::to_string(sec_i + 1)}}), 0.0f);
             if(line == 0 && sec_i == 2) player_section = sec;
             for(int i = 0; i < per; ++i)
             {
@@ -156,7 +143,7 @@ void Battle::spawn_charge()
                 if(line == 0 && i == 11 && (sec_i == 0 || sec_i == 4)) role = Role::SAPPER;
                 if(line == 1 && i == 6 && sec_i % 2 == 0) role = Role::MEDIC;
                 if(line == 1 && i == 8 && sec_i == 2) role = Role::RADIOMAN;
-                Soldier& s = add(Team::RECHIVII, role, i == 0 ? "Cpl." : "Pvt.", their_name(), {x0 + Random::real(-8.0f, 8.0f), y}, sec);
+                Soldier& s = add(Team::RECHIVII, role, i == 0 ? Rank::CORPORAL : Rank::PRIVATE, their_name(), {x0 + Random::real(-8.0f, 8.0f), y}, sec);
                 s.leader = i == 0;
                 s.line = line;
                 s.file_y = y;
@@ -167,52 +154,27 @@ void Battle::spawn_charge()
             }
         }
         // An officer to each line, and the captain with the first.
-        Soldier& lt = add(Team::RECHIVII, Role::OFFICER, "Lt.", their_name(), {x0 + 12.0f, 330.0f + 330.0f * static_cast<float>(line)}, -1);
+        Soldier& lt = add(Team::RECHIVII, Role::OFFICER, Rank::LIEUTENANT, their_name(), {x0 + 12.0f, 330.0f + 330.0f * static_cast<float>(line)}, -1);
         lt.line = line;
         lt.file_y = lt.pos.y;
         lt.home = {2790.0f, lt.pos.y};
         lt.aim = 3.14159f;
         lt.smokes = 1;
     }
-    Soldier& captain = add(Team::RECHIVII, Role::OFFICER, "Capt.", their_name(), {2384.0f, 600.0f}, -1);
+    Soldier& captain = add(Team::RECHIVII, Role::OFFICER, Rank::CAPTAIN, their_name(), {2384.0f, 600.0f}, -1);
     captain.line = 0;
     captain.file_y = 600.0f;
     captain.home = {2790.0f, 600.0f};
     captain.aim = 3.14159f;
 
-    // Two machine guns gone forward in the night to a fold in the field, and a
-    // sniper in a shell hole, to keep our heads down while the lines cross.
-    for(float y : {330.0f, 780.0f})
-    {
-        Soldier& g = add(Team::RECHIVII, Role::GUNNER, "Pvt.", their_name(), {1000.0f, y}, support);
-        g.has_post = true;
-        g.post = g.pos;
-        g.support = true;
-        g.deploy_dir = 3.14159f;
-        g.stance = Stance::PRONE;
-        g.body_angle = 3.14159f;
-        g.home = {2790.0f, y};
-    }
-    {
-        sf::Vector2f at{1120.0f, 560.0f};
-        for(const auto& cr : m_map.craters) if(length(cr.pos - sf::Vector2f{1100.0f, 560.0f}) < length(at - sf::Vector2f{1100.0f, 560.0f})) at = cr.pos;
-        Soldier& sn = add(Team::RECHIVII, Role::SNIPER, "Pvt.", their_name(), at, support);
-        sn.has_post = true;
-        sn.post = at;
-        sn.support = true;
-        sn.stance = Stance::PRONE;
-        sn.home = {2790.0f, at.y};
-    }
-    m_soldiers[static_cast<std::size_t>(m_soldiers.size() - 1)].leader = true;
     for(auto& s : m_soldiers) if(s.team == Team::RECHIVII) { s.goal = s.pos; s.alerted = true; s.morale = Random::real(0.85f, 1.0f); }
 
     // --- you ------------------------------------------------------------------------------------
     if(c.playing == Team::RECHIVII)
     {
-        // A gunner or a sniper goes with the guns; anyone else steps off with the first line.
-        int const sec = c.chosen == Role::GUNNER || c.chosen == Role::SNIPER ? support : player_section;
-        fill_roles(sec);
-        pick_player(sec);
+        // Whatever you go in as, you step off with the first line, carrying it.
+        fill_roles(player_section);
+        pick_player(player_section);
     }
     else
     {
@@ -355,21 +317,19 @@ void Battle::script_charge(float dt)
         if(next && !m_colours_down && m_colours_taken++ < 2)
         {
             next->colours = true;
-            bark(*next, "Znamya! Za mnoy!", true);
-            log("The Rechivii colours fell, and " + next->name + " took them up");
+            bark(*next, tr("barks.rechivii.colours"), true);
         }
         else
         {
             m_colours_down = true;
-            log("The Rechivii colours went down and stayed down");
             for(auto& o : m_soldiers)
                 if(o.team == Team::RECHIVII && o.fighting() && length(o.pos - s.pos) < 160.0f)
                 {
                     o.suppression = std::min(1.0f, o.suppression + 0.35f);
                     o.morale -= 0.3f;
                 }
-            if(side == Team::MONTERAN) notice("Their colours are down!", 2.5f);
-            else notice("The colours are down!", 2.5f);
+            if(side == Team::MONTERAN) notice(tr("levels.charge.colours.theirs_down"), 2.5f);
+            else notice(tr("levels.charge.colours.ours_down"), 2.5f);
         }
     }
 
@@ -405,11 +365,10 @@ void Battle::script_charge(float dt)
                 s.charge_until = 0.0f;
                 s.has_post = false;
                 s.deployed = false;
-                if(Random::chance(0.3f)) bark(s, "Nazad! Nazad!", true);
+                if(Random::chance(0.3f)) bark(s, tr("barks.rechivii.back"), true);
             }
-        if(side == Team::RECHIVII) say("", "The charge has broken. They're running.", Team::RECHIVII, 4.0f);
-        else if(Soldier* lt = officer(Team::MONTERAN); lt && !lt->is_player) say(*lt, "They're breaking! They're going back!", 3.5f);
-        log("The charge broke");
+        if(side == Team::RECHIVII) say("", tr("levels.charge.broke.rechivii"), Team::RECHIVII, 4.0f);
+        else if(Soldier* lt = officer(Team::MONTERAN); lt && !lt->is_player) say(*lt, tr("levels.charge.broke.monteran_lt"), 3.5f);
     }
     // Ours: too few left to hold with them in the trench.
     if(us == 0 || (them_in >= 3 && us * 3 <= them_in && us <= 8))
@@ -420,19 +379,17 @@ void Battle::script_charge(float dt)
                 s.morale = 0.0f;
                 s.has_post = false;
                 s.order = Order::HOLD;
-                if(Random::chance(0.4f)) bark(s, "Fall back! Get out!", true);
+                if(Random::chance(0.4f)) bark(s, tr("barks.monteran.fall_back"), true);
             }
-        log("The trench was overrun");
         set_stage(side == Team::MONTERAN ? Stage::LOST : Stage::WON);
         return;
     }
     // Theirs: nobody left coming (you, on their side, don't count: one man is not a charge).
     bool still_out = false;
     for(const auto& s : m_soldiers)
-        if(s.team == Team::RECHIVII && s.fighting() && s.morale > 0.0f && !s.is_player && !s.support) still_out = true;
+        if(s.team == Team::RECHIVII && s.fighting() && s.morale > 0.0f && !s.is_player) still_out = true;
     if(!still_out)
     {
-        log("The meadow was held");
         set_stage(side == Team::MONTERAN ? Stage::WON : Stage::LOST);
     }
 }

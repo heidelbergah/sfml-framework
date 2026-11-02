@@ -52,15 +52,6 @@ namespace
     constexpr float PUSH_AFTER = 25.0f;         // seconds of fire before the assault group goes in
     constexpr float BREAK_OFF_AFTER = 330.0f;   // they can't stay all day: our guns will find them
     constexpr int   WAGONS_TO_WIN = 4;
-
-    const char* const THEIRS[] = {
-        "Oslev", "Brannik", "Dvorek", "Halst", "Mirov", "Tesk", "Vadim", "Kosar", "Rudan", "Zelny",
-        "Pavek", "Strom", "Ilko", "Gerd", "Yaro", "Lutz", "Borsk", "Kalen", "Matvo", "Resk",
-        "Dravo", "Imre", "Sobek", "Varn", "Tolya", "Kresh", "Andrik", "Pellan", "Gosta", "Vey"};
-    const char* const OURS[] = {
-        "Ilie Brandt", "Oren Mazur", "Paolo Serra", "Viktor Ames", "Luca Fenn", "Radu Pell", "Ion Carver",
-        "Mihai Stoll", "Andrei Holm", "Simon Lark", "Dario Kesh", "Nico Varro", "Teo Danes", "Emeric Volt",
-        "Gaspar Wren", "Iosif Brann", "Matei Lusk", "Felix Arno"};
 }
 
 // ---------------------------------------------------------------- the two sides
@@ -83,10 +74,9 @@ void Battle::spawn_forest()
     }
 
     // --- the escort: a section ahead, one with the wagons, one behind ---------------------------
-    int const one   = add_section(Team::MONTERAN, "1 Section", 170.0f);
-    int const two   = add_section(Team::MONTERAN, "2 Section", 0.0f);
-    int const three = add_section(Team::MONTERAN, "3 Section", -170.0f);
-    std::size_t name = 0;
+    int const one   = add_section(Team::MONTERAN, item("sections.monteran", 0), 170.0f);
+    int const two   = add_section(Team::MONTERAN, item("sections.monteran", 1), 0.0f);
+    int const three = add_section(Team::MONTERAN, item("sections.monteran", 2), -170.0f);
     auto place = [&](Soldier& s, float at, float side)
     {
         s.march_at = at;
@@ -102,35 +92,35 @@ void Battle::spawn_forest()
         {
             Role role = i == 1 && gun ? Role::GUNNER : (medic && i == 2 ? Role::MEDIC : Role::RIFLEMAN);
             if(i == 3) role = medic ? Role::SAPPER : Role::STORMTROOPER;
-            Soldier& s = add(Team::MONTERAN, role, i == 0 ? "Cpl." : "Pvt.", OURS[name++ % 18], {}, id);
+            Soldier& s = add(Team::MONTERAN, role, i == 0 ? Rank::CORPORAL : Rank::PRIVATE, next_name(Team::MONTERAN), {}, id);
             s.leader = i == 0;
             place(s, from - 17.0f * static_cast<float>(i), i % 2 ? 15.0f : -15.0f);
         }
     };
     make_section(one, 150.0f, false, true);
-    struct M { Role role; const char* rank; const char* name; };
+    // Your own section: its men are named in the text file, in this order.
+    struct M { Role role; Rank rank; };
     const M yours[] = {
-        {Role::RIFLEMAN, "Cpl.", "Petru Orban"}, {Role::RIFLEMAN, "Pvt.", "Emil Rell"},
-        {Role::GUNNER, "Cpl.", "Anselm Kray"},  {Role::FLAMER, "Pvt.", "Dorian Vosk"},
-        {Role::MEDIC, "Pvt.", "Teodor Halm"},   {Role::RADIOMAN, "Pvt.", "Tomas Dacre"},
-        {Role::STORMTROOPER, "Pvt.", "Lio Marchetti"}, {Role::RIFLEMAN, "Pvt.", "Benedek Sorn"}};
+        {Role::RIFLEMAN, Rank::CORPORAL}, {Role::RIFLEMAN, Rank::PRIVATE},
+        {Role::GUNNER, Rank::CORPORAL},   {Role::FLAMER, Rank::PRIVATE},
+        {Role::MEDIC, Rank::PRIVATE},     {Role::RADIOMAN, Rank::PRIVATE},
+        {Role::STORMTROOPER, Rank::PRIVATE}, {Role::RIFLEMAN, Rank::PRIVATE}};
     for(int i = 0; i < 8; ++i)
     {
-        Soldier& s = add(Team::MONTERAN, yours[i].role, yours[i].rank, yours[i].name, {}, two);
+        Soldier& s = add(Team::MONTERAN, yours[i].role, yours[i].rank, item("names.monteran.your_section", static_cast<std::size_t>(i)), {}, two);
         s.leader = i == 0;
         // Spread down the wagons, one each side.
         place(s, -10.0f - 34.0f * static_cast<float>(i), i % 2 ? 17.0f : -17.0f);
     }
-    Soldier& lt = add(Team::MONTERAN, Role::OFFICER, "Lt.", "Aurel Varga", {}, -1);
+    Soldier& lt = add(Team::MONTERAN, Role::OFFICER, Rank::LIEUTENANT, tr("names.monteran.lieutenant"), {}, -1);
     place(lt, -130.0f, -15.0f);
     make_section(three, -WAGON_GAP * WAGONS - 30.0f, true, true);
 
     // --- the ambush -----------------------------------------------------------------------------
-    int n = 0;
-    auto their_name = [&]() { return std::string(THEIRS[n++ % 30]); };
-    int const line  = add_section(Team::RECHIVII, "the ambush line", 0.0f);
-    int const block = add_section(Team::RECHIVII, "the block", 0.0f);
-    int const assault = add_section(Team::RECHIVII, "the assault group", 0.0f);
+    auto their_name = [&]() { return next_name(Team::RECHIVII); };
+    int const line  = add_section(Team::RECHIVII, tr("sections.forest.line"), 0.0f);
+    int const block = add_section(Team::RECHIVII, tr("sections.forest.block"), 0.0f);
+    int const assault = add_section(Team::RECHIVII, tr("sections.forest.assault"), 0.0f);
     auto spot_near = [this](sf::Vector2f p)
     {
         // The nearest place a man can lie: not in a trunk, not in a log.
@@ -142,10 +132,10 @@ void Battle::spawn_forest()
             }
         return p;
     };
-    auto enemy = [&](Role role, sf::Vector2f at, int section, bool active, std::string rank = "Pvt.") -> Soldier&
+    auto enemy = [&](Role role, sf::Vector2f at, int section, bool active, Rank rank = Rank::PRIVATE) -> Soldier&
     {
         at = spot_near(at);
-        Soldier& s = add(Team::RECHIVII, role, role == Role::OFFICER && rank == "Pvt." ? "Lt." : rank, their_name(), at, section);
+        Soldier& s = add(Team::RECHIVII, role, role == Role::OFFICER && rank == Rank::PRIVATE ? Rank::LIEUTENANT : rank, their_name(), at, section);
         s.post = at;
         s.has_post = true;
         s.active = active;
@@ -244,8 +234,7 @@ void Battle::ignite_wagon(Wagon& w)
     if(w.destroyed || w.burning > 0.0f) return;
     w.burning = 0.01f;
     SoundBank::get().play_at("flamer_start", w.pos, 0.8f);
-    log("A wagon was set on fire");
-    if(me().team == Team::MONTERAN) notice("A wagon's burning!", 2.5f);
+    if(me().team == Team::MONTERAN) notice(tr("levels.forest.wagons.burning"), 2.5f);
 }
 
 void Battle::damage_wagons(sf::Vector2f at, float power, bool fire)
@@ -303,12 +292,11 @@ void Battle::update_wagons(float dt)
         if(!w.destroyed && w.hp <= 0.0f)
         {
             w.destroyed = true;
-            explode(w.pos, 1.0f, -1, Team::RECHIVII, false, "a wagon's load going up");
+            explode(w.pos, 1.0f, -1, Team::RECHIVII, false);
             m_camera.shake(0.25f);
-            log("A wagon's load went up");
             int const lost = wagons_lost();
-            if(me().team == Team::MONTERAN) notice(std::to_string(lost) + (lost == 1 ? " wagon lost" : " wagons lost"), 3.0f);
-            else notice(std::to_string(lost) + " of " + std::to_string(WAGONS_TO_WIN) + " wagons burning", 3.0f);
+            if(me().team == Team::MONTERAN) notice(tr(lost == 1 ? "levels.forest.wagons.lost_one" : "levels.forest.wagons.lost_many", {{"n", std::to_string(lost)}}), 3.0f);
+            else notice(tr("levels.forest.wagons.of_needed", {{"n", std::to_string(lost)}, {"needed", std::to_string(WAGONS_TO_WIN)}}), 3.0f);
         }
         if(w.burning > 40.0f) w.burning = 40.0f;        // a smouldering wreck by now
     }
@@ -387,7 +375,7 @@ bool Battle::raider_think(Soldier& s)
         place_satchel(s, w.pos);
         s.goal = s.pos + unit(s.pos - w.pos) * 50.0f;
         s.path.clear();
-        bark(s, "Ogon! Ogon!", true);
+        bark(s, tr("barks.rechivii.fire"), true);
         return true;
     }
     if(s.grenades > 0 && best_d < 90.0f && best_d > 30.0f && Random::chance(0.25f))
@@ -400,7 +388,7 @@ bool Battle::raider_think(Soldier& s)
         s.goal = side;
         s.path.clear();
         s.cover_index = -1;
-        if(Random::chance(0.2f)) bark(s, "K povozkam! The wagons!", true);
+        if(Random::chance(0.2f)) bark(s, tr("barks.rechivii.to_the_wagons"), true);
     }
     return true;
 }
@@ -465,9 +453,9 @@ void Battle::script_forest(float dt)
             s.order = Order::FOLLOW;
         }
         if(m_stage_time > 4.0f && m_stage_time - dt <= 4.0f && !theirs)
-            say("Lt. Varga", "Keep closed up. Eyes on the trees, both sides. This is where I'd do it.", Team::MONTERAN, 5.0f);
+            say(tr("speakers.varga"), tr("levels.forest.march.varga"), Team::MONTERAN, 5.0f);
         if(m_stage_time > 14.0f && m_stage_time - dt <= 14.0f)
-            say(theirs ? "Lt." : "Pvt. Dacre", theirs ? "Nobody moves. Nobody fires. Wait for the mine." : "Quiet, isn't it. No birds.", theirs ? Team::RECHIVII : Team::MONTERAN, 4.0f);
+            say(theirs ? "Lt." : tr("speakers.dacre"), theirs ? tr("levels.forest.march.rechivii_wait") : tr("levels.forest.march.dacre"), theirs ? Team::RECHIVII : Team::MONTERAN, 4.0f);
 
         // Somebody walks right onto one of them.
         for(const auto& s : m_soldiers)
@@ -476,7 +464,7 @@ void Battle::script_forest(float dt)
             for(const auto& e : m_soldiers)
                 if(e.team == Team::RECHIVII && e.fighting() && !e.reserve && length(e.pos - s.pos) < 42.0f)
                 {
-                    raise_alarm(s.is_player ? "You've walked right into them! Ambush!" : "Ambush! In the trees!");
+                    raise_alarm(s.is_player ? tr("alarm.walked_into") : tr("alarm.in_the_trees"));
                     break;
                 }
             if(m_alarm) break;
@@ -485,7 +473,7 @@ void Battle::script_forest(float dt)
         if(!m_alarm && !m_wagons.empty() && m_wagons.front().along >= MINE_AT)
         {
             Wagon& lead = m_wagons.front();
-            explode(lead.pos, 1.6f, -1, Team::RECHIVII, false, "a mine under the road");
+            explode(lead.pos, 1.6f, -1, Team::RECHIVII, false);
             lead.hp = 35.0f;            // it burns a little while before the shells in it go
             ignite_wagon(lead);
             raise_alarm("");
@@ -519,26 +507,24 @@ void Battle::script_forest(float dt)
             float const mon_share = static_cast<float>(mon) / static_cast<float>(std::max(1, m_forest_mon));
             float const since = m_time - m_alarm_at;
             int outcome = 0;
-            std::string why;
-            if(wagons_lost() >= WAGONS_TO_WIN) { outcome = 2; why = "The column was burned on the Lesna road"; }
-            else if(mon_share <= 0.14f) { outcome = 2; why = "The escort was cut to pieces"; }
-            else if(rch_share <= 0.4f || (no_officer && rch_share <= 0.55f)) { outcome = 1; why = "The ambush was beaten off"; }
-            else if(since > BREAK_OFF_AFTER) { outcome = wagons_lost() >= 3 ? 2 : 1; why = "They broke off and went back into the forest"; }
+            if(wagons_lost() >= WAGONS_TO_WIN) outcome = 2;
+            else if(mon_share <= 0.14f) outcome = 2;
+            else if(rch_share <= 0.4f || (no_officer && rch_share <= 0.55f)) outcome = 1;
+            else if(since > BREAK_OFF_AFTER) outcome = wagons_lost() >= 3 ? 2 : 1;
             if(outcome != 0)
             {
                 m_forest_outcome = outcome;
                 m_forest_outcome_at = m_time;
-                log(why);
                 // Either way the ambushers melt back into the trees: they never meant to stay.
                 for(auto& s : m_soldiers)
                     if(s.team == Team::RECHIVII && s.fighting() && !s.is_player)
                     {
                         s.morale = 0.0f;
                         s.path.clear();
-                        if(Random::chance(0.3f)) bark(s, outcome == 2 ? "Nazad! Done, back!" : "Hesh! Hesh!", true);
+                        if(Random::chance(0.3f)) bark(s, outcome == 2 ? tr("barks.rechivii.done_back") : tr("barks.rechivii.flee"), true);
                     }
                 SoundBank::get().play_at("whistle", m_map.road_at(1560.0f) + sf::Vector2f{0.0f, -180.0f}, 0.8f);
-                notice(outcome == 1 ? (theirs ? "Back! Back into the trees!" : "They're running!") : (theirs ? "Enough. Back into the trees!" : "The column's finished..."), 3.5f);
+                notice(outcome == 1 ? (theirs ? tr("levels.forest.outcome.rechivii_beaten") : tr("levels.forest.outcome.monteran_won")) : (theirs ? tr("levels.forest.outcome.rechivii_done") : tr("levels.forest.outcome.monteran_lost")), 3.5f);
             }
         }
     }

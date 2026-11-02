@@ -19,7 +19,7 @@
 # already installed instead, add -DMUDCATS_SYSTEM_SFML=ON.
 
 cmake_minimum_required(VERSION 3.24)
-project(MudCats VERSION 0.13.0 LANGUAGES CXX)
+project(MudCats VERSION 0.14.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -134,6 +134,8 @@ foreach(file ${MUDCATS_DATA_FILES})
     install(FILES "${file}" DESTINATION "${MUDCATS_INSTALL_DATA}/${file_dir}" COMPONENT game)
 endforeach()
 install(FILES examples/mudcats/README.md LICENSE DESTINATION . COMPONENT game)
+# nlohmann/json is compiled in, so its licence goes with it.
+install(FILES third_party/nlohmann/LICENSE.MIT DESTINATION . RENAME LICENSE-nlohmann-json.txt COMPONENT game)
 
 # Only the game: SFML's own install rules (its headers and libraries) stay out of it.
 set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${PROJECT_NAME};game;/")

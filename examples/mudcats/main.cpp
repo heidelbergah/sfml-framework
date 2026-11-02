@@ -17,6 +17,7 @@
 #include "Battle.hpp"
 #include "Screens.hpp"
 #include "Settings.hpp"
+#include "Text.hpp"
 
 #include <filesystem>
 #include <system_error>
@@ -51,6 +52,8 @@ namespace
 int main(int argc, char** argv)
 {
     find_home(argc > 0 ? argv[0] : nullptr);
+    // Every word on screen: assets/mudcats/text/en.json.
+    mudcats::load_text("en");
 
     mudcats::Settings const& settings = mudcats::Settings::get();
     SceneManager sm("Mud Cats", settings.fullscreen);

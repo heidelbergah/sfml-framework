@@ -11,7 +11,7 @@
  *                   the units and the plan marked on it, and the briefing
  *                   under it. What the map shows depends on whose side
  *                   you're on: the escort doesn't know where the ambush is
- *   DebriefScene    what happened to every man, and what happened on the day
+ *   DebriefScene    the losses on both sides, how long it took, and your side's newspaper
  *
  * Settings, how to play and the credits open over the top of the title or
  * the briefing, as panels (Panels, below). F11 flips fullscreen anywhere.
@@ -129,7 +129,18 @@ class DebriefScene : public Scene
 {
 private:
     float m_time{0.0f};
-    int   m_page{0};            // 0 the men, 1 the day
+    int   m_choice{0};          // the button under the keys: 0 again, 1 the briefing, 2 the title
+    int   m_hover{-1};
+    bool  m_leaving{false};
+    std::size_t m_headline{0};  // which of the paper's headlines, picked once
+
+    // The ground, drawn small for the paper.
+    std::unique_ptr<sf::RenderTexture> m_sheet;
+    LevelId m_sheet_level{LevelId::CHARGE};
+    const sf::RenderTexture* sheet(LevelId level);
+
+    void press(int button);
+    [[nodiscard]] int button_at(sf::Vector2f p) const;
 
 public:
     void on_enter() override;

@@ -40,6 +40,7 @@
 
 #include "Map.hpp"
 #include "Soldier.hpp"
+#include "Text.hpp"
 
 #include <bitset>
 #include <deque>
@@ -54,6 +55,18 @@ inline constexpr sf::Vector2f FRAME_F{480.0f, 270.0f};
 inline constexpr std::size_t  MAX_SOLDIERS = 256;
 
 /*
+ * One side's losses, counted at the end.
+ */
+struct Losses
+{
+    int total{0};
+    int killed{0};
+    int wounded{0};             // alive at the end, but hit
+    int captured{0};
+    int fled{0};
+};
+
+/*
  * What the briefing chose, and what the debrief reads back.
  */
 struct Campaign
@@ -61,16 +74,13 @@ struct Campaign
     Role    chosen{Role::RIFLEMAN};
     LevelId level{LevelId::CHARGE};
     int     difficulty{1};              // 0 easy, 1 normal, 2 hard
-    bool    won{false};
-    float   time{0.0f};
-    int     enemy_dead{0};
-    int     enemy_fled{0};
-    int     prisoners{0};
-    int     prisoners_shot{0};
-    Team    side{Team::MONTERAN};       // which side the briefing has picked: the charge can be played from either
+    Team    side{Team::MONTERAN};       // which side the briefing has picked
     Team    playing{Team::MONTERAN};    // the side this battle is played from
-    std::vector<Soldier>     platoon;   // copies, at the end
-    std::vector<std::string> log;       // what happened, in order
+    bool    won{false};
+    float   time{0.0f};                 // seconds from the first shot to the end
+    Losses  ours;                       // the side you played
+    Losses  theirs;
+    int     wagons_lost{0};             // the Lesna road
 
     static Campaign& current()
     {
@@ -79,8 +89,11 @@ struct Campaign
     }
 };
 
-[[nodiscard]] const char* difficulty_name(int d);
-[[nodiscard]] const char* level_name(LevelId level);
+// Names from the text file.
+[[nodiscard]] std::string difficulty_name(int d);
+[[nodiscard]] std::string level_name(LevelId level);
+[[nodiscard]] const char* level_key(LevelId level);     // "charge", "town", "forest": its entry under levels.
+[[nodiscard]] const char* side_key(Team team);          // "monteran", "rechivii"
 
 class Battle : public Scene
 {
@@ -407,7 +420,10 @@ private:
     void fill_roles(int section);
     void pick_player(int section);
     void kit_out(Soldier& s);
-    Soldier& add(Team team, Role role, std::string rank, std::string name, sf::Vector2f pos, int section);
+    Soldier& add(Team team, Role role, Rank rank, std::string name, sf::Vector2f pos, int section);
+    // The next name for a man on that side, from the text file's lists, never one already on the field.
+    std::string next_name(Team team);
+    std::size_t m_next_name[2]{0, 0};
     int  add_section(Team team, std::string name, float band);
     void set_stage(Stage stage);
     void update_script(float dt);
@@ -443,7 +459,8 @@ private:
     void hint(const std::string& text, float time = 6.0f);
     void notice(const std::string& text, float time = 3.0f);
     void bark(Soldier& s, const std::string& text, bool voice = true);
-    void log(const std::string& line);
+    // A bark from the text file, barks.<side>.<key>: the Rechivii line if they have their own, else the Monteran one.
+    void shout(Soldier& s, std::string_view key, bool voice = true);
     void player_input(float dt);
     void interact(Soldier& p);
     void take_over();
@@ -471,9 +488,10 @@ private:
     void sever(Soldier& s, Limb limb, sf::Vector2f push);
     void gib_body(Soldier& s, sf::Vector2f push);
     void go_down(Soldier& s, int attacker);
-    void kill(Soldier& s, int attacker, const std::string& fate);
+    void kill(Soldier& s, int attacker);
     void surrender(Soldier& s);
-    void explode(sf::Vector2f at, float power, int owner, Team team, bool fire, const std::string& cause, bool spare_monterans = false);
+    // `fire` throws flame about; a `satchel` sets a wagon alight even without it.
+    void explode(sf::Vector2f at, float power, int owner, Team team, bool fire, bool satchel = false, bool spare_monterans = false);
     void ignite(Soldier& s, int attacker);
     void stamp_corpse(Soldier& s);
     void hear_shot(const Soldier& shooter);

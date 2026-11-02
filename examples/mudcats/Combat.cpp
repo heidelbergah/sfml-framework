@@ -58,23 +58,6 @@ namespace
         return true;
     }
 
-    std::string short_name(const Soldier& s)
-    {
-        std::string const last = s.name.substr(s.name.find(' ') + 1);
-        return s.rank.empty() ? last : s.rank + " " + last;
-    }
-
-    const char* what_he_was(const Soldier& s)
-    {
-        switch(s.role)
-        {
-            case Role::OFFICER: return "an officer";
-            case Role::GUNNER:  return "a machine gunner";
-            case Role::FLAMER:  return "a flamethrower";
-            case Role::MEDIC:   return "a medic";
-            default:            return "a rifleman";
-        }
-    }
 }
 
 // ---------------------------------------------------------------- shooting
@@ -85,7 +68,7 @@ void Battle::reload(Soldier& s)
     if(w.flame || s.gun == Gun::NONE || s.reloading > 0.0f || s.ammo >= w.magazine || s.spare <= 0) return;
     s.reloading = w.reload * (s.lost & (ARM_L | ARM_R) ? 2.0f : 1.0f);
     SoundBank::get().play_at(w.reload_sound, s.pos, s.is_player ? 0.8f : 0.5f);
-    if(!s.is_player && Random::chance(0.4f)) bark(s, s.team == Team::MONTERAN ? "Reloading!" : "Vash!", false);
+    if(!s.is_player && Random::chance(0.4f)) shout(s, "reloading", false);
 }
 
 void Battle::fire(Soldier& s, float dt)
@@ -138,7 +121,7 @@ void Battle::fire(Soldier& s, float dt)
         if(s.is_player) SoundBank::get().play("click_empty", 0.6f);
         s.cooldown = 0.35f;
         if(s.spare > 0) reload(s);
-        else if(s.is_player) notice("Out of ammunition. E on a crate, or on a fallen man's weapon", 3.0f);
+        else if(s.is_player) notice(tr("hud.notice.out_of_ammo"), 3.0f);
         return;
     }
 
@@ -158,7 +141,7 @@ void Battle::fire(Soldier& s, float dt)
         {
             s.overheated = 4.0f;
             SoundBank::get().play_at("overheat", s.pos, 0.8f);
-            if(s.is_player) hint("The barrel is too hot. Wait for it to cool. Fire in bursts.", 3.5f);
+            if(s.is_player) hint(tr("hints.barrel_hot"), 3.5f);
         }
     }
 
@@ -201,7 +184,7 @@ void Battle::fire_bullet(Soldier& s, float angle)
 
 void Battle::hear_shot(const Soldier& shooter)
 {
-    if(!m_alarm) raise_alarm(shooter.team == Team::MONTERAN ? "A shot from the column! Ambush!" : "The ambush is sprung!");
+    if(!m_alarm) raise_alarm(tr(shooter.team == Team::MONTERAN ? "alarm.shot_from_column" : "alarm.sprung"));
     for(auto& s : m_soldiers)
     {
         if(s.team == shooter.team || !s.alive()) continue;
@@ -240,8 +223,7 @@ void Battle::throw_grenade(Soldier& s, sf::Vector2f at, bool smoke)
 
     SoundBank::get().play_at("grenade_pin", s.pos, 0.6f);
     SoundBank::get().play_at("throw", s.pos, 0.7f);
-    if(smoke) bark(s, s.team == Team::MONTERAN ? "Smoke! Smoke out!" : "Dym!", true);
-    else bark(s, s.team == Team::MONTERAN ? "Grenade out!" : "Vrak!", true);
+    shout(s, smoke ? "smoke_out" : "grenade_out", true);
 }
 
 void Battle::fire_flare(Soldier& s, sf::Vector2f at, bool illum)
@@ -272,10 +254,9 @@ void Battle::fire_flare(Soldier& s, sf::Vector2f at, bool illum)
     f.owner = s.id;
     m_flares.push_back(f);
     SoundBank::get().play_at("flare_fire", s.pos, 0.9f);
-    bark(s, "Red flare! Guns, on that!", true);
+    shout(s, "red_flare", true);
     if(length(at - s.pos) < 130.0f && s.is_player)
-        hint("Danger close. The guns are not that accurate.", 3.0f);
-    log(short_name(s) + " fired a red flare for the guns");
+        hint(tr("hints.danger_close"), 3.0f);
 }
 
 // ---------------------------------------------------------------- the bayonet
@@ -337,13 +318,11 @@ void Battle::update_bayonet(Soldier& s, float dt)
 
         if(v.surrendered && v.team == Team::RECHIVII && s.team == Team::MONTERAN)
         {
-            ++Campaign::current().prisoners_shot;
-            log(short_name(s) + " bayoneted a prisoner");
         }
         if(v.life == Life::DOWNED || (blade && Random::chance(0.45f)))
         {
             SoundBank::get().play_at("death_cry", v.pos, 0.9f, 0.04f, v.voice);
-            kill(v, s.id, blade ? "Bayoneted" : "Beaten to death");
+            kill(v, s.id);
             return;
         }
         if(blade)
@@ -393,7 +372,7 @@ bool Battle::pick_up(Soldier& s, Dropped& d)
     bool const two_hands = !(d.gun == Gun::PISTOL || d.gun == Gun::SMG);
     if(two_hands && !s.can_use_rifle())
     {
-        if(s.is_player) notice("You can't hold that with one arm", 2.0f);
+        if(s.is_player) notice(tr("hud.notice.one_arm"), 2.0f);
         return false;
     }
 
@@ -406,7 +385,7 @@ bool Battle::pick_up(Soldier& s, Dropped& d)
         s.spare = std::min(s.spare + rounds, theirs.spare * 2);
         d.taken = true;
         SoundBank::get().play_at("ammo_pickup", s.pos, 0.7f);
-        if(s.is_player) notice("Took " + std::to_string(rounds) + " rounds", 2.0f);
+        if(s.is_player) notice(tr("hud.notice.took_rounds", {{"n", std::to_string(rounds)}}), 2.0f);
         return true;
     }
 
@@ -425,8 +404,8 @@ bool Battle::pick_up(Soldier& s, Dropped& d)
     SoundBank::get().play_at("weapon_pickup", s.pos, 0.8f);
     if(s.is_player)
     {
-        notice(std::string("Picked up a ") + gun_name(s.gun), 2.5f);
-        if(s.has_mg()) hint("Right click sets it up. It only fires set up.", 4.0f);
+        notice(tr("hud.notice.picked_up", {{"weapon", gun_name(s.gun)}}), 2.5f);
+        if(s.has_mg()) hint(tr("hints.gun_set_up"), 4.0f);
     }
     return true;
 }
@@ -600,14 +579,12 @@ void Battle::hit(Soldier& s, const Bullet& b, sf::Vector2f at)
     // Shooting a man with his hands up is remembered.
     if(s.surrendered && b.owner >= 0 && m_soldiers[static_cast<std::size_t>(b.owner)].team == Team::MONTERAN)
     {
-        ++Campaign::current().prisoners_shot;
-        log(short_name(m_soldiers[static_cast<std::size_t>(b.owner)]) + " shot a man who had surrendered");
-        kill(s, b.owner, "Shot with his hands up");
+        kill(s, b.owner);
         return;
     }
     if(s.life == Life::DOWNED)
     {
-        kill(s, b.owner, b.heavy ? "Cut down by machine-gun fire where he lay" : "Shot again where he lay");
+        kill(s, b.owner);
         return;
     }
     wound(s, damage, d, b.owner, cause, b.heavy);
@@ -632,7 +609,7 @@ void Battle::wound(Soldier& s, float damage, sf::Vector2f from_dir, int attacker
         if(damage >= 40.0f)
         {
             if(Random::chance(heavy ? 0.5f : 0.2f)) sever(s, HEAD, from_dir);
-            kill(s, attacker, heavy ? "Cut down by machine-gun fire" : "Shot through the head");
+            kill(s, attacker);
             return;
         }
         s.hp -= damage * 1.5f;
@@ -644,7 +621,7 @@ void Battle::wound(Soldier& s, float damage, sf::Vector2f from_dir, int attacker
         // A flamethrower's tanks are on his back.
         if(s.has_flamer() && s.fuel > 5.0f && Random::chance(0.07f))
         {
-            explode(s.pos, 1.1f, attacker, s.team == Team::MONTERAN ? Team::RECHIVII : Team::MONTERAN, true, "his own tanks bursting");
+            explode(s.pos, 1.1f, attacker, s.team == Team::MONTERAN ? Team::RECHIVII : Team::MONTERAN, true);
             return;
         }
     }
@@ -666,17 +643,15 @@ void Battle::wound(Soldier& s, float damage, sf::Vector2f from_dir, int attacker
 
     if(s.hp <= 0.0f)
     {
-        if(s.hp < -45.0f) kill(s, attacker, heavy ? "Cut down by machine-gun fire" : "Shot dead");
+        if(s.hp < -45.0f) kill(s, attacker);
         else go_down(s, attacker);
         return;
     }
 
     if(!s.can_walk()) s.stance = Stance::PRONE;
     if(Random::chance(0.75f)) SoundBank::get().play_at(Random::chance(0.6f) ? "scream" : "groan", s.pos, 0.75f, 0.04f, s.voice);
-    static const char* const ours[] = {"I'm hit!", "Agh! God!", "My arm, my arm!", "Ahh, Christ!", "I'm hit, I'm hit!"};
-    static const char* const theirs[] = {"Ahh!", "Mama!", "Bozhe!"};
-    bark(s, s.team == Team::MONTERAN ? ours[Random::integer(0, 4)] : theirs[Random::integer(0, 2)], false);
-    if(s.is_player) hint(s.bleeding > 0.0f && s.bandages > 0 ? "You are bleeding. F to bandage yourself, somewhere safe." : "You are hit.", 4.0f);
+    shout(s, "hit", false);
+    if(s.is_player) hint(s.bleeding > 0.0f && s.bandages > 0 ? tr("hints.bleeding") : tr("hints.hit"), 4.0f);
 }
 
 void Battle::sever(Soldier& s, Limb limb, sf::Vector2f push)
@@ -748,24 +723,23 @@ void Battle::go_down(Soldier& s, int attacker)
     if(s.team == Team::MONTERAN)
     {
         s.bark_cooldown = 0.0f;
-        bark(s, "Medic! Medic!", false);
+        shout(s, "medic_medic", false);
         if(!s.is_player)
             for(auto& o : m_soldiers)
-                if(o.team == s.team && o.alive() && !o.is_player && length(o.pos - s.pos) < 120.0f) { bark(o, "Man down!", true); break; }
+                if(o.team == s.team && o.alive() && !o.is_player && length(o.pos - s.pos) < 120.0f) { bark(o, tr("barks.monteran.man_down"), true); break; }
     }
     if(s.is_player)
     {
-        hint("You are down and bleeding. E calls for a medic, WASD crawls. Space gives up.", 10.0f);
+        hint(tr("hints.down"), 10.0f);
         m_hurt = 1.0f;
     }
 }
 
-void Battle::kill(Soldier& s, int attacker, const std::string& fate)
+void Battle::kill(Soldier& s, int attacker)
 {
     if(s.life == Life::DEAD) return;
     bool const was_down = s.life == Life::DOWNED;
     s.life = Life::DEAD;
-    if(s.fate.empty()) s.fate = fate;
     s.vel = {};
     s.firing = false;
     s.deployed = false;
@@ -793,11 +767,6 @@ void Battle::kill(Soldier& s, int attacker, const std::string& fate)
     drop_weapon(s);
     stamp_corpse(s);
 
-    // The record.
-    if(s.team == Team::MONTERAN) log(short_name(s) + ": " + s.fate);
-    else if(killer && killer->is_player) log("You killed " + std::string(what_he_was(s)) + (s.role == Role::OFFICER ? ", their lieutenant" : ""));
-    else if(s.role == Role::OFFICER) log("Their lieutenant was killed");
-
     if(s.team == Team::MONTERAN && !s.is_player)
         for(auto& o : m_soldiers)
             if(o.team == s.team && o.alive() && length(o.pos - s.pos) < 90.0f)
@@ -805,8 +774,7 @@ void Battle::kill(Soldier& s, int attacker, const std::string& fate)
                 o.morale = std::max(0.0f, o.morale - 0.1f);
                 if(o.role == Role::OFFICER || Random::chance(0.3f))
                 {
-                    static const char* const words[] = {"No! No...", "He's gone.", "Oh God, he's dead.", "Leave him! Leave him!"};
-                    bark(o, words[Random::integer(0, 3)], false);
+                    shout(o, "mate_dead", false);
                 }
                 break;
             }
@@ -829,11 +797,7 @@ void Battle::surrender(Soldier& s)
     s.target = -1;
     s.burning = 0.0f;
     s.bark_cooldown = 0.0f;
-    static const char* const words[] = {"Sdayus! Sdayus!", "Don't shoot! Don't!", "Nyet, nyet! Please!"};
-    bark(s, words[Random::integer(0, 2)], true);
-    ++Campaign::current().prisoners;
-    log(std::string("A Rechivii ") + (s.role == Role::OFFICER ? "officer" : "soldier") + " surrendered");
-    s.fate = "Taken prisoner";
+    shout(s, "surrender", true);
 }
 
 void Battle::stamp_corpse(Soldier& s)
@@ -851,8 +815,8 @@ void Battle::ignite(Soldier& s, int attacker)
     if(s.burning <= 0.0f)
     {
         SoundBank::get().play_at("scream_burn", s.pos, 1.0f, 0.03f, s.voice);
-        bark(s, s.team == Team::MONTERAN ? "I'm burning! Help me!" : "AAAH!", false);
-        if(s.is_player) hint("You are on fire. Z to drop and roll, it puts it out faster.", 4.0f);
+        shout(s, "burning", false);
+        if(s.is_player) hint(tr("hints.on_fire"), 4.0f);
     }
     s.burning = std::max(s.burning, 4.5f);
     s.suppression = 1.0f;
@@ -861,7 +825,7 @@ void Battle::ignite(Soldier& s, int attacker)
 
 // ---------------------------------------------------------------- explosions
 
-void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fire, const std::string& cause, bool spare_monterans)
+void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fire, bool satchel, bool spare_monterans)
 {
     (void)team;
     Soldier& me = *player();
@@ -869,11 +833,11 @@ void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fi
     bool const wet = m_map.in_water(at);
     if(m_level == LevelId::FOREST)
     {
-        damage_wagons(at, power, fire || cause == "a satchel charge");
-        if(!m_alarm) raise_alarm("An explosion on the road! Ambush!");
+        damage_wagons(at, power, fire || satchel);
+        if(!m_alarm) raise_alarm(tr("alarm.explosion_on_road"));
     }
 
-    if(!m_alarm) raise_alarm("The explosion woke them.");
+    if(!m_alarm) raise_alarm(tr("alarm.explosion"));
     SoundBank::get().play_at(fire ? "tank_burst" : "explosion", at, std::min(1.0f, 0.6f + power * 0.3f), 0.08f);
     if(to_me > 260.0f) SoundBank::get().play_at("explosion_far", at, 0.7f, 0.05f);
     m_lights.push_back({at, 60.0f * power, 0.25f, 0.25f, fire ? FIRE_ORANGE : FIRE_YELLOW});
@@ -951,7 +915,7 @@ void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fi
         if(d < 12.0f * power && shelter > 0.5f)
         {
             gib_body(s, push);
-            kill(s, owner, "Blown apart by " + cause);
+            kill(s, owner);
             continue;
         }
         float const reach = 46.0f * power;
@@ -963,7 +927,7 @@ void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fi
                 static const float scale[] = {0.6f, 1.0f, 1.3f};
                 dmg *= scale[std::clamp(Campaign::current().difficulty, 0, 2)];
             }
-            if(s.life == Life::DOWNED) { if(dmg > 30.0f) kill(s, owner, "Killed by " + cause + " as he lay wounded"); continue; }
+            if(s.life == Life::DOWNED) { if(dmg > 30.0f) kill(s, owner); continue; }
             // Fragments find arms and legs.
             for(Limb l : {ARM_L, ARM_R, LEG_L, LEG_R})
                 if(dmg > 55.0f && Random::chance(0.3f)) sever(s, l, push);
@@ -973,7 +937,7 @@ void Battle::explode(sf::Vector2f at, float power, int owner, Team team, bool fi
             if(s.is_player) m_hurt = 1.0f;
             if(s.hp <= 0.0f)
             {
-                if(s.hp < -40.0f) kill(s, owner, "Killed by " + cause);
+                if(s.hp < -40.0f) kill(s, owner);
                 else go_down(s, owner);
             }
             else
@@ -1048,7 +1012,7 @@ void Battle::update_soldier_body(Soldier& s, float dt)
                 if(Random::chance(dt * 4.0f)) draw::rect(m_stamps, std::floor(s.pos.x), std::floor(s.pos.y), 2, 1, BLOOD_DK);
             }
         }
-        if(s.bleed_out <= 0.0f) kill(s, -1, s.lost ? "Bled to death from his wounds" : "Bled out waiting for a medic");
+        if(s.bleed_out <= 0.0f) kill(s, -1);
         return;
     }
 
@@ -1090,8 +1054,8 @@ void Battle::update_soldier_body(Soldier& s, float dt)
             if(s.cutting <= 0.0f)
             {
                 cut_wire_at(s, s.cut_at);
-                if(s.is_player) notice("Wire's cut", 2.0f);
-                else bark(s, "Through! Gap here!", true);
+                if(s.is_player) notice(tr("hud.notice.wire_cut"), 2.0f);
+                else shout(s, "gap", true);
             }
         }
     }
@@ -1143,7 +1107,7 @@ void Battle::update_soldier_body(Soldier& s, float dt)
         if(s.hp <= 0.0f)
         {
             s.charred = true;
-            kill(s, s.target, "Burned to death");
+            kill(s, s.target);
             return;
         }
     }
@@ -1179,10 +1143,9 @@ void Battle::update_soldier_body(Soldier& s, float dt)
                     patient.stance = patient.can_walk() ? Stance::CROUCH : Stance::PRONE;
                     patient.suppression = 0.5f;
                     if(patient.dragged_by >= 0) { m_soldiers[static_cast<std::size_t>(patient.dragged_by)].dragging = -1; patient.dragged_by = -1; }
-                    if(patient.is_player) hint(s.name + " patched you up. Back into it.", 4.0f);
-                    if(patient.team == Team::MONTERAN) log(short_name(s) + " saved " + short_name(patient));
+                    if(patient.is_player) hint(tr("hints.patched_up", {{"name", s.name}}), 4.0f);
                 }
-                bark(s, "You'll live. Go!", false);
+                shout(s, "you_live", false);
                 s.treating = -1;
             }
         }
@@ -1230,9 +1193,9 @@ void Battle::update_world(float dt)
             if(o.spare < mag * 2 || length(o.pos - s.pos) > 22.0f) continue;
             o.spare -= mag;
             s.spare += mag;
-            bark(o, s.team == Team::MONTERAN ? "Here! Take these!" : "Derzhi!", false);
+            shout(o, "take_these", false);
             SoundBank::get().play_at("ammo_pickup", s.pos, 0.6f);
-            if(s.is_player) notice(o.name.substr(o.name.find(' ') + 1) + " gave you a magazine", 2.5f);
+            if(s.is_player) notice(tr("hud.notice.gave_you", {{"name", surname(o)}}), 2.5f);
             break;
         }
     }
@@ -1263,9 +1226,8 @@ void Battle::update_world(float dt)
         {
             if(g.satchel)
             {
-                explode(g.pos, 2.2f, g.owner, g.team, false, "a satchel charge");
+                explode(g.pos, 2.2f, g.owner, g.team, false, true);
                 cut_wire_at(m_soldiers[static_cast<std::size_t>(std::max(0, g.owner))], g.pos);
-                if(m_map.under_roof(g.pos)) log("A satchel charge went off inside");
             }
             else if(g.smoke)
             {
@@ -1273,7 +1235,7 @@ void Battle::update_world(float dt)
                 SoundBank::get().play_at("smoke_pop", g.pos, 0.8f);
                 sparks(g.pos, 6, 40.0f, MON_WHITE, 0.2f);
             }
-            else explode(g.pos, 1.0f, g.owner, g.team, false, "a grenade");
+            else explode(g.pos, 1.0f, g.owner, g.team, false);
         }
     }
     std::erase_if(m_grenades, [](const Grenade& g) { return g.fuse <= 0.0f; });
@@ -1348,8 +1310,7 @@ void Battle::update_world(float dt)
                 debris(sh.target, 12, 0.6f);
             }
             else
-                explode(sh.target, sh.kind == 1 ? 1.3f : (sh.kind == 4 ? 0.9f : 1.5f), -1, Team::RECHIVII, false,
-                        sh.kind == 0 ? "a shell" : (sh.kind == 3 ? "a shell he called down" : (sh.kind == 4 ? "a mortar bomb" : "our own guns")), sh.kind == 1);
+                explode(sh.target, sh.kind == 1 ? 1.3f : (sh.kind == 4 ? 0.9f : 1.5f), -1, Team::RECHIVII, false, false, sh.kind == 1);
         }
     }
     std::erase_if(m_shells, [](const Shell& s) { return s.time <= 0.0f; });
@@ -1376,7 +1337,7 @@ void Battle::update_world(float dt)
             if(std::abs(s.pos.x - f.pos.x) > 5.0f || std::abs(s.pos.y - f.pos.y) > 5.0f) continue;
             if(length(s.pos - f.pos) < 5.0f)
             {
-                if(s.life == Life::DOWNED) { s.charred = true; kill(s, f.owner, "Burned where he lay"); }
+                if(s.life == Life::DOWNED) { s.charred = true; kill(s, f.owner); }
                 else ignite(s, f.owner);
             }
         }
@@ -1489,7 +1450,7 @@ void Battle::place_satchel(Soldier& s, sf::Vector2f at)
     s.cooldown = std::max(s.cooldown, 1.0f);
     SoundBank::get().play_at("satchel_fuse", s.pos, 0.8f);
     SoundBank::get().play_at("throw", s.pos, 0.6f);
-    bark(s, s.team == Team::MONTERAN ? "Charge set! Get clear!" : "Vzryv!", true);
+    shout(s, "charge_set", true);
     s.bark_cooldown = 0.0f;
 }
 
@@ -1534,20 +1495,19 @@ void Battle::call_fire_mission(Soldier& s, sf::Vector2f at)
                 m_shells.push_back(sh);
             }
             SoundBank::get().play_at("radio_call", s.pos, 0.7f);
-            bark(s, m.smoke ? "Smoke, fire for effect!" : "On target! Fire for effect!", true);
+            shout(s, m.smoke ? "smoke_for_effect" : "fire_for_effect", true);
             s.bark_cooldown = 0.0f;
-            log(short_name(s) + " called " + (m.smoke ? "smoke" : "a salvo") + " down");
             return;
         }
     for(const auto& m : m_missions) if(m.caller == s.id) return;      // already on the set
     if(s.missions <= 0)
     {
-        if(s.is_player) notice("The battery has nothing more for you", 2.5f);
+        if(s.is_player) notice(tr("hud.notice.battery_empty"), 2.5f);
         return;
     }
     if(length(s.vel) > 8.0f)
     {
-        if(s.is_player) notice("Stop moving to use the set", 1.5f);
+        if(s.is_player) notice(tr("hud.notice.stop_for_set"), 1.5f);
         return;
     }
     --s.missions;
@@ -1561,10 +1521,9 @@ void Battle::call_fire_mission(Soldier& s, sf::Vector2f at)
     m_missions.push_back(m);
     if(s.stance == Stance::STAND) s.stance = Stance::CROUCH;
     SoundBank::get().play_at("radio_call", s.pos, s.is_player ? 0.8f : 0.5f);
-    static const char* const words[] = {"Fire mission! Grid on my mark!", "Battery, fire mission! Ranging!", "Guns, guns, this is Varga's lot!"};
-    bark(s, words[Random::integer(0, 2)], false);
+    shout(s, "fire_mission", false);
     s.bark_cooldown = 0.0f;
-    if(s.is_player) hint("Calling. Keep still. Watch where the ranging round falls.", 4.0f);
+    if(s.is_player) hint(tr("hints.calling"), 4.0f);
 }
 
 void Battle::update_missions(float dt)
@@ -1580,7 +1539,7 @@ void Battle::update_missions(float dt)
                 if(!on_set)
                 {
                     // He moved, or he's down: the call is lost.
-                    if(s.is_player && s.alive()) notice("You moved off the set. The call is lost.", 2.5f);
+                    if(s.is_player && s.alive()) notice(tr("hud.notice.call_lost"), 2.5f);
                     m.step = 9;
                     break;
                 }
@@ -1595,7 +1554,7 @@ void Battle::update_missions(float dt)
                     m.step = 1;
                     m.timer = 5.2f;
                     SoundBank::get().play_at("radio_squelch", s.pos, 0.6f);
-                    bark(s, "Shot, over!", false);
+                    shout(s, "shot_over", false);
                     s.bark_cooldown = 0.0f;
                 }
                 break;
@@ -1604,7 +1563,7 @@ void Battle::update_missions(float dt)
                 {
                     m.step = 2;
                     m.timer = 14.0f;
-                    if(s.is_player) hint("Ranging round down. V on the target to fire for effect.", 6.0f);
+                    if(s.is_player) hint(tr("hints.ranging_down"), 6.0f);
                     else if(s.alive())
                     {
                         // The AI corrects onto what he wanted all along.
@@ -1615,7 +1574,7 @@ void Battle::update_missions(float dt)
             case 2:
                 if(m.timer <= 0.0f)
                 {
-                    if(s.is_player) notice("The battery has moved on to other targets", 2.5f);
+                    if(s.is_player) notice(tr("hud.notice.battery_moved_on"), 2.5f);
                     m.step = 9;
                 }
                 break;

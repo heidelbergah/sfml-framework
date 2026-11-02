@@ -127,7 +127,7 @@ void Battle::update_mortars(float dt)
         // Our radiomen answer it, if they've a call left.
         float const to_me = length(m.pos - player()->pos);
         if(to_me < 900.0f && m.rounds % 4 == 0 && player()->role == Role::RADIOMAN && player()->alive() && !m_autoplay)
-            hint("Mortar! The flash marks it. Put the cursor on it and V to call the guns on it.", 5.0f);
+            hint(tr("hints.mortar"), 5.0f);
         for(auto& r : m_soldiers)
         {
             if(r.team != Team::MONTERAN || !r.fighting() || r.role != Role::RADIOMAN || r.missions <= 0) continue;
@@ -137,7 +137,7 @@ void Battle::update_mortars(float dt)
             for(const auto& ms : m_missions) if(ms.caller == r.id) busy = true;
             if(busy) continue;
             call_fire_mission(r, m.pos + sf::Vector2f{Random::real(-12, 12), Random::real(-12, 12)});
-            bark(r, "Mortar, there! Calling it in!", true);
+            bark(r, tr("barks.monteran.mortar_seen"), true);
             break;
         }
     }

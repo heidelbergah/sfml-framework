@@ -45,21 +45,6 @@ namespace
     constexpr float BREAK_AT = 0.12f;               // what's left of the platoon when it gives up
     constexpr float BREAK_AT_NO_OFFICER = 0.18f;
 
-    const char* const NAMES[] = {
-        "Oslev", "Brannik", "Dvorek", "Halst", "Mirov", "Tesk", "Vadim", "Kosar", "Rudan", "Zelny",
-        "Pavek", "Strom", "Ilko", "Gerd", "Yaro", "Lutz", "Borsk", "Kalen", "Matvo", "Resk",
-        "Dravo", "Imre", "Sobek", "Varn", "Tolya", "Kresh", "Andrik", "Pellan", "Gosta", "Vey",
-        "Hollin", "Radek", "Siro", "Mavik", "Darko", "Lesh", "Orvan", "Tibor", "Zavic", "Nemo",
-        "Kuzma", "Bodan", "Elek", "Fedko", "Grisha", "Hrin", "Isko", "Jurek", "Kolya", "Lev",
-        "Milo", "Nikolai", "Oleg", "Pyotr", "Rostik", "Semyon", "Taras", "Ustin", "Vlas", "Yegor",
-        "Arkady", "Bogdan", "Danil", "Efim", "Foma", "Gleb", "Ignat", "Kirill", "Luka", "Makar"};
-
-    const char* const MONTERANS[] = {
-        "Ilie Brandt", "Oren Mazur", "Paolo Serra", "Viktor Ames", "Luca Fenn", "Radu Pell", "Ion Carver",
-        "Mihai Stoll", "Andrei Holm", "Simon Lark", "Dario Kesh", "Nico Varro", "Teo Danes", "Emeric Volt",
-        "Gaspar Wren", "Iosif Brann", "Matei Lusk", "Felix Arno", "Grigore Pask", "Adrian Kell", "Sorin Vey",
-        "Petre Lund", "Cosmin Dral"};
-
     // Inside a window: where a man stands to fight from it.
     // Block A, the first houses: their front windows on the street, and the
     // windows in the end walls that look west, the way we come.
@@ -81,10 +66,9 @@ void Battle::spawn_town()
     Campaign const& c = Campaign::current();
 
     // --- B Platoon, at the edge of the fields -------------------------------------------------
-    int const one   = add_section(Team::MONTERAN, "1 Section", 115.0f);
-    int const two   = add_section(Team::MONTERAN, "2 Section", -110.0f);
-    int const three = add_section(Team::MONTERAN, "3 Section", -225.0f);
-    std::size_t name = 0;
+    int const one   = add_section(Team::MONTERAN, item("sections.monteran", 0), 115.0f);
+    int const two   = add_section(Team::MONTERAN, item("sections.monteran", 1), -110.0f);
+    int const three = add_section(Team::MONTERAN, item("sections.monteran", 2), -225.0f);
     auto place = [](int section, int i) { return sf::Vector2f{40.0f + static_cast<float>(i % 4) * 22.0f, 500.0f + (section == 0 ? 90.0f : (section == 1 ? -40.0f : -150.0f)) + static_cast<float>(i / 4) * 22.0f}; };
     auto make_section = [&](int id, bool medic)
     {
@@ -93,20 +77,22 @@ void Battle::spawn_town()
             Role role = i == 1 ? Role::GUNNER : (medic && i == 2 ? Role::MEDIC : Role::RIFLEMAN);
             if(i == 3) role = medic ? Role::SAPPER : Role::STORMTROOPER;
             if(i == 5) role = Role::STORMTROOPER;
-            add(Team::MONTERAN, role, i == 0 ? "Cpl." : "Pvt.", MONTERANS[name++ % 23], place(id, i), id).leader = i == 0;
+            add(Team::MONTERAN, role, i == 0 ? Rank::CORPORAL : Rank::PRIVATE, next_name(Team::MONTERAN), place(id, i), id).leader = i == 0;
         }
     };
     make_section(one, true);
-    struct M { Role role; const char* rank; const char* name; };
+    // Your own section: its men are named in the text file, in this order.
+    struct M { Role role; Rank rank; };
     const M yours[] = {
-        {Role::RIFLEMAN, "Cpl.", "Petru Orban"}, {Role::RIFLEMAN, "Pvt.", "Emil Rell"},
-        {Role::GUNNER, "Cpl.", "Anselm Kray"},  {Role::FLAMER, "Pvt.", "Dorian Vosk"},
-        {Role::MEDIC, "Pvt.", "Teodor Halm"},   {Role::RADIOMAN, "Pvt.", "Tomas Dacre"},
-        {Role::STORMTROOPER, "Pvt.", "Lio Marchetti"}, {Role::RIFLEMAN, "Pvt.", "Benedek Sorn"}};
-    for(int i = 0; i < 8; ++i) add(Team::MONTERAN, yours[i].role, yours[i].rank, yours[i].name, place(two, i), two).leader = i == 0;
-    add(Team::MONTERAN, Role::STORMTROOPER, "Pvt.", MONTERANS[name++ % 23], place(two, 8), two);
+        {Role::RIFLEMAN, Rank::CORPORAL}, {Role::RIFLEMAN, Rank::PRIVATE},
+        {Role::GUNNER, Rank::CORPORAL},   {Role::FLAMER, Rank::PRIVATE},
+        {Role::MEDIC, Rank::PRIVATE},     {Role::RADIOMAN, Rank::PRIVATE},
+        {Role::STORMTROOPER, Rank::PRIVATE}, {Role::RIFLEMAN, Rank::PRIVATE}};
+    for(int i = 0; i < 8; ++i)
+        add(Team::MONTERAN, yours[i].role, yours[i].rank, item("names.monteran.your_section", static_cast<std::size_t>(i)), place(two, i), two).leader = i == 0;
+    add(Team::MONTERAN, Role::STORMTROOPER, Rank::PRIVATE, next_name(Team::MONTERAN), place(two, 8), two);
     make_section(three, false);
-    add(Team::MONTERAN, Role::OFFICER, "Lt.", "Aurel Varga", {130.0f, 470.0f}, -1);
+    add(Team::MONTERAN, Role::OFFICER, Rank::LIEUTENANT, tr("names.monteran.lieutenant"), {130.0f, 470.0f}, -1);
     for(auto& s : m_soldiers)
     {
         s.aim = 0.0f;
@@ -116,18 +102,17 @@ void Battle::spawn_town()
     }
 
     // --- the Rechivii -----------------------------------------------------------------------------
-    int n = 0;
-    auto their_name = [&]() { return std::string(NAMES[n++ % 70]); };
-    int const west    = add_section(Team::RECHIVII, "the first houses", 0.0f);
-    int const east    = add_section(Team::RECHIVII, "the second block", 0.0f);
-    int const square  = add_section(Team::RECHIVII, "the square", 0.0f);
-    int const church  = add_section(Team::RECHIVII, "the church", 0.0f);
-    int const reserve = add_section(Team::RECHIVII, "reserve", 0.0f);
+    auto their_name = [&]() { return next_name(Team::RECHIVII); };
+    int const west    = add_section(Team::RECHIVII, tr("sections.town.first_houses"), 0.0f);
+    int const east    = add_section(Team::RECHIVII, tr("sections.town.second_block"), 0.0f);
+    int const square  = add_section(Team::RECHIVII, tr("sections.town.square"), 0.0f);
+    int const church  = add_section(Team::RECHIVII, tr("sections.town.church"), 0.0f);
+    int const reserve = add_section(Team::RECHIVII, tr("sections.town.reserve"), 0.0f);
     m_town_sections[0] = west; m_town_sections[1] = east; m_town_sections[2] = square;
     m_town_sections[3] = church; m_town_sections[4] = reserve;
-    auto enemy = [&](Role role, sf::Vector2f post, int section, bool active, std::string rank = "Pvt.") -> Soldier&
+    auto enemy = [&](Role role, sf::Vector2f post, int section, bool active, Rank rank = Rank::PRIVATE) -> Soldier&
     {
-        Soldier& s = add(Team::RECHIVII, role, role == Role::OFFICER && rank == "Pvt." ? "Lt." : rank, their_name(), post, section);
+        Soldier& s = add(Team::RECHIVII, role, role == Role::OFFICER && rank == Rank::PRIVATE ? Rank::LIEUTENANT : rank, their_name(), post, section);
         s.post = post;
         s.has_post = true;
         s.active = active;
@@ -169,7 +154,7 @@ void Battle::spawn_town()
     mg2.body_angle = PI;
 
     // The church: the captain, the gun in the tower, a medic.
-    enemy(Role::OFFICER, {2170, 500}, -1, false, "Capt.");
+    enemy(Role::OFFICER, {2170, 500}, -1, false, Rank::CAPTAIN);
     Soldier& tower = enemy(Role::GUNNER, {2023, 477}, church, false);
     tower.deploy_dir = PI;
     for(std::size_t i = 0; i < std::size(CHURCH_POSTS); ++i)
@@ -217,9 +202,6 @@ void Battle::town_reinforce(int men)
 {
     // A few men from the company's next platoon, sent up the street behind
     // us as each block falls. Each joins whichever section is shortest.
-    static const char* const names[] = {
-        "Anton Bors", "Silviu Rand", "Marek Haas", "Tudor Ivo", "Cyril Moss", "Eugen Falk", "Horia Dunn",
-        "Laszlo Penn", "Ovidiu Crane", "Remus Tal", "Stefan Ward", "Vasile Orr", "Bogdan Leif", "Costin Hale"};
     for(int k = 0; k < men && m_soldiers.size() < MAX_SOLDIERS; ++k)
     {
         int fewest = -1, fewest_n = 99;
@@ -233,7 +215,7 @@ void Battle::town_reinforce(int men)
         if(fewest < 0) return;
         Role const role = k % 3 == 1 ? Role::STORMTROOPER : Role::RIFLEMAN;
         sf::Vector2f const from{14.0f + static_cast<float>(k) * 10.0f, 492.0f + static_cast<float>(k % 3) * 8.0f};
-        Soldier& s = add(Team::MONTERAN, role, "Pvt.", names[(m_town_start + k) % 14], from, fewest);
+        Soldier& s = add(Team::MONTERAN, role, Rank::PRIVATE, next_name(Team::MONTERAN), from, fewest);
         s.home = {6.0f, from.y};
         s.order = Order::ADVANCE;
         const Section& sec = m_sections[static_cast<std::size_t>(fewest)];
@@ -241,8 +223,8 @@ void Battle::town_reinforce(int men)
         if(!section_leader(fewest)) s.leader = true;
     }
     m_town_start += men;
-    if(me().team == Team::MONTERAN) notice("Men from C Platoon coming up behind you", 3.0f);
-    else notice("More of them, coming up the street", 3.0f);
+    if(me().team == Team::MONTERAN) notice(tr("levels.town.reinforcements.monteran"), 3.0f);
+    else notice(tr("levels.town.reinforcements.rechivii"), 3.0f);
 }
 
 // ---------------------------------------------------------------- falling back
@@ -284,14 +266,14 @@ void Battle::town_fall_back(int from, int to)
         s.has_post = true;
         s.path.clear();
         s.suppression = std::min(s.suppression, 0.4f);
-        if(!s.is_player && Random::chance(0.4f)) bark(s, "Nazad! Nazad!", true);
+        if(!s.is_player && Random::chance(0.4f)) bark(s, tr("barks.rechivii.back"), true);
         any = true;
     }
     promote(to);
     if(any && me().team == Team::RECHIVII && me().section == to)
     {
-        notice("Fall back!", 3.0f);
-        say("Lt.", to == m_town_sections[1] ? "Back! Over the cross-street, into the next houses!" : (to == m_town_sections[2] ? "Back to the square! The town hall, the fountain, go!" : "Into the church! Hold the church!"), Team::RECHIVII, 4.0f);
+        notice(tr("levels.town.fall_back.notice"), 3.0f);
+        say("Lt.", to == m_town_sections[1] ? tr("levels.town.fall_back.to_second") : (to == m_town_sections[2] ? tr("levels.town.fall_back.to_square") : tr("levels.town.fall_back.to_church")), Team::RECHIVII, 4.0f);
     }
 }
 
@@ -383,7 +365,6 @@ void Battle::script_town(float dt)
                         s.morale = 0.0f;
                         s.path.clear();
                     }
-                log("Kalvo was taken");
                 set_stage(theirs ? Stage::LOST : Stage::WON);
             }
             break;
@@ -416,12 +397,11 @@ void Battle::script_town(float dt)
                     {
                         s.morale = 0.0f;
                         s.path.clear();
-                        if(Random::chance(0.3f)) bark(s, "Back! Get back!", true);
+                        if(Random::chance(0.3f)) bark(s, tr("barks.monteran.get_back"), true);
                     }
-                if(Soldier* lt = officer(Team::MONTERAN)) say(*lt, late ? "That's enough. Pull back, all of you. We'll come again tomorrow." : "Back! Back out of it! Get the wounded out!", 4.0f);
+                if(Soldier* lt = officer(Team::MONTERAN)) say(*lt, late ? tr("levels.town.attack_breaks.late_lt") : tr("levels.town.attack_breaks.spent_lt"), 4.0f);
                 SoundBank::get().play_at("whistle", m_map.waypoints.front(), 0.8f);
-                notice(late ? "The attack is called off" : (theirs ? "They're pulling back!" : "Pull back! Pull back!"), 3.5f);
-                log(late ? "The attack on Kalvo was called off at dusk" : "The attack on Kalvo broke");
+                notice(late ? tr("levels.town.attack_breaks.called_off") : (theirs ? tr("levels.town.attack_breaks.they_pull_back") : tr("levels.town.attack_breaks.pull_back")), 3.5f);
             }
         }
     }

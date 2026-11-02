@@ -661,7 +661,7 @@ void Battle::draw_markers(sf::RenderTarget& t)
                     sf::Vector2f const q = p + dir(6.283f * static_cast<float>(k) / 12.0f) * 16.0f;
                     draw::rect(marks, std::floor(q.x) - 1, std::floor(q.y) - 1, 3, 3, c);
                 }
-                shadowed(t, f, "mortar", 16, p + sf::Vector2f{0.0f, 20.0f}, c, 0.5f);
+                shadowed(t, f, tr("hud.mortar"), 16, p + sf::Vector2f{0.0f, 20.0f}, c, 0.5f);
             }
             else
             {
@@ -672,7 +672,7 @@ void Battle::draw_markers(sf::RenderTarget& t)
                     draw::rect(marks, q.x - k, q.y - 8.0f + k * 2.0f, 1.0f + k * 2.0f, 2.0f, c);
                     draw::rect(marks, q.x - k, q.y + 8.0f - k * 2.0f, 1.0f + k * 2.0f, 2.0f, c);
                 }
-                shadowed(t, f, "mortar", 16, q + sf::Vector2f{0.0f, 12.0f}, c, 0.5f);
+                shadowed(t, f, tr("hud.mortar"), 16, q + sf::Vector2f{0.0f, 12.0f}, c, 0.5f);
             }
         }
         t.draw(marks);
@@ -686,8 +686,7 @@ void Battle::draw_markers(sf::RenderTarget& t)
     float const dist = length(goal - me.pos) / 8.0f;          // 8 px to the yard, roughly
     sf::FloatRect const inner({40.0f, 70.0f}, {W - 80.0f, H - 190.0f});
     sf::VertexArray va(sf::PrimitiveType::Triangles);
-    char buf[32];
-    std::snprintf(buf, sizeof buf, "%d yd", static_cast<int>(dist));
+    std::string const buf = tr("hud.yards", {{"n", std::to_string(static_cast<int>(dist))}});
     if(inner.contains(sp))
     {
         // A diamond over the place itself, once you can see it.
@@ -734,8 +733,10 @@ void Battle::draw_markers(sf::RenderTarget& t)
         box(t, {x, cy + 11}, {1, 4}, with_alpha(c, 0.8f));
     };
     // Screen up is north.
-    put(-1.5708f, "N", TEXT); put(0.0f, "E", TEXT_DIM); put(1.5708f, "S", TEXT_DIM); put(3.14159f, "W", TEXT_DIM);
-    put(-0.785f, "ne", TEXT_FAINT); put(0.785f, "se", TEXT_FAINT); put(2.356f, "sw", TEXT_FAINT); put(-2.356f, "nw", TEXT_FAINT);
+    put(-1.5708f, tr("hud.compass.n"), TEXT); put(0.0f, tr("hud.compass.e"), TEXT_DIM);
+    put(1.5708f, tr("hud.compass.s"), TEXT_DIM); put(3.14159f, tr("hud.compass.w"), TEXT_DIM);
+    put(-0.785f, tr("hud.compass.ne"), TEXT_FAINT); put(0.785f, tr("hud.compass.se"), TEXT_FAINT);
+    put(2.356f, tr("hud.compass.sw"), TEXT_FAINT); put(-2.356f, tr("hud.compass.nw"), TEXT_FAINT);
     sf::Vector2f const to_goal = goal - me.pos;
     if(length(to_goal) > 10.0f) put(std::atan2(to_goal.y, to_goal.x), "<>", MON_GOLD);
     box(t, {cx, cy + 15}, {1, 4}, TEXT);
@@ -864,8 +865,7 @@ void Battle::draw_hud(sf::RenderTarget& t)
                 ++stepped;
                 if(s.fighting() && (s.morale > 0.0f || town)) ++going;
             }
-            char line[32];
-            std::snprintf(line, sizeof line, "%d / %d", going, stepped);
+            std::string const line = tr("hud.charge_count", {{"going", std::to_string(going)}, {"stepped", std::to_string(stepped)}});
             float const tw = text_width(f, line, 16);
             sf::VertexArray mark(sf::PrimitiveType::Triangles);
             icon(mark, town ? ICON_RIFLEMAN : ICON_CHARGE, {right - tw - 22.0f, y}, town ? MON_BLUE : RCH_TAN);
@@ -1011,8 +1011,7 @@ void Battle::draw_hud(sf::RenderTarget& t)
         for(const auto& m : m_missions)
         {
             if(m.caller != me.id) continue;
-            static const char* const steps[] = {"calling...", "ranging round", "V on target", "salvo coming"};
-            std::string line = steps[std::clamp(m.step, 0, 3)];
+            std::string line = item("hud.radio_steps", static_cast<std::size_t>(std::clamp(m.step, 0, 3)));
             if(m.step == 2) line += "  " + std::to_string(static_cast<int>(std::ceil(m.timer)));
             shadowed(t, f, line, 16, {bx - 2.0f, by - 26.0f}, std::fmod(m_real, 0.8f) < 0.5f ? MON_GOLD : TEXT_DIM);
         }
@@ -1036,10 +1035,9 @@ void Battle::draw_hud(sf::RenderTarget& t)
     // --- down -------------------------------------------------------------------------------------
     if(me.life == Life::DOWNED)
     {
-        char line[64];
-        std::snprintf(line, sizeof line, "BLEEDING OUT   %d", static_cast<int>(std::ceil(me.bleed_out)));
+        std::string const line = tr("hud.bleeding_out", {{"n", std::to_string(static_cast<int>(std::ceil(me.bleed_out)))}});
         shadowed(t, f, line, 32, {W * 0.5f, H * 0.5f - 60}, ALERT, 0.5f);
-        shadowed(t, f, "E  call for a medic      WASD  crawl      space  let go", 16, {W * 0.5f, H * 0.5f - 22}, TEXT_DIM, 0.5f);
+        shadowed(t, f, tr("hud.down_keys"), 16, {W * 0.5f, H * 0.5f - 22}, TEXT_DIM, 0.5f);
     }
     if(m_takeover > 0.0f)
     {
@@ -1060,7 +1058,7 @@ void Battle::draw_hud(sf::RenderTarget& t)
             shadowed(t, f, std::to_string(i + 1), 16, {x + static_cast<float>(i) * 26.0f + 7.0f, y + 17.0f}, TEXT_FAINT, 0.5f);
         }
         t.draw(va);
-        if(leading) shadowed(t, f, "tab", 16, {x - 12.0f, y + 17.0f}, TEXT_FAINT, 1.0f);
+        if(leading) shadowed(t, f, tr("hud.tab"), 16, {x - 12.0f, y + 17.0f}, TEXT_FAINT, 1.0f);
     }
 
     // --- dialogue, hints, notices ------------------------------------------------------------------
@@ -1087,61 +1085,44 @@ void Battle::draw_hud(sf::RenderTarget& t)
     if(m_stage == Stage::WON || m_stage == Stage::LOST)
     {
         float const a = std::clamp((m_end_timer - 1.0f) / 1.0f, 0.0f, 1.0f);
-        const char* won = me.team == Team::MONTERAN ? "THE COLUMN IS THROUGH" : "THE COLUMN IS DESTROYED";
-        const char* lost = me.team == Team::MONTERAN ? "THE COLUMN IS LOST" : "THE AMBUSH HAS FAILED";
-        if(m_level == LevelId::CHARGE)
-        {
-            won = me.team == Team::MONTERAN ? "THE CHARGE IS BROKEN" : "THEIR TRENCH IS TAKEN";
-            lost = me.team == Team::MONTERAN ? "THE TRENCH IS OVERRUN" : "THE CHARGE HAS FAILED";
-        }
-        if(m_level == LevelId::TOWN)
-        {
-            won = me.team == Team::MONTERAN ? "KALVO IS TAKEN" : "KALVO IS HELD";
-            lost = me.team == Team::MONTERAN ? "THE ATTACK HAS FAILED" : "KALVO HAS FALLEN";
-        }
-        shadowed(t, f, m_stage == Stage::WON ? won : lost, 32, {W * 0.5f, 150}, with_alpha(TEXT, a), 0.5f);
+        std::string const ending = tr(std::string("levels.") + level_key(m_level) + ".ending." + side_key(me.team) + (m_stage == Stage::WON ? "_won" : "_lost"));
+        shadowed(t, f, ending, 32, {W * 0.5f, 150}, with_alpha(TEXT, a), 0.5f);
     }
 
     if(m_paused)
     {
         box(t, {0, 0}, {W, H}, with_alpha(INK, 0.88f));
-        shadowed(t, f, "PAUSED", 32, {W * 0.5f, 70}, TEXT, 0.5f);
+        shadowed(t, f, tr("pause.title"), 32, {W * 0.5f, 70}, TEXT, 0.5f);
 
         // Sound, on the left: drag a bar, or up and down to pick one and left and right to change it.
         auto& bank = SoundBank::get();
-        static const char* const names[] = {"master", "music", "effects", "voices"};
-        shadowed(t, f, "SOUND", 16, {sound_bar(0).position.x, 156}, TEXT_FAINT);
+        shadowed(t, f, tr("pause.sound"), 16, {sound_bar(0).position.x, 156}, TEXT_FAINT);
         for(int i = 0; i < SoundBank::BUSES; ++i)
         {
             sf::FloatRect const bar = sound_bar(i);
             float const v = bank.volume(static_cast<SoundBank::Bus>(i));
             bool const on = i == m_sound_row;
-            shadowed(t, f, names[i], 16, {bar.position.x - 14.0f, bar.position.y - 5.0f}, on ? MON_GOLD : TEXT_DIM, 1.0f);
+            shadowed(t, f, item("settings.buses", static_cast<std::size_t>(i)), 16, {bar.position.x - 14.0f, bar.position.y - 5.0f}, on ? MON_GOLD : TEXT_DIM, 1.0f);
             box(t, bar.position, bar.size, with_alpha(PAPER_DK, 0.25f));
             box(t, bar.position, {std::round(bar.size.x * v), bar.size.y}, on ? MON_GOLD : MON_WHITE);
             box(t, {bar.position.x + std::round(bar.size.x * v) - 2.0f, bar.position.y - 4.0f}, {4.0f, bar.size.y + 8.0f}, on ? MON_GOLD : MON_WHITE);
             shadowed(t, f, std::to_string(static_cast<int>(std::round(v * 100.0f))), 16, {bar.position.x + bar.size.x + 14.0f, bar.position.y - 5.0f}, TEXT_FAINT);
         }
-        if(bank.music_muted()) shadowed(t, f, "music off (m)", 16, {sound_bar(0).position.x, sound_bar(3).position.y + 30.0f}, ALERT);
+        if(bank.music_muted()) shadowed(t, f, tr("pause.music_off"), 16, {sound_bar(0).position.x, sound_bar(3).position.y + 30.0f}, ALERT);
 
         // The keys, on the right.
-        const char* const keys[][2] = {
-            {"wasd, shift", "move, run"}, {"mouse, left click", "aim, fire"}, {"right click", "steady aim, set up a gun"},
-            {"middle click", "bayonet"}, {"c / z", "kneel / lie down"}, {"r", "reload"}, {"g / t", "grenade / smoke"},
-            {"x", "red flare (officer)"}, {"v", "call the guns, satchel"}, {"b", "shells or smoke (radio)"},
-            {"e", "treat, drag, cut, take"}, {"f", "bandage yourself"}, {"tab, 1 to 5", "orders"},
-        };
         float y = 156.0f;
         float const kx = W * 0.5f + 150.0f;
-        for(const auto& k : keys)
+        for(std::size_t i = 0; has_text("controls.pause." + std::to_string(i)); ++i)
         {
+            const auto& k = list("controls.pause." + std::to_string(i));
+            if(k.size() < 2) continue;
             shadowed(t, f, k[0], 16, {kx - 12.0f, y}, TEXT, 1.0f);
             shadowed(t, f, k[1], 16, {kx + 12.0f, y}, TEXT_DIM);
             y += 19.0f;
         }
-        shadowed(t, f, "esc  back        q  quit to the briefing        m  music", 16, {W * 0.5f, H - 64}, TEXT_DIM, 0.5f);
-        char line[96];
-        std::snprintf(line, sizeof line, "%s, %s", level_name(m_level), difficulty_name(Campaign::current().difficulty));
+        shadowed(t, f, tr("pause.keys"), 16, {W * 0.5f, H - 64}, TEXT_DIM, 0.5f);
+        std::string const line = tr("pause.where", {{"level", level_name(m_level)}, {"difficulty", difficulty_name(Campaign::current().difficulty)}});
         shadowed(t, f, line, 16, {W * 0.5f, H - 40}, TEXT_FAINT, 0.5f);
     }
 }

@@ -5,6 +5,7 @@
 #include "Screens.hpp"
 
 #include "Battle.hpp"
+#include "../../include/core/Random.hpp"
 #include "Draw.hpp"
 #include "Icons.hpp"
 #include "Palette.hpp"
@@ -141,81 +142,34 @@ namespace
     }
 
     // --- the classes ------------------------------------------------------------------------------
-    struct Card
-    {
-        Role role;
-        const char* tag;
-        const char* lines[3];
-    };
-
-    const Card CARDS[] = {
-        {Role::RIFLEMAN,     "the backbone",       {"Bolt-action rifle, five rounds, and a", "bayonet. Deadly at range if you take", "your time. Two grenades."}},
-        {Role::OFFICER,      "the one they look to", {"Submachine gun. Orders to each section,", "smoke to cover a bound, red flares to", "bring down the guns."}},
-        {Role::MEDIC,        "the only hope",      {"A pistol and eight field dressings.", "Only he can get a man who's down back", "on his feet. Wounded crawl to him."}},
-        {Role::FLAMER,       "the horror",         {"Burns through any cover, up close.", "Slow, short of fuel, shot at first,", "and his tanks can burst."}},
-        {Role::GUNNER,       "the anchor",         {"Must be set up to fire. Pins a whole", "section with one burst. Fire in", "bursts, or the barrel overheats."}},
-        {Role::RADIOMAN,     "the long arm",       {"The set on his back reaches the guns:", "a ranging round, then a salvo of", "shells or smoke."}},
-        {Role::STORMTROOPER, "the raider",         {"Submachine gun, five grenades and a", "club. Light and quick. Clears houses", "and trenches at arm's length."}},
-        {Role::SNIPER,       "the patient one",    {"Scoped rifle. Right click looks a long", "way out. Lying still he's a heap of", "rags; every shot gives him away."}},
-        {Role::SAPPER,       "the way through",    {"Rifle, wire cutters and two satchel", "charges. A satchel goes through a", "wall, or a wagon."}},
+    // Each class's card: the words are in the text file, under roles.<key>.
+    const Role CARDS[] = {
+        Role::RIFLEMAN, Role::OFFICER, Role::MEDIC, Role::FLAMER, Role::GUNNER,
+        Role::RADIOMAN, Role::STORMTROOPER, Role::SNIPER, Role::SAPPER,
     };
     constexpr int CARD_COUNT = 9;
 
     // --- the battles ------------------------------------------------------------------------------
-    struct Place
-    {
-        LevelId level;
-        const char* when;           // on the list
-        const char* sheet;          // across the top of the map
-        const char* dated;
-    };
-    const Place PLACES[] = {
-        {LevelId::CHARGE, "morning", "THE SAVA MEADOW",  "0540, 14 MAY 1936"},
-        {LevelId::TOWN,   "dusk",    "KALVO",            "1930, 17 MAY 1936"},
-        {LevelId::FOREST, "midday",  "THE LESNA ROAD",   "1200, 21 MAY 1936"},
-    };
+    const LevelId PLACES[] = {LevelId::CHARGE, LevelId::TOWN, LevelId::FOREST};
     constexpr int PLACE_COUNT = 3;
+
+    // levels.<battle>.<what>
+    std::string level_text(LevelId level, const std::string& what)
+    {
+        return tr(std::string("levels.") + level_key(level) + "." + what);
+    }
 
     struct Orders
     {
-        const char* situation;
-        const char* mission;
-        const char* notes;
+        std::string situation;
+        std::string mission;
+        std::string notes;
     };
 
     Orders orders(LevelId level, Team side)
     {
-        bool const mon = side == Team::MONTERAN;
-        switch(level)
-        {
-            case LevelId::CHARGE:
-                if(mon) return {
-                    "B Platoon dug in overnight along the west edge of the Sava meadow: a shallow trench, two machine guns, wire nobody finished. Since before dawn the Rechivii have been massing in the wood across the field, with drums.",
-                    "Hold the trench.",
-                    "Their guns shell you first. Keep low. Then two lines of grenadiers walk out of the wood and run the last of it with the bayonet. Let them come into the open before you fire. Kill the colour-bearer and the men round him lose heart."};
-                return {
-                    "The Monterans dug in across the Sava meadow last night: a shallow trench, two machine guns, a little wire. Our guns will shell it while we form up at the edge of the wood.",
-                    "Two lines of grenadiers cross the meadow and take their trench with the bayonet.",
-                    "Keep your place in the line, at a walk. Our machine guns and a sniper stay back in the shell holes to keep their heads down. When the officers whistle again, run."};
-            case LevelId::TOWN:
-                if(mon) return {
-                    "Kalvo, a market town on the road east, at dusk. The Rechivii hold the houses all the way up the main street to the church. A gun behind a barricade covers the street, another the square, a third is in the church tower.",
-                    "Take the town block by block, then the square and the church. Hold the church against the counter-attack.",
-                    "Keep off the street. Go through the houses and the yards, through the walls where they're broken. The battery puts a salvo on the church when you reach the square."};
-                return {
-                    "Kalvo, at dusk. A Monteran platoon is coming in from the fields to the west, and there'll be more behind it.",
-                    "Hold the first houses, then fall back block by block to the square and the church. Make every street cost them. Hold until dark.",
-                    "Fight from the windows and stay back from them. When a block is lost its men fall back to the next one, and so do you. The reserve waits in the graveyard."};
-            default:
-                if(mon) return {
-                    "Six wagons of shells and rations for the Lesna front go up the forest road at midday. Rechivii patrols have been reported in the woods north of the road.",
-                    "B Platoon escorts the column through. Get at least three wagons out the far side.",
-                    "If it starts, get off the road and down into the ditch on the south side. Then find them, and keep them off the wagons."};
-                return {
-                    "A Monteran supply column, six wagons with a platoon for escort, comes up the Lesna road at midday. Where the trees come closest we lie in the bracken north of the road.",
-                    "Burn the column. Four wagons destroyed and the job is done.",
-                    "Nobody moves and nobody fires before the mine goes up under the lead wagon. Then the line shoots up the escort, and the assault group goes in with grenades, satchels and the flamethrower."};
-        }
+        std::string const at = std::string("orders.") + side_key(side) + ".";
+        return {level_text(level, at + "situation"), level_text(level, at + "mission"), level_text(level, at + "notes")};
     }
 
     // --- what's drawn on the map ------------------------------------------------------------------
@@ -235,27 +189,25 @@ namespace
         switch(level)
         {
             case LevelId::CHARGE:
-                m.push_back({'R', mon ? MON : RCH, {{372, 84}, {84, 932}}, mon ? "HOLD" : "OBJ"});
+                m.push_back({'R', mon ? MON : RCH, {{372, 84}, {84, 932}}, level_text(level, mon ? "map.hold" : "map.objective")});
                 for(float y : {300.0f, 550.0f, 800.0f}) m.push_back({'U', MON, {{410, y}}, y < 400 ? "1" : (y < 700 ? "2" : "3")});
-                m.push_back({'U', MON, {{250, 560}}, "HQ"});
+                m.push_back({'U', MON, {{250, 560}}, level_text(level, "map.hq")});
                 m.push_back({'G', MON, {{470, 360}}, ""});
                 m.push_back({'G', MON, {{470, 760}}, ""});
                 for(float y : {230.0f, 550.0f, 870.0f})
                 {
-                    m.push_back({'U', RCH, {{2380, y}}, "I"});
-                    m.push_back({'U', RCH, {{2500, y}}, "II"});
+                    m.push_back({'U', RCH, {{2380, y}}, level_text(level, "map.first")});
+                    m.push_back({'U', RCH, {{2500, y}}, level_text(level, "map.second")});
                 }
-                m.push_back({'G', RCH, {{2150, 420}}, ""});
-                m.push_back({'G', RCH, {{2150, 700}}, ""});
                 for(float y : {230.0f, 550.0f, 870.0f}) m.push_back({'A', RCH, {{2320, y}, {1500, y + (550.0f - y) * 0.12f}, {520, y + (550.0f - y) * 0.15f}}, ""});
-                m.push_back({'T', RCH, {{2580, 30}}, "WOOD"});
+                m.push_back({'T', RCH, {{2580, 30}}, level_text(level, "map.wood")});
                 break;
             case LevelId::TOWN:
-                m.push_back({'O', mon ? MON : RCH, {{2138, 500}, {150, 0}}, mon ? "OBJ" : "HOLD"});
+                m.push_back({'O', mon ? MON : RCH, {{2138, 500}, {150, 0}}, level_text(level, mon ? "map.objective" : "map.hold")});
                 m.push_back({'U', MON, {{110, 420}}, "1"});
                 m.push_back({'U', MON, {{110, 500}}, "2"});
                 m.push_back({'U', MON, {{110, 580}}, "3"});
-                m.push_back({'U', MON, {{110, 700}}, "HQ"});
+                m.push_back({'U', MON, {{110, 700}}, level_text(level, "map.hq")});
                 m.push_back({'A', MON, {{180, 410}, {820, 395}, {1440, 400}}, ""});
                 m.push_back({'A', MON, {{180, 590}, {820, 605}, {1440, 600}}, ""});
                 m.push_back({'A', MON, {{1520, 520}, {1760, 560}, {1990, 515}}, ""});
@@ -269,10 +221,10 @@ namespace
                 m.push_back({'G', RCH, {{2040, 477}}, ""});
                 if(!mon)
                 {
-                    m.push_back({'U', RCH, {{2340, 500}}, "RES"});
+                    m.push_back({'U', RCH, {{2340, 500}}, level_text(level, "map.reserve")});
                     m.push_back({'A', RCH, {{2320, 560}, {2240, 640}, {2120, 610}}, ""});
                 }
-                m.push_back({'T', RCH, {{2060, 640}}, "CHURCH"});
+                m.push_back({'T', RCH, {{2060, 640}}, level_text(level, "map.church")});
                 break;
             case LevelId::FOREST:
             {
@@ -285,30 +237,30 @@ namespace
                 if(mon)
                 {
                     m.push_back({'U', MON, {at(1020.0f, 44.0f)}, "1"});
-                    m.push_back({'U', MON, {at(720.0f, 44.0f)}, "HQ"});
+                    m.push_back({'U', MON, {at(720.0f, 44.0f)}, level_text(level, "map.hq")});
                     m.push_back({'U', MON, {at(640.0f, -44.0f)}, "2"});
                     m.push_back({'U', MON, {at(470.0f, 44.0f)}, "3"});
                 }
-                else m.push_back({'U', MON, {at(660.0f, 50.0f)}, "ESCORT"});
+                else m.push_back({'U', MON, {at(660.0f, 50.0f)}, level_text(level, "map.escort")});
                 {
                     Mark march{'A', MON, {}, ""};
                     for(float a = 1080.0f; a <= 2480.0f; a += 140.0f) march.pts.push_back(at(a, 34.0f));
                     m.push_back(march);
                 }
-                m.push_back({'O', mon ? MON : RCH, mon ? std::vector<sf::Vector2f>{at(2470.0f), {70, 0}} : std::vector<sf::Vector2f>{at(1460.0f), {170, 0}}, mon ? "OBJ" : "KILL ZONE"});
+                m.push_back({'O', mon ? MON : RCH, mon ? std::vector<sf::Vector2f>{at(2470.0f), {70, 0}} : std::vector<sf::Vector2f>{at(1460.0f), {170, 0}}, level_text(level, mon ? "map.objective" : "map.kill_zone")});
                 if(mon)
                 {
                     m.push_back({'?', RCH, {{1520, 300}, {330, 120}}, ""});
-                    m.push_back({'T', RCH, {{1300, 140}}, "PATROLS REPORTED"});
+                    m.push_back({'T', RCH, {{1300, 140}}, tr("levels.forest.map.patrols")});
                     break;
                 }
                 for(float x : {1310.0f, 1740.0f}) m.push_back({'U', RCH, {at(x, -126.0f)}, ""});
                 m.push_back({'G', RCH, {at(1520.0f, -118.0f)}, ""});
-                m.push_back({'U', RCH, {at(1915.0f, -14.0f)}, "BLOCK"});
-                m.push_back({'U', RCH, {{1520, 205}}, "ASSLT"});
+                m.push_back({'U', RCH, {at(1915.0f, -14.0f)}, level_text(level, "map.block")});
+                m.push_back({'U', RCH, {{1520, 205}}, level_text(level, "map.assault")});
                 m.push_back({'A', RCH, {{1520, 232}, {1500, 340}, at(1470.0f, -30.0f)}, ""});
                 m.push_back({'M', RCH, {at(1640.0f)}, ""});
-                m.push_back({'T', RCH, {at(1612.0f, 30.0f)}, "MINE"});
+                m.push_back({'T', RCH, {at(1612.0f, 30.0f)}, level_text(level, "map.mine")});
                 break;
             }
         }
@@ -495,7 +447,18 @@ namespace
         float const width = 400.0f / static_cast<float>(count);
         return {{280.0f + width * static_cast<float>(i), 312.0f}, {width - 4.0f, 24.0f}};
     }
-    const char* const BUS_NAMES[] = {"master", "music", "effects", "voices"};
+
+    // A list of pairs in the text file, key.0, key.1, ...: the keys cards and the credits.
+    std::vector<std::pair<std::string, std::string>> pairs(const std::string& key)
+    {
+        std::vector<std::pair<std::string, std::string>> out;
+        for(std::size_t i = 0; has_text(key + "." + std::to_string(i)); ++i)
+        {
+            const auto& two = list(key + "." + std::to_string(i));
+            out.emplace_back(two.size() > 0 ? two[0] : "", two.size() > 1 ? two[1] : "");
+        }
+        return out;
+    }
 }
 
 void Panels::open(Kind kind)
@@ -653,36 +616,36 @@ void Panels::render(sf::RenderTarget& t, SceneManager& manager)
         const sf::FloatRect& b = SETTINGS_BOX;
         box(t, b.position, b.size, with_alpha(lerp(INK, MUD_DARK, 0.5f), 0.98f), with_alpha(TEXT_FAINT, 0.9f));
         box(t, b.position, {b.size.x, 2}, MON_GOLD);
-        shadowed(t, *f, "SETTINGS", 32, {b.position.x + b.size.x * 0.5f, b.position.y + 14}, PAPER, 0.5f);
+        shadowed(t, *f, tr("settings.title"), 32, {b.position.x + b.size.x * 0.5f, b.position.y + 14}, PAPER, 0.5f);
 
         auto& bank = SoundBank::get();
-        t.draw(text(*f, "SOUND", 16, {270, 128}, TEXT_FAINT));
+        t.draw(text(*f, tr("settings.sound"), 16, {270, 128}, TEXT_FAINT));
         for(int i = 0; i < 4; ++i)
         {
             sf::FloatRect const bar = sound_bar(i);
             float const v = bank.volume(static_cast<SoundBank::Bus>(i));
             bool const on = i == m_row;
-            t.draw(text(*f, BUS_NAMES[i], 16, {bar.position.x - 20.0f, bar.position.y - 5.0f}, on ? MON_GOLD : TEXT_DIM, 1.0f));
+            t.draw(text(*f, item("settings.buses", static_cast<std::size_t>(i)), 16, {bar.position.x - 20.0f, bar.position.y - 5.0f}, on ? MON_GOLD : TEXT_DIM, 1.0f));
             box(t, bar.position, bar.size, with_alpha(PAPER_DK, 0.25f));
             box(t, bar.position, {std::round(bar.size.x * v), bar.size.y}, on ? MON_GOLD : MON_WHITE);
             box(t, {bar.position.x + std::round(bar.size.x * v) - 2.0f, bar.position.y - 4.0f}, {4.0f, bar.size.y + 8.0f}, on ? MON_GOLD : MON_WHITE);
             t.draw(text(*f, std::to_string(static_cast<int>(std::round(v * 100.0f))), 16, {bar.position.x + bar.size.x + 14.0f, bar.position.y - 5.0f}, TEXT_FAINT));
         }
 
-        t.draw(text(*f, "DISPLAY", 16, {270, 290}, m_row == 4 ? MON_GOLD : TEXT_FAINT));
+        t.draw(text(*f, tr("settings.display"), 16, {270, 290}, m_row == 4 ? MON_GOLD : TEXT_FAINT));
         int const n = display_choices();
         int const chosen = display_choice(manager);
         for(int i = 0; i < n; ++i)
         {
             sf::FloatRect const r = display_button(i, n);
             bool const on = i == chosen;
-            std::string label = i == n - 1 ? "fullscreen" : std::to_string(960 * (i + 1)) + "x" + std::to_string(540 * (i + 1));
+            std::string label = i == n - 1 ? tr("settings.fullscreen") : tr("settings.window", {{"width", std::to_string(960 * (i + 1))}, {"height", std::to_string(540 * (i + 1))}});
             box(t, r.position, r.size, on ? with_alpha(MON_BLUE_DK, 0.9f) : sf::Color::Transparent, on ? MON_GOLD : with_alpha(TEXT_FAINT, 0.6f));
             t.draw(text(*f, fit(*f, label, 16, r.size.x - 6.0f), 16, {r.position.x + r.size.x * 0.5f, r.position.y + 4}, on ? MON_GOLD : TEXT_DIM, 0.5f));
         }
-        t.draw(text(*f, "F11 switches fullscreen anywhere", 16, {480, 346}, TEXT_FAINT, 0.5f));
+        t.draw(text(*f, tr("settings.f11"), 16, {480, 346}, TEXT_FAINT, 0.5f));
 
-        const char* const labels[] = {"how to play", "done"};
+        std::string const labels[] = {tr("settings.how_to"), tr("settings.done")};
         for(int r = 5; r < ROWS; ++r)
         {
             sf::FloatRect const rr = settings_row(r);
@@ -690,7 +653,7 @@ void Panels::render(sf::RenderTarget& t, SceneManager& manager)
             box(t, rr.position, rr.size, on ? with_alpha(MON_BLUE_DK, 0.9f) : with_alpha(INK, 0.5f), on ? MON_GOLD : with_alpha(TEXT_FAINT, 0.7f));
             t.draw(text(*f, labels[r - 5], 16, {rr.position.x + rr.size.x * 0.5f, rr.position.y + 6}, on ? MON_GOLD : TEXT_DIM, 0.5f));
         }
-        t.draw(text(*f, "arrows to change     esc  back", 16, {480, 456}, TEXT_FAINT, 0.5f));
+        t.draw(text(*f, tr("settings.keys"), 16, {480, 456}, TEXT_FAINT, 0.5f));
         return;
     }
 
@@ -700,18 +663,11 @@ void Panels::render(sf::RenderTarget& t, SceneManager& manager)
         sf::Vector2f const s{840, 472};
         box(t, p, s, with_alpha(lerp(INK, MUD_DARK, 0.5f), 0.98f), with_alpha(TEXT_FAINT, 0.9f));
         box(t, p, {s.x, 2}, MON_GOLD);
-        shadowed(t, *f, "HOW TO PLAY", 32, {W * 0.5f, p.y + 12}, PAPER, 0.5f);
+        shadowed(t, *f, tr("how_to.title"), 32, {W * 0.5f, p.y + 12}, PAPER, 0.5f);
 
         // The idea, on the left.
-        const char* const idea[] = {
-            "You are one man in a platoon. The battle goes on around you whatever you do: the sections find cover, move up, fire and fall back on their own, and you can turn it.",
-            "Your section follows you. On the Monteran side the officer gives orders to the platoon, and a corporal to his section: 1 to 5, at the cursor.",
-            "Lying down makes you hard to hit and hard to see. Moving makes you easy to see. So does firing.",
-            "A man who goes down isn't dead yet. A medic can get him up; you can drag him. If you go down, call for one, or bandage yourself.",
-            "If your man dies you take over another in your squad, until there's nobody left.",
-        };
         float y = p.y + 66.0f;
-        for(const char* para : idea)
+        for(const std::string& para : list("how_to.idea"))
         {
             for(const auto& line : wrap(*f, para, 16, 380.0f))
             {
@@ -721,22 +677,15 @@ void Panels::render(sf::RenderTarget& t, SceneManager& manager)
             y += 8.0f;
         }
 
-        const char* const keys[][2] = {
-            {"wasd", "move"}, {"shift", "run"}, {"mouse", "aim"}, {"left click", "fire"},
-            {"right click", "steady aim; set up a gun"}, {"middle click", "bayonet"}, {"c / z", "kneel / lie down"},
-            {"r", "reload"}, {"g / t", "grenade / smoke"}, {"e", "treat, drag, cut, take"}, {"f", "bandage yourself"},
-            {"v", "call the guns (radio); satchel"}, {"x", "red flare (officer)"}, {"tab, 1 to 5", "orders"},
-            {"esc", "pause, sound levels"}, {"f11", "fullscreen"},
-        };
         float ky = p.y + 66.0f;
         float const kx = p.x + 560.0f;
-        for(const auto& k : keys)
+        for(const auto& [keys, what] : pairs("controls.how_to"))
         {
-            t.draw(text(*f, k[0], 16, {kx - 12.0f, ky}, MON_GOLD, 1.0f));
-            t.draw(text(*f, k[1], 16, {kx + 10.0f, ky}, TEXT_DIM));
+            t.draw(text(*f, keys, 16, {kx - 12.0f, ky}, MON_GOLD, 1.0f));
+            t.draw(text(*f, what, 16, {kx + 10.0f, ky}, TEXT_DIM));
             ky += 21.0f;
         }
-        if(m_time > 0.3f) t.draw(text(*f, "any key to go on", 16, {W * 0.5f, p.y + s.y - 26}, TEXT_FAINT, 0.5f));
+        if(m_time > 0.3f) t.draw(text(*f, tr("how_to.go_on"), 16, {W * 0.5f, p.y + s.y - 26}, TEXT_FAINT, 0.5f));
         return;
     }
 
@@ -745,36 +694,27 @@ void Panels::render(sf::RenderTarget& t, SceneManager& manager)
     sf::Vector2f const s{520, 360};
     box(t, p, s, with_alpha(lerp(INK, MUD_DARK, 0.5f), 0.98f), with_alpha(TEXT_FAINT, 0.9f));
     box(t, p, {s.x, 2}, MON_GOLD);
-    shadowed(t, *f, "MUD CATS", 32, {W * 0.5f, p.y + 18}, PAPER, 0.5f);
-    t.draw(text(*f, "an infantry demo", 16, {W * 0.5f, p.y + 58}, TEXT_DIM, 0.5f));
-    const char* const lines[][2] = {
-        {"made by", "James Bouchat"},
-        {"built on", "sfml-framework, and SFML 3"},
-        {"sound and music", "synthesised in code, tools/sfx"},
-        {"type", "Pixel Operator, Jayvee Enaguas (CC0)"},
-        {"", ""},
-        {"the Monterans, the Rechivii, the Sava,", ""},
-        {"Kalvo and the Lesna road are made up.", ""},
-    };
+    shadowed(t, *f, tr("credits.title"), 32, {W * 0.5f, p.y + 18}, PAPER, 0.5f);
+    t.draw(text(*f, tr("credits.subtitle"), 16, {W * 0.5f, p.y + 58}, TEXT_DIM, 0.5f));
     float y = p.y + 100.0f;
-    for(const auto& l : lines)
+    for(const auto& [what, who] : pairs("credits.lines"))
     {
-        if(*l[1])
+        if(!who.empty())
         {
-            t.draw(text(*f, l[0], 16, {W * 0.5f - 10.0f, y}, TEXT_FAINT, 1.0f));
-            t.draw(text(*f, l[1], 16, {W * 0.5f + 10.0f, y}, TEXT));
+            t.draw(text(*f, what, 16, {W * 0.5f - 10.0f, y}, TEXT_FAINT, 1.0f));
+            t.draw(text(*f, who, 16, {W * 0.5f + 10.0f, y}, TEXT));
         }
-        else if(*l[0]) t.draw(text(*f, l[0], 16, {W * 0.5f, y}, TEXT_DIM, 0.5f));
+        else if(!what.empty()) t.draw(text(*f, what, 16, {W * 0.5f, y}, TEXT_DIM, 0.5f));
         y += 22.0f;
     }
-    if(m_time > 0.3f) t.draw(text(*f, "any key to go back", 16, {W * 0.5f, p.y + s.y - 30}, TEXT_FAINT, 0.5f));
+    if(m_time > 0.3f) t.draw(text(*f, tr("credits.back"), 16, {W * 0.5f, p.y + s.y - 30}, TEXT_FAINT, 0.5f));
 }
 
 // ================================================================ the title
 
 namespace
 {
-    const char* const TITLE_ITEMS[] = {"PLAY", "HOW TO PLAY", "SETTINGS", "CREDITS", "QUIT"};
+    const char* const TITLE_ITEMS[] = {"title.menu.play", "title.menu.how_to", "title.menu.settings", "title.menu.credits", "title.menu.quit"};
     constexpr int TITLE_COUNT = 5;
     constexpr float MENU_Y = 300.0f;
     constexpr float MENU_STEP = 30.0f;
@@ -921,9 +861,9 @@ void TitleScene::render(sf::RenderTarget& t)
 
     // --- the name ---------------------------------------------------------------------------------
     float const in = std::clamp(m_time / 1.2f, 0.0f, 1.0f);
-    shadowed(t, *f, "MUD CATS", 64, {W * 0.5f, 84}, with_alpha(PAPER, in), 0.5f);
+    shadowed(t, *f, tr("game.title"), 64, {W * 0.5f, 84}, with_alpha(PAPER, in), 0.5f);
     box(t, {W * 0.5f - 120.0f, 168}, {240, 2}, with_alpha(MON_GOLD, in));
-    shadowed(t, *f, "an infantry demo", 16, {W * 0.5f, 182}, with_alpha(TEXT_DIM, in), 0.5f);
+    shadowed(t, *f, tr("game.subtitle"), 16, {W * 0.5f, 182}, with_alpha(TEXT_DIM, in), 0.5f);
 
     // --- the menu -----------------------------------------------------------------------------------
     for(int i = 0; i < TITLE_COUNT; ++i)
@@ -936,10 +876,10 @@ void TitleScene::render(sf::RenderTarget& t)
             box(t, r.position, {3, r.size.y}, MON_GOLD);
             box(t, {r.position.x + r.size.x - 3.0f, r.position.y}, {3, r.size.y}, MON_GOLD);
         }
-        shadowed(t, *f, TITLE_ITEMS[i], 16, {W * 0.5f, r.position.y + 5}, on ? MON_GOLD : TEXT_DIM, 0.5f);
+        shadowed(t, *f, tr(TITLE_ITEMS[i]), 16, {W * 0.5f, r.position.y + 5}, on ? MON_GOLD : TEXT_DIM, 0.5f);
     }
-    shadowed(t, *f, "F11  fullscreen     M  music", 16, {20, H - 28}, TEXT_FAINT);
-    shadowed(t, *f, "demo, v13", 16, {W - 20, H - 28}, TEXT_FAINT, 1.0f);
+    shadowed(t, *f, tr("title.footer"), 16, {20, H - 28}, TEXT_FAINT);
+    shadowed(t, *f, tr("game.version"), 16, {W - 20, H - 28}, TEXT_FAINT, 1.0f);
 
     m_panels.render(t, *m_manager);
 }
@@ -978,7 +918,7 @@ namespace
         sf::FloatRect({124, 500}, {110, 26}),
         sf::FloatRect({240, 500}, {116, 26}),
     };
-    const char* const BUTTON_LABELS[] = {"", "back", "settings", "how to play"};
+    const char* const BUTTON_LABELS[] = {"", "briefing.back", "briefing.settings", "briefing.how_to"};
 }
 
 sf::Color BriefingScene::get_clear_color() const { return INK; }
@@ -1006,7 +946,7 @@ void BriefingScene::on_enter()
     m_leaving = false;
     m_manager->set_bloom_enabled(false);
     for(int i = 0; i < CARD_COUNT; ++i)
-        if(CARDS[i].role == Campaign::current().chosen) m_choice = i;
+        if(CARDS[i] == Campaign::current().chosen) m_choice = i;
     m_changed = 0.0f;
     SoundBank& s = SoundBank::get();
     s.stop_loops();
@@ -1066,7 +1006,7 @@ void BriefingScene::set_side(Team side)
 void BriefingScene::set_level(int index)
 {
     Campaign& c = Campaign::current();
-    LevelId const want = PLACES[(index + PLACE_COUNT) % PLACE_COUNT].level;
+    LevelId const want = PLACES[(index + PLACE_COUNT) % PLACE_COUNT];
     if(want == c.level) return;
     c.level = want;
     m_changed = 0.0f;
@@ -1086,7 +1026,7 @@ void BriefingScene::begin()
 {
     if(m_leaving) return;
     m_leaving = true;
-    Campaign::current().chosen = CARDS[m_choice].role;
+    Campaign::current().chosen = CARDS[m_choice];
     SoundBank::get().play("whistle", 0.4f);
     m_manager->request_scene_switch("battle", SceneTransitionType::FADE);
 }
@@ -1161,13 +1101,13 @@ void BriefingScene::render(sf::RenderTarget& t)
     if(!f) return;
     t.setView(t.getDefaultView());
     const Campaign& c = Campaign::current();
-    const Card& card = CARDS[m_choice];
+    std::string const card = std::string("roles.") + role_key(CARDS[m_choice]);
     bool const mon = c.side == Team::MONTERAN;
 
     // ================================ the left page: where, which side, how hard, who
-    shadowed(t, *f, "MUD CATS", 32, {LX - 2, 16}, PAPER);
+    shadowed(t, *f, tr("game.title"), 32, {LX - 2, 16}, PAPER);
 
-    auto label = [&](const char* s, float y) { t.draw(text(*f, s, 16, {LX, y}, TEXT_FAINT)); };
+    auto label = [&](const std::string& s, float y) { t.draw(text(*f, s, 16, {LX, y}, TEXT_FAINT)); };
     auto option = [&](sf::FloatRect r, const std::string& s, bool on, sf::Color fill)
     {
         if(on) box(t, r.position, r.size, with_alpha(fill, 0.9f), MON_GOLD);
@@ -1175,28 +1115,28 @@ void BriefingScene::render(sf::RenderTarget& t)
         t.draw(text(*f, s, 16, {r.position.x + r.size.x * 0.5f, r.position.y + 3}, on ? MON_GOLD : TEXT_DIM, 0.5f));
     };
 
-    label("BATTLE", BATTLE_Y);
+    label(tr("briefing.battle"), BATTLE_Y);
     for(int i = 0; i < PLACE_COUNT; ++i)
     {
         sf::FloatRect const r = battle_row(i);
-        bool const on = PLACES[i].level == c.level;
+        bool const on = PLACES[i] == c.level;
         if(on)
         {
             box(t, r.position, r.size, with_alpha(MON_BLUE_DK, 0.55f));
             box(t, r.position, {3, r.size.y}, MON_GOLD);
         }
-        t.draw(text(*f, level_name(PLACES[i].level), 16, {LX + 4, r.position.y + 3}, on ? MON_GOLD : TEXT_DIM));
-        t.draw(text(*f, PLACES[i].when, 16, {r.position.x + r.size.x - 8, r.position.y + 3}, TEXT_FAINT, 1.0f));
+        t.draw(text(*f, level_name(PLACES[i]), 16, {LX + 4, r.position.y + 3}, on ? MON_GOLD : TEXT_DIM));
+        t.draw(text(*f, level_text(PLACES[i], "when"), 16, {r.position.x + r.size.x - 8, r.position.y + 3}, TEXT_FAINT, 1.0f));
     }
 
-    label("SIDE", SIDE_Y);
-    option(side_button(0), "Monteran", mon, MON_BLUE_DK);
-    option(side_button(1), "Rechivii", !mon, RCH_TAN_DK);
+    label(tr("briefing.side"), SIDE_Y);
+    option(side_button(0), tr("sides.monteran"), mon, MON_BLUE_DK);
+    option(side_button(1), tr("sides.rechivii"), !mon, RCH_TAN_DK);
 
-    label("DIFFICULTY", DIFF_Y);
+    label(tr("briefing.difficulty"), DIFF_Y);
     for(int i = 0; i < 3; ++i) option(diff_button(i), difficulty_name(i), c.difficulty == i, MON_BLUE_DK);
 
-    label("GO IN AS", ROLE_Y);
+    label(tr("briefing.go_in_as"), ROLE_Y);
     for(int i = 0; i < CARD_COUNT; ++i)
     {
         sf::FloatRect const r = role_row(i);
@@ -1208,26 +1148,25 @@ void BriefingScene::render(sf::RenderTarget& t)
             box(t, r.position, {3, r.size.y}, MON_GOLD);
         }
         sf::VertexArray mark(sf::PrimitiveType::Triangles);
-        icon(mark, role_icon(CARDS[i].role), {r.position.x + 8, r.position.y + 2}, on ? MON_GOLD : (hover ? TEXT : TEXT_DIM));
+        icon(mark, role_icon(CARDS[i]), {r.position.x + 8, r.position.y + 2}, on ? MON_GOLD : (hover ? TEXT : TEXT_DIM));
         t.draw(mark);
-        t.draw(text(*f, role_name(CARDS[i].role), 16, {r.position.x + 30, r.position.y + 1}, on ? MON_GOLD : (hover ? TEXT : TEXT_DIM)));
+        t.draw(text(*f, role_name(CARDS[i]), 16, {r.position.x + 30, r.position.y + 1}, on ? MON_GOLD : (hover ? TEXT : TEXT_DIM)));
         t.draw(text(*f, std::to_string(i + 1), 16, {r.position.x + r.size.x - 6, r.position.y + 1}, TEXT_FAINT, 1.0f));
     }
-    t.draw(text(*f, card.tag, 16, {LX, CARD_Y}, MON_GOLD));
-    for(int k = 0; k < 3; ++k)
-        t.draw(text(*f, card.lines[k], 16, {LX, CARD_Y + 20.0f + 17.0f * static_cast<float>(k)}, TEXT_DIM));
+    t.draw(text(*f, tr(card + ".tag"), 16, {LX, CARD_Y}, MON_GOLD));
+    const auto& card_lines = list(card + ".lines");
+    for(std::size_t k = 0; k < card_lines.size(); ++k)
+        t.draw(text(*f, card_lines[k], 16, {LX, CARD_Y + 20.0f + 17.0f * static_cast<float>(k)}, TEXT_DIM));
 
     for(int i = 1; i < 4; ++i)
     {
         sf::FloatRect const r = BUTTONS[i];
         bool const hover = i == m_hover_button;
         box(t, r.position, r.size, hover ? with_alpha(MON_BLUE_DK, 0.8f) : with_alpha(INK, 0.4f), hover ? MON_GOLD : with_alpha(TEXT_FAINT, 0.6f));
-        t.draw(text(*f, BUTTON_LABELS[i], 16, {r.position.x + r.size.x * 0.5f, r.position.y + 5}, hover ? MON_GOLD : TEXT_DIM, 0.5f));
+        t.draw(text(*f, tr(BUTTON_LABELS[i]), 16, {r.position.x + r.size.x * 0.5f, r.position.y + 5}, hover ? MON_GOLD : TEXT_DIM, 0.5f));
     }
 
     // ================================ the right page: the order, on paper
-    const Place* place = &PLACES[0];
-    for(const auto& p : PLACES) if(p.level == c.level) place = &p;
     box(t, PAPER_BOX.position + sf::Vector2f{3, 3}, PAPER_BOX.size, with_alpha(sf::Color::Black, 0.5f));
     box(t, PAPER_BOX.position, PAPER_BOX.size, SHEET);
     // The paper's grain.
@@ -1239,8 +1178,8 @@ void BriefingScene::render(sf::RenderTarget& t)
         t.draw(grain);
     }
     float const px = PAPER_BOX.position.x;
-    t.draw(text(*f, mon ? "B PLATOON, 3RD MONTERAN RIFLES" : "2ND COMPANY, 9TH RECHIVII GRENADIERS", 16, {px + 14, 24}, PEN));
-    t.draw(text(*f, place->dated, 16, {px + PAPER_BOX.size.x - 14, 24}, PEN, 1.0f));
+    t.draw(text(*f, tr(std::string("briefing.unit.") + side_key(c.side)), 16, {px + 14, 24}, PEN));
+    t.draw(text(*f, level_text(c.level, "dated"), 16, {px + PAPER_BOX.size.x - 14, 24}, PEN, 1.0f));
 
     // The map.
     if(const sf::RenderTexture* rt = sheet(c.level))
@@ -1376,7 +1315,7 @@ void BriefingScene::render(sf::RenderTarget& t)
         }
 
         // The sheet's name, a north arrow and a scale.
-        std::string const title = std::string(place->sheet) + "     1 : 10 000";
+        std::string const title = level_text(c.level, "sheet") + "     " + tr("briefing.scale");
         sf::Text name = text(*f, title, 16, {origin.x + 6, origin.y + size.y - 22}, PEN);
         sf::FloatRect const nb = name.getGlobalBounds();
         box(t, nb.position - sf::Vector2f{4, 2}, nb.size + sf::Vector2f{8, 5}, SHEET, PEN);
@@ -1392,21 +1331,21 @@ void BriefingScene::render(sf::RenderTarget& t)
         draw::rect(north, sp.x + bar - 1.5f, sp.y - 3, 1.5f, 6, PEN);
         draw::rect(north, sp.x + bar * 0.5f - 0.75f, sp.y - 2, 1.5f, 4, PEN);
         t.draw(north);
-        t.draw(text(*f, "N", 16, np + sf::Vector2f{0, -30}, PEN, 0.5f));
-        t.draw(text(*f, "200 yds", 16, {sp.x + bar * 0.5f, sp.y - 18}, PEN, 0.5f));
+        t.draw(text(*f, tr("briefing.north"), 16, np + sf::Vector2f{0, -30}, PEN, 0.5f));
+        t.draw(text(*f, tr("briefing.yards"), 16, {sp.x + bar * 0.5f, sp.y - 18}, PEN, 0.5f));
     }
 
     // The orders, under the map.
     {
         Orders const o = orders(c.level, c.side);
-        const char* const heads[] = {"SITUATION", "MISSION", "NOTES"};
-        const char* const bodies[] = {o.situation, o.mission, o.notes};
+        std::string const heads[] = {tr("briefing.situation"), tr("briefing.mission"), tr("briefing.notes")};
+        const std::string* const bodies[] = {&o.situation, &o.mission, &o.notes};
         float y = TEXT_Y;
         float const head_x = px + 14.0f, body_x = px + 112.0f, body_w = PAPER_BOX.size.x - 126.0f;
         for(int i = 0; i < 3; ++i)
         {
             t.draw(text(*f, heads[i], 16, {head_x, y}, PEN));
-            for(const auto& line : wrap(*f, bodies[i], 16, body_w))
+            for(const auto& line : wrap(*f, *bodies[i], 16, body_w))
             {
                 t.draw(text(*f, line, 16, {body_x, y}, PEN));
                 y += 16.0f;
@@ -1421,11 +1360,9 @@ void BriefingScene::render(sf::RenderTarget& t)
         bool const hover = m_hover_button == 0;
         float const pulse = 0.75f + 0.25f * std::sin(m_time * 3.0f);
         box(t, g.position, g.size, with_alpha(mon ? MON_BLUE_DK : RCH_TAN_DK, 0.95f), with_alpha(MON_GOLD, hover ? 1.0f : pulse));
-        const char* go = mon ? "MARCH" : "LIE IN WAIT";
-        if(c.level == LevelId::CHARGE) go = mon ? "STAND TO" : "FIX BAYONETS";
-        if(c.level == LevelId::TOWN) go = mon ? "INTO THE TOWN" : "TO THE WINDOWS";
+        std::string const go = level_text(c.level, std::string("go.") + side_key(c.side));
         shadowed(t, *f, go, 16, {g.position.x + g.size.x * 0.5f, g.position.y + 10}, PAPER, 0.5f);
-        t.draw(text(*f, "enter", 16, {g.position.x - 10, g.position.y + 10}, TEXT_FAINT, 1.0f));
+        t.draw(text(*f, tr("briefing.enter"), 16, {g.position.x - 10, g.position.y + 10}, TEXT_FAINT, 1.0f));
     }
 
     m_panels.render(t, *m_manager);
@@ -1433,49 +1370,109 @@ void BriefingScene::render(sf::RenderTarget& t)
 
 // ================================================================ the debrief
 
+namespace
+{
+    // The left page: the numbers. The right: the paper.
+    constexpr float DX = 24.0f;
+    const sf::FloatRect NEWS_BOX({352, 14}, {588, 512});
+    sf::FloatRect debrief_button(int i) { return {{DX - 6.0f, 410.0f + 38.0f * static_cast<float>(i)}, {306.0f, 30.0f}}; }
+    const char* const DEBRIEF_BUTTONS[] = {"debrief.again", "debrief.briefing", "debrief.title"};
+
+    std::string clock(float seconds)
+    {
+        int const s = static_cast<int>(seconds);
+        if(s < 60) return tr("debrief.time_short", {{"seconds", std::to_string(s)}});
+        return tr("debrief.time", {{"minutes", std::to_string(s / 60)}, {"seconds", std::to_string(s % 60)}});
+    }
+}
+
 sf::Color DebriefScene::get_clear_color() const { return INK; }
+
+const sf::RenderTexture* DebriefScene::sheet(LevelId level)
+{
+    if(m_sheet && m_sheet_level == level) return m_sheet.get();
+    Map map;
+    map.build(level);
+    float const k = 268.0f / map.size.x;
+    auto rt = std::make_unique<sf::RenderTexture>();
+    if(!rt->resize({static_cast<unsigned>(std::round(map.size.x * k)), static_cast<unsigned>(std::round(map.size.y * k))})) return nullptr;
+    draw_sheet(map, *rt);
+    m_sheet = std::move(rt);
+    m_sheet_level = level;
+    return m_sheet.get();
+}
 
 void DebriefScene::on_enter()
 {
     SoundBank::get().set_calm(false);
     m_time = 0.0f;
-    m_page = 0;
+    m_choice = 0;
+    m_hover = -1;
+    m_leaving = false;
     m_manager->set_bloom_enabled(false);
     SoundBank& s = SoundBank::get();
     s.stop_loops();
     s.set_intensity(0.0f);
     s.set_front(0.25f);
     s.play("paper", 0.6f);
+    // The headline is picked now, so it doesn't change under you.
+    const Campaign& c = Campaign::current();
+    std::string const key = std::string("newspaper.") + level_key(c.level) + "." + side_key(c.playing) + (c.won ? ".won" : ".lost") + ".headline";
+    std::size_t const n = list(key).size();
+    m_headline = n > 1 ? static_cast<std::size_t>(Random::integer(0, static_cast<int>(n) - 1)) : 0;
+}
+
+int DebriefScene::button_at(sf::Vector2f p) const
+{
+    for(int i = 0; i < 3; ++i) if(debrief_button(i).contains(p)) return i;
+    return -1;
+}
+
+void DebriefScene::press(int button)
+{
+    if(m_leaving || button < 0 || button > 2) return;
+    m_leaving = true;
+    SoundBank::get().play(button == 0 ? "whistle" : "ui_select", button == 0 ? 0.4f : 0.6f);
+    static const char* const where[] = {"battle", "briefing", "title"};
+    m_manager->request_scene_switch(where[button], SceneTransitionType::FADE);
 }
 
 void DebriefScene::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 {
-    (void)mouse_pos;
     if(global_key(event, *m_manager)) return;
-    const auto* key = event.getIf<sf::Event::KeyPressed>();
-    bool const click = event.is<sf::Event::MouseButtonPressed>();
-    if((!key && !click) || m_time < 1.2f) return;
-    if(key && key->scancode == sf::Keyboard::Scancode::Escape)
+    if(m_time < 0.8f) return;               // a moment to see it before a stray key skips it
+    using S = sf::Keyboard::Scancode;
+    if(const auto* key = event.getIf<sf::Event::KeyPressed>())
     {
-        m_manager->request_scene_switch("title", SceneTransitionType::FADE);
-        m_time = -100.0f;
-        return;
+        switch(key->scancode)
+        {
+            case S::Up: case S::W: m_choice = (m_choice + 2) % 3; SoundBank::get().play("ui_hover", 0.5f); break;
+            case S::Down: case S::S: case S::Tab: m_choice = (m_choice + 1) % 3; SoundBank::get().play("ui_hover", 0.5f); break;
+            case S::Enter: case S::Space: press(m_choice); break;
+            case S::B: press(1); break;
+            case S::Escape: press(2); break;
+            case S::M: SoundBank::get().toggle_music_mute(); break;
+            default: break;
+        }
     }
-    if(key && key->scancode == sf::Keyboard::Scancode::M) { SoundBank::get().toggle_music_mute(); return; }
-    SoundBank::get().play("paper", 0.5f);
-    if(m_page == 0)
+    else if(event.is<sf::Event::MouseMoved>())
     {
-        m_page = 1;
-        m_time = 0.0f;
-        return;
+        int const h = button_at(mouse_pos);
+        if(h >= 0 && h != m_hover) { SoundBank::get().play("ui_hover", 0.4f); m_choice = h; }
+        m_hover = h;
     }
-    m_manager->request_scene_switch("briefing", SceneTransitionType::FADE);
-    m_time = -100.0f;
+    else if(const auto* click = event.getIf<sf::Event::MouseButtonPressed>())
+    {
+        if(click->button == sf::Mouse::Button::Left) press(button_at(mouse_pos));
+    }
 }
 
 void DebriefScene::update_realtime(sf::Time delta_time)
 {
+    float const before = m_time;
     m_time += delta_time.asSeconds();
+    // The paper lands on the desk.
+    if(before < 0.7f && m_time >= 0.7f) SoundBank::get().play("paper", 0.7f);
     SoundBank::get().update(delta_time.asSeconds());
 }
 
@@ -1485,86 +1482,168 @@ void DebriefScene::render(sf::RenderTarget& t)
     if(!f) return;
     t.setView(t.getDefaultView());
     const Campaign& c = Campaign::current();
-    auto fade = [this](float at) { return std::clamp((m_time - at) / 0.5f, 0.0f, 1.0f); };
+    auto fade = [this](float at, float over = 0.4f) { return std::clamp((m_time - at) / over, 0.0f, 1.0f); };
+    Team const us = c.playing;
+    Team const them = us == Team::MONTERAN ? Team::RECHIVII : Team::MONTERAN;
 
-    {
-        bool const mon = c.playing == Team::MONTERAN;
-        const char* title = c.won ? (mon ? "THE CHARGE WAS BROKEN" : "THE TRENCH WAS TAKEN") : (mon ? "THE TRENCH WAS OVERRUN" : "THE CHARGE FAILED");
-        if(c.level == LevelId::TOWN) title = c.won ? (mon ? "KALVO WAS TAKEN" : "KALVO WAS HELD") : (mon ? "THE ATTACK ON KALVO FAILED" : "KALVO FELL");
-        if(c.level == LevelId::FOREST) title = c.won ? (mon ? "THE COLUMN GOT THROUGH" : "THE COLUMN WAS DESTROYED") : (mon ? "THE COLUMN WAS LOST" : "THE AMBUSH FAILED");
-        t.draw(text(*f, title, 32, {480, 22}, with_alpha(c.won ? PAPER : ALERT, fade(0.1f)), 0.5f));
-    }
+    // ================================ the left page: what it cost
+    t.draw(text(*f, tr(c.won ? "debrief.won" : "debrief.lost"), 32, {DX, 16}, with_alpha(c.won ? PAPER : ALERT, fade(0.0f))));
+    t.draw(text(*f, level_name(c.level), 16, {DX, 58}, with_alpha(TEXT, fade(0.15f))));
+    t.draw(text(*f, difficulty_name(c.difficulty), 16, {DX, 76}, with_alpha(TEXT_DIM, fade(0.2f))));
+    t.draw(text(*f, c.time > 0.5f ? tr("debrief.duration", {{"time", clock(c.time)}}) : tr("debrief.no_fight"), 16, {DX, 94}, with_alpha(TEXT_DIM, fade(0.25f))));
 
-    int alive = 0, dead = 0, wounded = 0;
-    for(const auto& s : c.platoon)
+    // The losses: a row for each way a man is lost, a column for each side.
+    float const top = 136.0f;
+    float const col[2] = {DX + 196.0f, DX + 292.0f};
+    t.draw(text(*f, tr("debrief.losses"), 16, {DX, top}, with_alpha(TEXT_FAINT, fade(0.35f))));
+    t.draw(text(*f, tr(std::string("sides.") + side_key(us)), 16, {col[0], top}, with_alpha(MON_GOLD, fade(0.35f)), 1.0f));
+    t.draw(text(*f, tr(std::string("sides.") + side_key(them)), 16, {col[1], top}, with_alpha(TEXT_DIM, fade(0.35f)), 1.0f));
+    box(t, {DX, top + 21}, {col[1] - DX, 1}, with_alpha(TEXT_FAINT, 0.6f * fade(0.35f)));
+    const Losses* sides[2] = {&c.ours, &c.theirs};
+    for(int row = 0; row < 4; ++row)
     {
-        if(s.life == Life::DEAD) ++dead;
-        else { ++alive; if(s.hp < 60.0f || s.lost || s.life == Life::DOWNED) ++wounded; }
-    }
-    int const secs = static_cast<int>(c.time);
-    char line[160];
-    std::snprintf(line, sizeof line, "%s, %s.   %d:%02d.   %d came back, %d of them wounded.   %d dead.",
-                      level_name(c.level), difficulty_name(c.difficulty), secs / 60, secs % 60, alive, wounded, dead);
-    t.draw(text(*f, line, 16, {480, 64}, with_alpha(TEXT_DIM, fade(0.4f)), 0.5f));
-
-    if(m_page == 0)
-    {
-        // The men, in two columns.
-        float const col_x[2] = {40.0f, 500.0f};
+        float const y = top + 30.0f + 24.0f * static_cast<float>(row);
+        float const a = fade(0.5f + 0.15f * static_cast<float>(row));
+        t.draw(text(*f, item("debrief.columns", static_cast<std::size_t>(row + 1)), 16, {DX, y}, with_alpha(TEXT_DIM, a)));
         for(int k = 0; k < 2; ++k)
         {
-            t.draw(text(*f, c.playing == Team::RECHIVII ? "YOUR SECTION" : "B PLATOON", 16, {col_x[k], 96}, with_alpha(TEXT_FAINT, fade(0.6f))));
-            t.draw(text(*f, "kills", 16, {col_x[k] + 420, 96}, with_alpha(TEXT_FAINT, fade(0.6f)), 1.0f));
+            const Losses& l = *sides[k];
+            int const n = row == 0 ? l.killed : (row == 1 ? l.wounded : (row == 2 ? l.captured : l.fled));
+            // The numbers count up as they come in.
+            int const shown = static_cast<int>(std::round(static_cast<float>(n) * fade(0.5f + 0.15f * static_cast<float>(row), 0.7f)));
+            sf::Color const ink = row == 0 && n > 0 ? lerp(ALERT, TEXT, 0.35f) : TEXT;
+            t.draw(text(*f, std::to_string(shown), 16, {col[k], y}, with_alpha(n == 0 ? TEXT_FAINT : ink, a), 1.0f));
         }
-        int const per_column = static_cast<int>((c.platoon.size() + 1) / 2);
-        int i = 0;
-        for(const auto& s : c.platoon)
+    }
+    {
+        float const y = top + 30.0f + 24.0f * 4.0f + 4.0f;
+        float const a = fade(1.2f);
+        box(t, {DX, y - 4}, {col[1] - DX, 1}, with_alpha(TEXT_FAINT, 0.6f * a));
+        for(int k = 0; k < 2; ++k)
+            t.draw(text(*f, tr("debrief.of", {{"total", std::to_string(sides[k]->total)}}), 16, {col[k], y + 2}, with_alpha(TEXT_FAINT, a), 1.0f));
+        if(c.level == LevelId::FOREST)
+            t.draw(text(*f, tr("debrief.wagons", {{"n", std::to_string(c.wagons_lost)}, {"total", "6"}}), 16, {DX, y + 34}, with_alpha(TEXT_DIM, fade(1.35f))));
+    }
+
+    // What next.
+    for(int i = 0; i < 3; ++i)
+    {
+        sf::FloatRect const r = debrief_button(i);
+        bool const on = i == m_choice;
+        float const a = fade(1.0f + 0.1f * static_cast<float>(i));
+        box(t, r.position, r.size, with_alpha(on ? MON_BLUE_DK : INK, (on ? 0.9f : 0.4f) * a), with_alpha(on ? MON_GOLD : TEXT_FAINT, 0.7f * a));
+        if(on) box(t, r.position, {3, r.size.y}, with_alpha(MON_GOLD, a));
+        t.draw(text(*f, tr(DEBRIEF_BUTTONS[i]), 16, {r.position.x + 14, r.position.y + 6}, with_alpha(on ? MON_GOLD : TEXT_DIM, a)));
+    }
+    t.draw(text(*f, tr("debrief.keys"), 16, {DX - 6, 522}, with_alpha(TEXT_FAINT, fade(1.4f))));
+
+    // ================================ the right page: what the paper made of it
+    float const land = fade(0.55f, 0.35f);
+    if(land <= 0.0f) return;
+    sf::Vector2f const p = NEWS_BOX.position + sf::Vector2f{0.0f, std::round(18.0f * (1.0f - land))};
+    sf::Vector2f const size = NEWS_BOX.size;
+    box(t, p + sf::Vector2f{4, 4}, size, with_alpha(sf::Color::Black, 0.5f * land));
+    sf::Color const newsprint = lerp(SHEET, PAPER, 0.35f);
+    box(t, p, size, with_alpha(newsprint, land));
+    {
+        sf::VertexArray grain(sf::PrimitiveType::Triangles);
+        for(int k = 0; k < 1100; ++k)
+            draw::rect(grain, std::floor(p.x + 2 + hash(static_cast<float>(k) * 1.7f) * (size.x - 4)),
+                       std::floor(p.y + 2 + hash(static_cast<float>(k) * 3.1f) * (size.y - 4)), 1, 1, with_alpha(SHEET_DK, 0.8f * land));
+        t.draw(grain);
+    }
+    sf::Color const pen = with_alpha(PEN, land);
+    sf::Color const pen_dim = with_alpha(lerp(PEN, newsprint, 0.35f), land);
+    float const cx = p.x + size.x * 0.5f;
+    float const left = p.x + 16.0f, right = p.x + size.x - 16.0f, width = right - left;
+    std::string const paper = std::string("newspaper.") + side_key(us);
+    std::string const story = std::string("newspaper.") + level_key(c.level) + "." + side_key(us) + (c.won ? ".won" : ".lost");
+
+    // The masthead.
+    t.draw(text(*f, tr(paper + ".masthead"), 32, {cx, p.y + 10}, pen, 0.5f));
+    t.draw(text(*f, tr(paper + ".motto"), 16, {cx, p.y + 48}, pen_dim, 0.5f));
+    box(t, {left, p.y + 70}, {width, 2}, pen);
+    t.draw(text(*f, tr(paper + ".edition"), 16, {left, p.y + 75}, pen));
+    t.draw(text(*f, level_text(c.level, "paper_date"), 16, {cx, p.y + 75}, pen, 0.5f));
+    t.draw(text(*f, tr(paper + ".price"), 16, {right, p.y + 75}, pen, 1.0f));
+    box(t, {left, p.y + 95}, {width, 1}, pen);
+    box(t, {left, p.y + 98}, {width, 1}, pen);
+
+    // The headline, and what it means.
+    float y = p.y + 106.0f;
+    for(const auto& line : wrap(*f, item(story + ".headline", m_headline), 32, width))
+    {
+        t.draw(text(*f, line, 32, {cx, y}, pen, 0.5f));
+        y += 32.0f;
+    }
+    y += 4.0f;
+    for(const auto& line : wrap(*f, tr(story + ".subhead"), 16, width - 40.0f))
+    {
+        t.draw(text(*f, line, 16, {cx, y}, pen_dim, 0.5f));
+        y += 17.0f;
+    }
+    y += 6.0f;
+    box(t, {left, y}, {width, 1}, pen);
+    y += 8.0f;
+
+    // The story, in two columns; the map at the head of the second.
+    int const minutes = std::max(1, static_cast<int>(std::round(c.time / 60.0f)));
+    TextArgs const args = {
+        {"place", level_name(c.level)},
+        {"date", level_text(c.level, "date")},
+        {"minutes", minutes == 1 ? tr("newspaper.minutes_one") : tr("newspaper.minutes_many", {{"n", std::to_string(minutes)}})},
+        {"our_killed", std::to_string(c.ours.killed)},
+        {"our_wounded", std::to_string(c.ours.wounded)},
+        {"their_killed", std::to_string(c.theirs.killed)},
+        {"their_captured", std::to_string(c.theirs.captured)},
+        {"their_fled", std::to_string(c.theirs.fled)},
+        {"wagons", std::to_string(c.wagons_lost)},
+        {"wagons_saved", std::to_string(6 - c.wagons_lost)},
+        {"wagon_count", c.wagons_lost == 0 ? tr("newspaper.wagons_none") : (c.wagons_lost == 1 ? tr("newspaper.wagons_one")
+                        : tr("newspaper.wagons_many", {{"n", std::to_string(c.wagons_lost)}}))},
+    };
+    float const gutter = 14.0f;
+    float const col_w = (width - gutter) * 0.5f;
+    float const col_x[2] = {left, left + col_w + gutter};
+    float const bottom = p.y + size.y - 12.0f;
+    box(t, {left + col_w + gutter * 0.5f, y}, {1, bottom - y}, pen_dim);
+
+    float col_y[2] = {y, y};
+    if(const sf::RenderTexture* rt = sheet(c.level))
+    {
+        sf::Vector2f const ms(rt->getSize());
+        float const k = std::min(1.0f, col_w / ms.x);
+        sf::Sprite ground(rt->getTexture());
+        ground.setScale({k, k});
+        ground.setPosition({std::round(col_x[1] + (col_w - ms.x * k) * 0.5f), std::round(y)});
+        ground.setColor(sf::Color(255, 255, 255, static_cast<std::uint8_t>(255.0f * land)));
+        t.draw(ground);
+        sf::FloatRect const gb = ground.getGlobalBounds();
+        box(t, gb.position - sf::Vector2f{1, 1}, {gb.size.x + 2, 1}, pen);
+        box(t, gb.position + sf::Vector2f{-1, gb.size.y}, {gb.size.x + 2, 1}, pen);
+        box(t, gb.position - sf::Vector2f{1, 1}, {1, gb.size.y + 2}, pen);
+        box(t, gb.position + sf::Vector2f{gb.size.x, -1}, {1, gb.size.y + 2}, pen);
+        col_y[1] = gb.position.y + gb.size.y + 4.0f;
+        for(const auto& line : wrap(*f, tr("newspaper.map_caption"), 16, col_w))
         {
-            int const column = i / std::max(1, per_column);
-            int const row = i % std::max(1, per_column);
-            float const x = col_x[std::min(column, 1)];
-            float const y = 120.0f + static_cast<float>(row) * std::min(26.0f, 384.0f / static_cast<float>(std::max(1, per_column)));
-            float const a = fade(0.8f + 0.06f * static_cast<float>(i));
-            bool const gone = s.life == Life::DEAD;
-            std::string const who = s.rank + " " + s.name.substr(s.name.find(' ') + 1);
-            t.draw(text(*f, who, 16, {x, y}, with_alpha(s.is_player ? MON_GOLD : (gone ? TEXT_FAINT : TEXT), a)));
-            t.draw(text(*f, fit(*f, s.fate, 16, 240.0f), 16, {x + 150, y}, with_alpha(gone ? lerp(ALERT, TEXT_DIM, 0.4f) : PAPER_DK, a)));
-            if(s.kills > 0) t.draw(text(*f, std::to_string(s.kills), 16, {x + 420, y}, with_alpha(TEXT_DIM, a), 1.0f));
-            ++i;
+            t.draw(text(*f, line, 16, {col_x[1], col_y[1]}, pen_dim));
+            col_y[1] += 16.0f;
         }
-        if(m_time > 2.0f)
-            t.draw(text(*f, "any key: the day     esc: the title", 16, {480, 514}, with_alpha(TEXT_FAINT, fade(2.0f)), 0.5f));
-        return;
+        col_y[1] += 8.0f;
     }
 
-    // The day: the numbers, then what happened, in order.
-    if(c.playing == Team::RECHIVII)
-        std::snprintf(line, sizeof line, "Monterans dead %d      ran %d", c.enemy_dead, c.enemy_fled);
-    else
-        std::snprintf(line, sizeof line, "Rechivii dead %d      ran %d      taken prisoner %d", c.enemy_dead, c.enemy_fled, c.prisoners);
-    t.draw(text(*f, line, 16, {480, 100}, with_alpha(TEXT, fade(0.2f)), 0.5f));
-    if(c.prisoners_shot > 0)
+    int column = 0;
+    for(const auto& para : list(story + ".story"))
     {
-        std::snprintf(line, sizeof line, "%d men were killed after they had surrendered.", c.prisoners_shot);
-        t.draw(text(*f, line, 16, {480, 122}, with_alpha(ALERT, fade(0.5f)), 0.5f));
+        for(const auto& line : wrap(*f, fill(para, args), 16, col_w))
+        {
+            if(col_y[column] + 16.0f > bottom && column == 0) column = 1;
+            if(col_y[column] + 16.0f > bottom) break;
+            t.draw(text(*f, line, 16, {col_x[column], col_y[column]}, pen));
+            col_y[column] += 16.0f;
+        }
+        col_y[column] += 6.0f;
     }
-
-    std::size_t const show = 16;
-    std::size_t const first = c.log.size() > show ? c.log.size() - show : 0;
-    float y = 160.0f;
-    if(first > 0)
-    {
-        t.draw(text(*f, "...", 16, {120, y}, with_alpha(TEXT_FAINT, fade(0.6f))));
-        y += 20.0f;
-    }
-    for(std::size_t i = first; i < c.log.size(); ++i)
-    {
-        float const a = fade(0.6f + 0.08f * static_cast<float>(i - first));
-        t.draw(text(*f, fit(*f, c.log[i], 16, 720.0f), 16, {120, y}, with_alpha(TEXT_DIM, a)));
-        y += 20.0f;
-    }
-    if(m_time > 2.0f)
-        t.draw(text(*f, "any key to go again     esc: the title", 16, {480, 514}, with_alpha(TEXT_FAINT, fade(2.0f)), 0.5f));
 }
 
 }
