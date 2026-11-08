@@ -47,8 +47,21 @@ std::string Settings::path()
     return (dir / "settings.txt").string();
 }
 
+namespace
+{
+    // A Raspberry Pi says so in its device tree.
+    bool on_raspberry_pi()
+    {
+        std::ifstream model("/proc/device-tree/model");
+        std::string name;
+        std::getline(model, name);
+        return name.find("Raspberry Pi") != std::string::npos;
+    }
+}
+
 void Settings::load()
 {
+    low_effects = require_pad = on_raspberry_pi();
     std::ifstream in(path());
     std::string line;
     while(std::getline(in, line))
@@ -62,7 +75,11 @@ void Settings::load()
         if(key == "fullscreen") fullscreen = value != 0.0f;
         if(key == "window_scale") window_scale = std::clamp(static_cast<int>(value), 0, 8);
         if(key == "seen_how_to") seen_how_to = value != 0.0f;
+        if(key == "low_effects") low_effects = value != 0.0f;
+        if(key == "require_pad") require_pad = value != 0.0f;
     }
+    // For trying it out on a computer: MUDCATS_REQUIRE_PAD=1 (or 0) overrides the file.
+    if(const char* env = std::getenv("MUDCATS_REQUIRE_PAD")) require_pad = std::string(env) != "0";
 }
 
 void Settings::save() const
@@ -77,6 +94,8 @@ void Settings::save() const
     out << "fullscreen " << (fullscreen ? 1 : 0) << "\n";
     out << "window_scale " << window_scale << "\n";
     out << "seen_how_to " << (seen_how_to ? 1 : 0) << "\n";
+    out << "low_effects " << (low_effects ? 1 : 0) << "\n";
+    out << "require_pad " << (require_pad ? 1 : 0) << "\n";
 }
 
 void Settings::apply_display(SceneManager& manager) const

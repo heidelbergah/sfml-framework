@@ -7,6 +7,11 @@
  *   fullscreen                 or a window, at some whole multiple of
  *   window_scale               960x540 (0: the largest that fits)
  *   seen_how_to                the how-to-play card has been shown once
+ *   low_effects                bloom off, for slower machines (on by
+ *                              default on a Raspberry Pi)
+ *   require_pad                nothing happens without a controller
+ *                              plugged in (on by default on a Raspberry Pi,
+ *                              which is a console)
  *
  * The file lives where each system keeps such things: %APPDATA%\MudCats
  * on Windows, ~/Library/Application Support/MudCats on macOS, and
@@ -31,6 +36,8 @@ struct Settings
     bool  fullscreen{false};
     int   window_scale{0};
     bool  seen_how_to{false};
+    bool  low_effects{false};
+    bool  require_pad{false};
 
     static Settings& get();
     [[nodiscard]] static std::string path();

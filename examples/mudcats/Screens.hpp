@@ -38,6 +38,19 @@ namespace mudcats
 bool global_key(const sf::Event& event, SceneManager& manager);
 
 /*
+ * With no controller plugged in where one is needed (a Raspberry Pi
+ * console), every screen is covered by this, asking for one. Drawn last.
+ */
+void draw_pad_gate(sf::RenderTarget& t);
+
+// Draws the pad gate over whatever a render function has drawn, however it returns.
+struct PadGateOnTop
+{
+    sf::RenderTarget& target;
+    ~PadGateOnTop() { draw_pad_gate(target); }
+};
+
+/*
  * The panels that open over a screen: settings, how to play, credits.
  * While one is open it takes all the input.
  */
@@ -63,14 +76,15 @@ private:
     int   m_drag{-1};           // settings: the sound bar being dragged
     int   m_hover{-1};
 
-    // Settings rows: 0..3 the sound levels, 4 the display, 5 how to play, 6 done.
-    static constexpr int ROWS = 7;
+    // Settings rows: 0..3 the sound levels, 4 the display, 5 effects, 6 how to play, 7 done.
+    static constexpr int ROWS = 8;
     void set_level(int bus, float value);
     void step_display(int step, SceneManager& manager);
     void activate(int row, SceneManager& manager);
     [[nodiscard]] int display_choices() const;
     [[nodiscard]] int display_choice(const SceneManager& manager) const;
     void set_display_choice(int choice, SceneManager& manager);
+    void set_low_effects(bool low, SceneManager& manager);
 };
 
 class TitleScene : public Scene

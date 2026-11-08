@@ -1,0 +1,114 @@
+{
+    "_about": "Lines that came with playing it as a console, on a Raspberry Pi with a controller. The game reads this after en.json. A line whose key ends in _pad is the twin of the line without it, naming the controller's buttons instead of keys; with a controller in use it's shown instead. Buttons are named as on an Xbox pad, which is how an 8BitDo pad in X-input mode presents itself.",
+
+    "settings": {
+        "effects": "EFFECTS",
+        "effects_full": "full",
+        "effects_low": "low, for slower machines",
+        "f11_pad": "",
+        "keys_pad": "d-pad to change     B  back"
+    },
+
+    "pad": {
+        "connect": {
+            "title": "CONNECT A CONTROLLER",
+            "body": "Plug one in, or switch it on. It's picked up straight away."
+        }
+    },
+
+    "controls": {
+        "how_to_pad": [
+            ["left stick", "move"],
+            ["click left stick", "run"],
+            ["right stick", "aim"],
+            ["RT", "fire"],
+            ["LT", "steady aim; set up a gun"],
+            ["click right stick", "bayonet"],
+            ["B / hold B", "kneel / lie down"],
+            ["X", "reload"],
+            ["hold X", "bandage yourself"],
+            ["RB / LB", "grenade / smoke"],
+            ["A", "treat, drag, cut, take"],
+            ["Y", "radio, satchel, red flare"],
+            ["select, d-pad", "orders (hold up: charge)"],
+            ["start", "pause, sound levels"]
+        ],
+        "pause_pad": [
+            ["sticks", "move, aim"],
+            ["click left stick", "run"],
+            ["RT / LT", "fire / steady aim, set up a gun"],
+            ["click right stick", "bayonet"],
+            ["B / hold B", "kneel / lie down"],
+            ["X / hold X", "reload / bandage yourself"],
+            ["RB / LB", "grenade / smoke"],
+            ["A", "treat, drag, cut, take"],
+            ["Y", "radio, satchel, red flare"],
+            ["select", "shells or smoke (radio)"],
+            ["d-pad", "orders: left follow, down hold,"],
+            ["", "up advance, right cover, hold up charge"]
+        ]
+    },
+
+    "title": {
+        "footer_pad": ""
+    },
+
+    "briefing": {
+        "enter_pad": "A"
+    },
+
+    "how_to": {
+        "go_on_pad": "A or B to go on"
+    },
+
+    "credits": {
+        "back_pad": "A or B to go back"
+    },
+
+    "pause": {
+        "keys_pad": "B  back        Y  quit to the briefing"
+    },
+
+    "debrief": {
+        "keys_pad": "d-pad and A  choose        B  title"
+    },
+
+    "hud": {
+        "down_keys_pad": "A  call for a medic      left stick  crawl      hold Y  let go",
+        "tab_pad": "select",
+        "radio_steps_pad": ["calling...", "ranging round", "Y on target", "salvo coming"],
+        "prompt": {
+            "let_go_pad": "A  let go",
+            "treat_pad": "A  treat {name}",
+            "drag_pad": "A  drag {name}",
+            "cut_wire_pad": "A  cut the wire",
+            "fill_up_pad": "A  fill up",
+            "take_rounds_pad": "A  take rounds",
+            "take_weapon_pad": "A  take {weapon}"
+        },
+        "notice": {
+            "out_of_ammo_pad": "Out of ammunition. A on a crate, or on a fallen man's weapon"
+        }
+    },
+
+    "hints": {
+        "dragging_pad": "Dragging. A again to let go. Get him to a medic, or to cover.",
+        "cutting_pad": "Cutting. Keep still. A again to stop.",
+        "set_up_gun_pad": "LT to set the gun up first. It fires lying or kneeling, not from the hip.",
+        "lead_orders_pad": "Select picks a section. D-pad: left follow, down hold, up advance, right covering fire, hold up to charge, where you aim",
+        "gun_set_up_pad": "LT sets it up. It only fires set up.",
+        "bleeding_pad": "You are bleeding. Hold X to bandage yourself",
+        "down_pad": "You are down and bleeding. A calls for a medic, the left stick crawls. Hold Y to give up.",
+        "on_fire_pad": "You are on fire. Hold B to drop and roll.",
+        "ranging_down_pad": "Ranging round down. Y on the target to fire for effect.",
+        "mortar_pad": "Mortar! The flash marks it. Aim toward the mark and press Y to call the guns on it."
+    },
+
+    "levels": {
+        "charge": {
+            "form": {
+                "rechivii_hint_pad": "Keep with the line. Click the right stick for the bayonet. Click the left to run, once the whistles go."
+            }
+        }
+    }
+}

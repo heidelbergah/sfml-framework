@@ -149,6 +149,33 @@ much a hit takes out of you.
 | Esc | pause: the sound levels and all the keys |
 | M | music on or off |
 | F11 | fullscreen |
+| F3 | in a battle: frames a second, and where each frame's time goes |
+
+### With a controller
+
+An Xbox-style pad works anywhere in the game; an 8BitDo pad does too in
+its X-input mode. Touch it and the hints on screen name its buttons
+instead of keys; touch the keyboard and they go back.
+
+| | |
+|---|---|
+| Left stick | move; pushed part way, slower. Click it to run, until you stop |
+| Right stick | aim, with a little help onto anyone you're pointing nearly at |
+| RT | fire |
+| LT | steady your aim. With a machine gun, sets it up |
+| Click the right stick | bayonet |
+| B | kneel. Hold B: lie down |
+| X | reload. Hold X: bandage yourself |
+| RB / LB | grenade / smoke grenade, where you're aiming |
+| A | everything E does: treat, drag, cut wire, take, fill up, call for a medic |
+| Y | radio, satchel charge or red flare. Aimed toward a mortar's mark, the radio calls the guns on it. When you're down, hold Y to let go |
+| Select | if you lead: picks a section. Radioman: high explosive or smoke |
+| D-pad | orders, if you lead: left follow, down hold, up advance, right covering fire; hold up to fix bayonets and charge |
+| Start | pause; there, the d-pad works the sound levels, B goes back, Y leaves for the briefing |
+
+In the menus the d-pad or left stick moves, A picks and B goes back. In
+the briefing X switches side, Y the difficulty, select opens the settings,
+and the bumpers change the battle.
 
 ## What makes it tick
 
@@ -225,14 +252,19 @@ Windows, `~/Library/Application Support/MudCats` on macOS, and
 
 ## The words
 
-Every word the game shows or says is in one file,
-`assets/mudcats/text/en.json`: the menus, the briefings, the HUD, what the
+Every word the game shows or says is in `assets/mudcats/text/en.json`,
+and `en.console.json` beside it, which the game reads after it: the
+menus, the briefings, the HUD, what the
 officers say and what men shout, the soldiers' names, the newspapers.
 Change a line there and run the game again; nothing needs rebuilding. Each
 line is found by its path through the file, like
 `levels.town.won.monteran`. Where there's a list (the headlines, or the
 shouts when a man is hit) one is picked at random, so a list can be made
 longer. Words in braces, like `{minutes}`, are filled in by the game.
+`en.console.json` holds what came with the controller: a line whose key
+ends in `_pad`, like `hints.down_pad`, is shown in place of the line
+without it whenever the controller is in use. Any `en.<name>.json` there
+is read the same way, so new lines can live in a file of their own.
 
 If a line goes missing the game shows its key in brackets instead of
 crashing, and `python3 tools/text/check_text.py` lists every key the code
@@ -262,6 +294,29 @@ installed first.
 Those warnings are there because the game isn't signed with a paid
 certificate yet.
 
+## On a Raspberry Pi
+
+Mud Cats runs on a Raspberry Pi 4 with Raspberry Pi OS (64-bit), as a
+console you turn on and play with a controller. Build it on the Pi with
+the CMake commands below, then, from the repository:
+
+```
+bash tools/pi/install.sh
+sudo reboot
+```
+
+From then on the game starts fullscreen with the Pi, and starts again if
+it ever crashes; QUIT on the title screen leaves you at the desktop.
+`bash tools/pi/install.sh --remove` undoes it. A wireless pad needs
+pairing first: plugged in by its cable, or through the Bluetooth icon on
+the desktop.
+
+On a Pi two settings start out differently: the game asks for a
+controller until one is connected (`require_pad`), and effects are low
+(no bloom), which the Pi's graphics need. Both are in the settings file,
+and effects are in the settings panel too. `MUDCATS_REQUIRE_PAD=1` turns
+the first on anywhere, for trying it out.
+
 ## Building it for Linux, macOS and Windows
 
 The Makefile is the quick way on Linux, and works on macOS (Homebrew SFML)
@@ -290,7 +345,7 @@ libudev-dev libgl1-mesa-dev`.
 You don't need a Mac or a Windows machine for any of it, though:
 `.github/workflows/build.yml` builds all three on GitHub every time you
 push, and keeps the downloads on the run's page under Artifacts. Pushing a
-tag that matches the version in `CMakeLists.txt`, like `v0.14.0`, also
+tag that matches the version in `CMakeLists.txt`, like `v0.15.0`, also
 publishes them as a GitHub Release.
 
 ## Files
@@ -299,8 +354,10 @@ publishes them as a GitHub Release.
 |---|---|
 | `main.cpp` | finds the assets, sets up the window from your settings, and the scenes |
 | `Screens.cpp` | the title, the briefing with its staff maps, the settings, how to play and credits panels, the debrief and its newspaper |
-| `Text.cpp` | reads `assets/mudcats/text/en.json`, and looks lines up in it |
-| `Settings.cpp` | your sound levels, window size and fullscreen, kept between runs |
+| `Text.cpp` | reads `assets/mudcats/text/en.json` (and `en.*.json`), and looks lines up in it |
+| `Settings.cpp` | your sound levels, window size, fullscreen and effects, kept between runs |
+| `Pad.cpp` | the controller: its buttons and sticks, and whether it's the one in use |
+| `Perf.cpp` | F3: where each frame's time goes |
 | `Battle.cpp` | setup, input, the platoon and its sections, the stages of each battle |
 | `Charge.cpp` | the Sava meadow: the two lines, the charge, the colours, and how it breaks |
 | `Town.cpp` | Kalvo: the defence in depth, falling back, reinforcements, and how the attack breaks |
@@ -322,6 +379,8 @@ publishes them as a GitHub Release.
 MUDCATS_AUTOPLAY=1 make EXAMPLE=mudcats run  # your man fights on his own (for recording)
 MUDCATS_SPEED=3 make EXAMPLE=mudcats run     # three times faster
 MUDCATS_STAGE=1 make EXAMPLE=mudcats run     # start part way in
+MUDCATS_PROFILE=1 make EXAMPLE=mudcats run   # print F3's numbers every second
+MUDCATS_FAKE_PAD=pad.txt make EXAMPLE=mudcats run   # a pad read from a file (see Pad.hpp)
 ```
 
 On the meadow, `MUDCATS_STAGE` 1 starts as the lines step off and 2 just

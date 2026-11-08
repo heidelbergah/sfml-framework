@@ -5,6 +5,7 @@
 #include "Screens.hpp"
 
 #include "Battle.hpp"
+#include "Pad.hpp"
 #include "../../include/core/Random.hpp"
 #include "Draw.hpp"
 #include "Icons.hpp"
@@ -417,8 +418,42 @@ namespace
     }
 }
 
+void draw_pad_gate(sf::RenderTarget& t)
+{
+    if(!pad::missing()) return;
+    const sf::Font* f = Assets::font(FONT);
+    if(!f) return;
+    sf::View const before = t.getView();
+    t.setView(t.getDefaultView());
+    box(t, {0, 0}, {W, H}, with_alpha(INK, 0.94f));
+    // A pad, in outline: the body, the two grips, a stick and four buttons.
+    sf::VertexArray va(sf::PrimitiveType::Triangles);
+    float const cx = W * 0.5f, cy = 200.0f;
+    float const pulse = 0.55f + 0.45f * std::sin(GameTime::real_now() * 3.0f);
+    sf::Color const ink = with_alpha(MON_GOLD, pulse);
+    draw::rect(va, cx - 60, cy - 18, 120, 4, ink);
+    draw::rect(va, cx - 60, cy - 18, 4, 30, ink);
+    draw::rect(va, cx + 56, cy - 18, 4, 30, ink);
+    draw::rect(va, cx - 72, cy + 8, 4, 30, ink);
+    draw::rect(va, cx + 68, cy + 8, 4, 30, ink);
+    draw::rect(va, cx - 72, cy + 34, 30, 4, ink);
+    draw::rect(va, cx + 42, cy + 34, 30, 4, ink);
+    draw::rect(va, cx - 42, cy + 18, 84, 4, ink);
+    draw::disc(va, cx - 30, cy + 2, 6.0f, ink);
+    for(sf::Vector2f b : {sf::Vector2f{30, -6}, {38, 2}, {22, 2}, {30, 10}}) draw::disc(va, cx + b.x, cy + b.y, 2.5f, ink);
+    t.draw(va);
+    shadowed(t, *f, tr("pad.connect.title"), 32, {cx, 270}, PAPER, 0.5f);
+    t.draw(text(*f, tr("pad.connect.body"), 16, {cx, 316}, TEXT_DIM, 0.5f));
+    t.setView(before);
+}
+
 bool global_key(const sf::Event& event, SceneManager& manager)
 {
+    // The mouse pointer only while the mouse is what you're using.
+    static int shown = -1;
+    int const want = pad::in_use() ? 0 : 1;
+    if(want != shown) { manager.get_window().setMouseCursorVisible(want == 1); shown = want; }
+
     const auto* key = event.getIf<sf::Event::KeyPressed>();
     if(!key || key->scancode != sf::Keyboard::Scancode::F11) return false;
     Settings& s = Settings::get();
@@ -433,14 +468,20 @@ bool global_key(const sf::Event& event, SceneManager& manager)
 namespace
 {
     // Where the settings panel puts things.
-    const sf::FloatRect SETTINGS_BOX({250, 92}, {460, 356});
+    const sf::FloatRect SETTINGS_BOX({250, 82}, {460, 392});
     sf::FloatRect sound_bar(int row) { return {{410.0f, 158.0f + 30.0f * static_cast<float>(row)}, {200.0f, 8.0f}}; }
     sf::FloatRect settings_row(int row)
     {
         if(row < 4) return {{270.0f, 148.0f + 30.0f * static_cast<float>(row)}, {420.0f, 28.0f}};
         if(row == 4) return {{270.0f, 290.0f}, {420.0f, 50.0f}};
-        if(row == 5) return {{290.0f, 392.0f}, {180.0f, 28.0f}};
-        return {{490.0f, 392.0f}, {180.0f, 28.0f}};
+        if(row == 5) return {{270.0f, 366.0f}, {420.0f, 26.0f}};
+        if(row == 6) return {{290.0f, 418.0f}, {180.0f, 28.0f}};
+        return {{490.0f, 418.0f}, {180.0f, 28.0f}};
+    }
+    // The two choices for effects: full, low.
+    sf::FloatRect effects_button(int i)
+    {
+        return i == 0 ? sf::FloatRect{{380.0f, 368.0f}, {70.0f, 22.0f}} : sf::FloatRect{{454.0f, 368.0f}, {226.0f, 22.0f}};
     }
     sf::FloatRect display_button(int i, int count)
     {
@@ -449,8 +490,9 @@ namespace
     }
 
     // A list of pairs in the text file, key.0, key.1, ...: the keys cards and the credits.
-    std::vector<std::pair<std::string, std::string>> pairs(const std::string& key)
+    std::vector<std::pair<std::string, std::string>> pairs(std::string key)
     {
+        if(pad_text() && has_text(key + "_pad.0")) key += "_pad";        // the pad's buttons, not the keys
         std::vector<std::pair<std::string, std::string>> out;
         for(std::size_t i = 0; has_text(key + "." + std::to_string(i)); ++i)
         {
@@ -521,11 +563,20 @@ void Panels::step_display(int step, SceneManager& manager)
     set_display_choice(display_choice(manager) + step, manager);
 }
 
+void Panels::set_low_effects(bool low, SceneManager& manager)
+{
+    Settings& s = Settings::get();
+    if(s.low_effects == low) return;
+    s.low_effects = low;
+    (void)manager;      // bloom follows it from the next battle on: the menus never use it
+    SoundBank::get().play("ui_select", 0.6f);
+}
+
 void Panels::activate(int row, SceneManager& manager)
 {
-    (void)manager;
-    if(row == 5) { open(Kind::HOW_TO); return; }
-    if(row == 6) close();
+    if(row == 5) { set_low_effects(!Settings::get().low_effects, manager); return; }
+    if(row == 6) { open(Kind::HOW_TO); return; }
+    if(row == 7) close();
 }
 
 bool Panels::handle_event(const sf::Event& event, sf::Vector2f mouse, SceneManager& manager)
@@ -552,12 +603,14 @@ bool Panels::handle_event(const sf::Event& event, sf::Vector2f mouse, SceneManag
             case S::Left: case S::A:
                 if(m_row < 4) set_level(m_row, SoundBank::get().volume(static_cast<SoundBank::Bus>(m_row)) - 0.05f);
                 else if(m_row == 4) step_display(-1, manager);
-                else m_row = 5;
+                else if(m_row == 5) set_low_effects(false, manager);
+                else m_row = 6;
                 break;
             case S::Right: case S::D:
                 if(m_row < 4) set_level(m_row, SoundBank::get().volume(static_cast<SoundBank::Bus>(m_row)) + 0.05f);
                 else if(m_row == 4) step_display(1, manager);
-                else m_row = 6;
+                else if(m_row == 5) set_low_effects(true, manager);
+                else m_row = 7;
                 break;
             case S::Enter: case S::Space: activate(m_row, manager); break;
             default: break;
@@ -581,7 +634,9 @@ bool Panels::handle_event(const sf::Event& event, sf::Vector2f mouse, SceneManag
         int const n = display_choices();
         for(int i = 0; i < n; ++i)
             if(display_button(i, n).contains(mouse)) { m_row = 4; set_display_choice(i, manager); return true; }
-        for(int r = 5; r < ROWS; ++r)
+        for(int i = 0; i < 2; ++i)
+            if(effects_button(i).contains(mouse)) { m_row = 5; set_low_effects(i == 1, manager); return true; }
+        for(int r = 6; r < ROWS; ++r)
             if(settings_row(r).contains(mouse)) { m_row = r; activate(r, manager); return true; }
         if(!SETTINGS_BOX.contains(mouse)) close();
         return true;
@@ -596,7 +651,7 @@ bool Panels::handle_event(const sf::Event& event, sf::Vector2f mouse, SceneManag
         }
         int h = -1;
         for(int r = 0; r < ROWS; ++r) if(settings_row(r).contains(mouse)) h = r;
-        if(h != m_hover && h >= 5) SoundBank::get().play("ui_hover", 0.4f);
+        if(h != m_hover && h >= 6) SoundBank::get().play("ui_hover", 0.4f);
         m_hover = h;
         return true;
     }
@@ -643,17 +698,26 @@ void Panels::render(sf::RenderTarget& t, SceneManager& manager)
             box(t, r.position, r.size, on ? with_alpha(MON_BLUE_DK, 0.9f) : sf::Color::Transparent, on ? MON_GOLD : with_alpha(TEXT_FAINT, 0.6f));
             t.draw(text(*f, fit(*f, label, 16, r.size.x - 6.0f), 16, {r.position.x + r.size.x * 0.5f, r.position.y + 4}, on ? MON_GOLD : TEXT_DIM, 0.5f));
         }
-        t.draw(text(*f, tr("settings.f11"), 16, {480, 346}, TEXT_FAINT, 0.5f));
+        t.draw(text(*f, tr("settings.f11"), 16, {480, 344}, TEXT_FAINT, 0.5f));
+
+        t.draw(text(*f, tr("settings.effects"), 16, {270, 370}, m_row == 5 ? MON_GOLD : TEXT_FAINT));
+        for(int i = 0; i < 2; ++i)
+        {
+            sf::FloatRect const r = effects_button(i);
+            bool const on = (i == 1) == Settings::get().low_effects;
+            box(t, r.position, r.size, on ? with_alpha(MON_BLUE_DK, 0.9f) : sf::Color::Transparent, on ? MON_GOLD : with_alpha(TEXT_FAINT, 0.6f));
+            t.draw(text(*f, tr(i == 0 ? "settings.effects_full" : "settings.effects_low"), 16, {r.position.x + r.size.x * 0.5f, r.position.y + 3}, on ? MON_GOLD : TEXT_DIM, 0.5f));
+        }
 
         std::string const labels[] = {tr("settings.how_to"), tr("settings.done")};
-        for(int r = 5; r < ROWS; ++r)
+        for(int r = 6; r < ROWS; ++r)
         {
             sf::FloatRect const rr = settings_row(r);
             bool const on = r == m_row || r == m_hover;
             box(t, rr.position, rr.size, on ? with_alpha(MON_BLUE_DK, 0.9f) : with_alpha(INK, 0.5f), on ? MON_GOLD : with_alpha(TEXT_FAINT, 0.7f));
-            t.draw(text(*f, labels[r - 5], 16, {rr.position.x + rr.size.x * 0.5f, rr.position.y + 6}, on ? MON_GOLD : TEXT_DIM, 0.5f));
+            t.draw(text(*f, labels[r - 6], 16, {rr.position.x + rr.size.x * 0.5f, rr.position.y + 6}, on ? MON_GOLD : TEXT_DIM, 0.5f));
         }
-        t.draw(text(*f, tr("settings.keys"), 16, {480, 456}, TEXT_FAINT, 0.5f));
+        t.draw(text(*f, tr("settings.keys"), 16, {480, 482}, TEXT_FAINT, 0.5f));
         return;
     }
 
@@ -756,6 +820,11 @@ void TitleScene::pick(int item)
 
 void TitleScene::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 {
+    pad::notice(event);
+    if(pad::missing()) return;
+    // B on the title never quits the game: on a console that's the way out of everything.
+    if(auto const b = pad::pressed(event); b && *b == pad::Button::B && !m_panels.is_open()) return;
+    if(auto const k = pad::menu_key(event)) { handle_event(pad::key_event(*k), mouse_pos); return; }
     if(global_key(event, *m_manager)) return;
     if(m_panels.handle_event(event, mouse_pos, *m_manager)) return;
     using S = sf::Keyboard::Scancode;
@@ -801,6 +870,7 @@ void TitleScene::render(sf::RenderTarget& t)
 {
     const sf::Font* f = Assets::font(FONT);
     if(!f) return;
+    PadGateOnTop const gate{t};
     t.setView(t.getDefaultView());
 
     // --- a dusk sky in bands, and the guns flashing along the horizon ---------------------------
@@ -1033,6 +1103,18 @@ void BriefingScene::begin()
 
 void BriefingScene::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 {
+    pad::notice(event);
+    if(pad::missing()) return;
+    using P = pad::Button;
+    if(auto const b = pad::pressed(event); b && !m_panels.is_open())
+    {
+        // X the side, Y the difficulty, BACK the settings, LB and RB the battle.
+        auto const k = *b == P::X ? sf::Keyboard::Scancode::T : *b == P::Y ? sf::Keyboard::Scancode::K
+                     : *b == P::BACK ? sf::Keyboard::Scancode::O : *b == P::LB ? sf::Keyboard::Scancode::Left
+                     : *b == P::RB ? sf::Keyboard::Scancode::Right : sf::Keyboard::Scancode::Unknown;
+        if(k != sf::Keyboard::Scancode::Unknown) { handle_event(pad::key_event(k), mouse_pos); return; }
+    }
+    if(auto const k = pad::menu_key(event)) { handle_event(pad::key_event(*k), mouse_pos); return; }
     if(global_key(event, *m_manager)) return;
     if(m_panels.handle_event(event, mouse_pos, *m_manager)) return;
     using S = sf::Keyboard::Scancode;
@@ -1099,6 +1181,7 @@ void BriefingScene::render(sf::RenderTarget& t)
 {
     const sf::Font* f = Assets::font(FONT);
     if(!f) return;
+    PadGateOnTop const gate{t};
     t.setView(t.getDefaultView());
     const Campaign& c = Campaign::current();
     std::string const card = std::string("roles.") + role_key(CARDS[m_choice]);
@@ -1439,6 +1522,9 @@ void DebriefScene::press(int button)
 
 void DebriefScene::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 {
+    pad::notice(event);
+    if(pad::missing()) return;
+    if(auto const k = pad::menu_key(event)) { handle_event(pad::key_event(*k), mouse_pos); return; }
     if(global_key(event, *m_manager)) return;
     if(m_time < 0.8f) return;               // a moment to see it before a stray key skips it
     using S = sf::Keyboard::Scancode;
@@ -1480,6 +1566,7 @@ void DebriefScene::render(sf::RenderTarget& t)
 {
     const sf::Font* f = Assets::font(FONT);
     if(!f) return;
+    PadGateOnTop const gate{t};
     t.setView(t.getDefaultView());
     const Campaign& c = Campaign::current();
     auto fade = [this](float at, float over = 0.4f) { return std::clamp((m_time - at) / over, 0.0f, 1.0f); };

@@ -7,8 +7,10 @@
 #include "../../include/core/Random.hpp"
 #include "../../third_party/nlohmann/json.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <set>
 #include <unordered_map>
@@ -62,6 +64,18 @@ namespace
         if(!table().loaded) load_text("en");
     }
 
+    bool pad_lines = false;
+
+    // The key to look up: its pad twin, if the pad is in use and there is one.
+    std::string chosen(std::string_view key, bool list)
+    {
+        std::string k(key);
+        if(!pad_lines) return k;
+        std::string const twin = k + "_pad";
+        if(list ? table().lists.count(twin) > 0 : table().strings.count(twin) > 0) return twin;
+        return k;
+    }
+
     std::string missing(std::string_view key)
     {
         static std::set<std::string, std::less<>> reported;
@@ -72,25 +86,47 @@ namespace
     }
 }
 
+namespace
+{
+    void read_file(const std::filesystem::path& file, Table& t)
+    {
+        std::ifstream in(file);
+        if(!in)
+        {
+            std::fprintf(stderr, "text: can't open %s\n", file.string().c_str());
+            return;
+        }
+        // Comments are allowed in the file, so it can explain itself.
+        nlohmann::json const root = nlohmann::json::parse(in, nullptr, false, true);
+        if(root.is_discarded())
+        {
+            std::fprintf(stderr, "text: %s isn't valid JSON\n", file.string().c_str());
+            return;
+        }
+        flatten(root, "", t);
+    }
+}
+
 void load_text(const std::string& language)
 {
     Table& t = table();
     t = Table{};
     t.loaded = true;
-    std::ifstream in("assets/mudcats/text/" + language + ".json");
-    if(!in)
+    // <language>.json, then any <language>.<something>.json beside it, in
+    // name order: more lines, kept in a file of their own (en.console.json:
+    // the controller's buttons). A line in a later file replaces one before.
+    std::filesystem::path const dir("assets/mudcats/text");
+    read_file(dir / (language + ".json"), t);
+    std::vector<std::filesystem::path> more;
+    std::error_code ignored;
+    for(const auto& entry : std::filesystem::directory_iterator(dir, ignored))
     {
-        std::fprintf(stderr, "text: can't open assets/mudcats/text/%s.json\n", language.c_str());
-        return;
+        std::string const name = entry.path().filename().string();
+        if(name.size() > language.size() + 6 && name.rfind(language + ".", 0) == 0 && entry.path().extension() == ".json")
+            more.push_back(entry.path());
     }
-    // Comments are allowed in the file, so it can explain itself.
-    nlohmann::json const root = nlohmann::json::parse(in, nullptr, false, true);
-    if(root.is_discarded())
-    {
-        std::fprintf(stderr, "text: assets/mudcats/text/%s.json isn't valid JSON\n", language.c_str());
-        return;
-    }
-    flatten(root, "", t);
+    std::sort(more.begin(), more.end());
+    for(const auto& file : more) read_file(file, t);
 }
 
 bool has_text(std::string_view key)
@@ -111,10 +147,13 @@ std::string fill(std::string text, TextArgs args)
     return text;
 }
 
+void set_pad_text(bool on) { pad_lines = on; }
+bool pad_text() { return pad_lines; }
+
 std::string tr(std::string_view key)
 {
     ensure_loaded();
-    auto it = table().strings.find(std::string(key));
+    auto it = table().strings.find(chosen(key, false));
     return it != table().strings.end() ? it->second : missing(key);
 }
 
@@ -127,7 +166,7 @@ const std::vector<std::string>& list(std::string_view key)
 {
     ensure_loaded();
     static const std::vector<std::string> none;
-    auto it = table().lists.find(std::string(key));
+    auto it = table().lists.find(chosen(key, true));
     if(it == table().lists.end())
     {
         (void)missing(key);
@@ -145,7 +184,7 @@ std::string item(std::string_view key, std::size_t index)
 std::string pick(std::string_view key)
 {
     ensure_loaded();
-    auto it = table().lists.find(std::string(key));
+    auto it = table().lists.find(chosen(key, true));
     if(it != table().lists.end() && !it->second.empty())
         return it->second[static_cast<std::size_t>(Random::integer(0, static_cast<int>(it->second.size()) - 1))];
     return tr(key);

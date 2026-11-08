@@ -1,8 +1,9 @@
 /**
  * Text.hpp  -  Mud Cats
  *
- * Every word the game shows or says lives in one file per language,
- * assets/mudcats/text/<language>.json, and is looked up by key:
+ * Every word the game shows or says lives in the text files,
+ * assets/mudcats/text/<language>.json (and any <language>.<name>.json
+ * beside it, read after it), and is looked up by key:
  *
  *   tr("title.menu.play")                        "PLAY"
  *   tr("hud.notice.takes_section", {{"name", who}, {"section", what}})
@@ -34,7 +35,8 @@ namespace mudcats
 using TextArgs = std::initializer_list<std::pair<std::string_view, std::string>>;
 
 /*
- * Reads assets/mudcats/text/<language>.json. Called once at start; any
+ * Reads assets/mudcats/text/<language>.json, then each
+ * <language>.<name>.json there in name order. Called once at start; any
  * lookup before then loads English.
  */
 void load_text(const std::string& language = "en");
@@ -55,6 +57,14 @@ void load_text(const std::string& language = "en");
 
 // Fills {placeholders} in any string.
 [[nodiscard]] std::string fill(std::string text, TextArgs args);
+
+/*
+ * With a controller in use, tr, pick, item and list look for "<key>_pad"
+ * first: the same line, naming the pad's buttons instead of keys. Lines
+ * that don't mention a key need no such twin.
+ */
+void set_pad_text(bool on);
+[[nodiscard]] bool pad_text();
 
 }
 

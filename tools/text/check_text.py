@@ -6,7 +6,7 @@ Compares the text keys the game's code asks for with the ones the text
 file has, so a line that's missing, or one nobody uses any more, shows up
 before anyone sees "[some.key]" on screen.
 
-    python3 tools/text/check_text.py              # assets/mudcats/text/en.json
+    python3 tools/text/check_text.py              # assets/mudcats/text/en.json, and en.*.json
     python3 tools/text/check_text.py fr           # another language's file
 
 It finds keys written out whole in the code: tr("..."), pick("..."),
@@ -41,14 +41,16 @@ def flatten(node, key, out):
 
 def main():
     language = sys.argv[1] if len(sys.argv) > 1 else "en"
-    path = ROOT / "assets" / "mudcats" / "text" / f"{language}.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
-        print(f"can't read {path}: {e}")
-        return 1
+    folder = ROOT / "assets" / "mudcats" / "text"
+    path = folder / f"{language}.json"
+    # The language's file, and any <language>.<name>.json beside it, as the game reads them.
     have = set()
-    flatten(data, "", have)
+    for file in [path] + sorted(folder.glob(f"{language}.*.json")):
+        try:
+            flatten(json.loads(file.read_text(encoding="utf-8")), "", have)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"can't read {file}: {e}")
+            return 1
 
     call = re.compile(r'\b(?:tr|pick|item|list|has_text|level_text)\(\s*"([a-z0-9_.]+)"')
     shout = re.compile(r'\bshout\(\s*[^,]+,\s*"([a-z0-9_]+)"')
@@ -75,7 +77,7 @@ def main():
         for k in missing:
             print(f"  {k:50s} {used[k]}")
     else:
-        print(f"Every key the code names is in {path.name} ({len(used)} keys).")
+        print(f"Every key the code names is in the {language} text files ({len(used)} keys).")
     return 1 if missing else 0
 
 

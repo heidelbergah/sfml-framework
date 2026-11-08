@@ -41,10 +41,12 @@
 #include "Map.hpp"
 #include "Soldier.hpp"
 #include "Text.hpp"
+#include "Pad.hpp"
 
 #include <bitset>
 #include <deque>
 #include <string>
+#include <array>
 #include <vector>
 
 namespace mudcats
@@ -294,6 +296,7 @@ private:
     LevelId           m_level{LevelId::CHARGE};
     sf::RenderTexture m_ground;         // the field, and everything that happened on it
     sf::RenderTexture m_frame;          // 480x270, then graded and scaled up
+    sf::RenderTexture m_graded;         // the frame after the grade, still 480x270: a quarter of the work of grading it scaled up
     sf::RenderTexture m_shade;          // what the player can't see
     sf::Shader*       m_grade{nullptr};
     sf::VertexArray   m_stamps{sf::PrimitiveType::Triangles};
@@ -334,6 +337,14 @@ private:
     std::shared_ptr<ParticleSystem> m_round_fx;     // rounds in flight: hot additive streaks
     std::shared_ptr<ParticleSystem> m_glow_fx;      // soft additive halos: tracers, flares, muzzle blasts
     sf::RenderTexture m_light;                      // at night: how much of the frame each light reaches
+    // A light's rings, drawn once: four circles one inside the other, more
+    // light the more of them cover a spot. [0] for the glow of fire and
+    // flashes, [1] for the light map at night, whose rings are spaced wider.
+    sf::Texture m_rings[2];
+    bool m_rings_made{false};
+    void make_rings();
+    // One light's rings as a quad in va, drawn with m_rings[which] and BlendAdd.
+    static void add_rings(sf::VertexArray& va, sf::Vector2f at, float radius, sf::Color c);
 
     // --- the player ----------------------------------------------------------------
     int  m_player{-1};
@@ -346,6 +357,23 @@ private:
     bool m_trigger_pressed{false};      // this frame, for bolt actions
     bool m_aiming{false};
     bool m_paused{false};
+
+    // --- the controller ------------------------------------------------------------
+    // Some buttons do one thing tapped and another held: B crouches, held it
+    // lies you down; X reloads, held it bandages; Y held, when you're down,
+    // gives up; the d-pad's up advances, held it charges. Seconds held so
+    // far, or -1 once the hold has been acted on.
+    float m_hold_b{0.0f}, m_hold_x{0.0f}, m_hold_y{0.0f}, m_hold_up{0.0f};
+    sf::Vector2i m_dpad_was;
+    std::array<bool, static_cast<std::size_t>(pad::Button::COUNT)> m_pad_was{};   // each button last frame
+    float m_pad_aim{0.0f};              // where the right stick last pointed
+    float m_pad_reach{70.0f};           // and how far out
+    bool  m_pad_run{false};             // the left stick clicked in: running till you stop
+    bool  m_pad_trigger_was{false}, m_pad_aim_was{false};
+    void pad_press(int button);         // a pad::Button, pressed
+    void pad_poll(float dt);            // the sticks, triggers and held buttons
+    void press_key(sf::Keyboard::Scancode code);
+    void start_aiming(Soldier& p);      // right click or LT: aim, or set up the gun
     int  m_sound_row{0};                // the pause screen: which level the arrow keys change
     int  m_sound_drag{-1};              // the level being dragged with the mouse, if any
     // Where the pause screen draws each sound level's bar, in base-resolution pixels.
@@ -525,6 +553,7 @@ private:
     void draw_crosshair(sf::RenderTarget& frame);
     void draw_markers(sf::RenderTarget& target);
     void draw_lights(const sf::View& view);
+    void draw_perf(sf::RenderTarget& t);
     [[nodiscard]] std::string interact_prompt() const;
     void flush_stamps();
     void compute_visibility();

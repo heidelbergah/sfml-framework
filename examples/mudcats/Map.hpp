@@ -218,6 +218,14 @@ private:
 
     // Grass tops, cut into chunks so a frame only draws what is on screen.
     std::vector<sf::VertexArray> m_grass_tops;
+
+    // Filled pixel discs, every radius from 4 to 20 in eighths, drawn once:
+    // a tree's crown is three of them, as textured quads, not hundreds of rows.
+    mutable sf::Texture m_discs;
+    mutable std::vector<sf::Vector2i> m_disc_cells;   // where each radius's disc sits in m_discs
+    mutable bool m_discs_made{false};
+    void make_discs() const;
+    void add_disc(sf::VertexArray& va, float cx, float cy, float r, sf::Color c) const;
     int m_chunk_cols{1};
     int m_chunk_rows{1};
 

@@ -2,11 +2,11 @@
 #
 # Every push builds all three, so a change that breaks one of them shows
 # up straight away; the downloads are kept on the run's page (Actions, the
-# run, Artifacts) for a while. Pushing a version tag, like v0.14.0, also
+# run, Artifacts) for a while. Pushing a version tag, like v0.15.0, also
 # makes a GitHub Release with the three downloads on it:
 #
-#   git tag v0.14.0
-#   git push origin v0.14.0
+#   git tag v0.15.0
+#   git push origin v0.15.0
 #
 # The tag has to match the version in CMakeLists.txt's project() line.
 #

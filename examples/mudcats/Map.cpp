@@ -996,6 +996,67 @@ void Map::build_grass_tops()
     }
 }
 
+namespace
+{
+    constexpr float DISC_MIN = 4.0f, DISC_MAX = 20.0f, DISC_STEP = 0.125f;
+    int disc_index(float r)
+    {
+        return static_cast<int>(std::lround((std::clamp(r, DISC_MIN, DISC_MAX) - DISC_MIN) / DISC_STEP));
+    }
+}
+
+void Map::make_discs() const
+{
+    if(m_discs_made) return;
+    m_discs_made = true;
+    // Each disc exactly as draw::disc would draw it: a row at a time, each
+    // row as wide as the circle is there, rounded down.
+    int const count = disc_index(DISC_MAX) + 1;
+    constexpr int WIDTH = 1024;
+    std::vector<std::vector<int>> halves(static_cast<std::size_t>(count));
+    m_disc_cells.assign(static_cast<std::size_t>(count), {});
+    int x = 0, y = 0, row = 0;
+    for(int i = 0; i < count; ++i)
+    {
+        float const r = DISC_MIN + static_cast<float>(i) * DISC_STEP;
+        int const ir = static_cast<int>(r), side = 2 * ir + 1;
+        if(x + side > WIDTH) { x = 0; y += row; row = 0; }
+        m_disc_cells[static_cast<std::size_t>(i)] = {x, y};
+        x += side + 1;
+        row = std::max(row, side + 1);
+    }
+    sf::Image img({WIDTH, static_cast<unsigned>(y + row)}, sf::Color::Transparent);
+    for(int i = 0; i < count; ++i)
+    {
+        float const r = DISC_MIN + static_cast<float>(i) * DISC_STEP;
+        int const ir = static_cast<int>(r);
+        sf::Vector2i const cell = m_disc_cells[static_cast<std::size_t>(i)];
+        for(int dy = -ir; dy <= ir; ++dy)
+        {
+            int const half = static_cast<int>(std::floor(std::sqrt(std::max(0.0f, r * r - static_cast<float>(dy * dy)))));
+            for(int dx = -half; dx <= half; ++dx)
+                img.setPixel({static_cast<unsigned>(cell.x + ir + dx), static_cast<unsigned>(cell.y + ir + dy)}, sf::Color::White);
+        }
+    }
+    (void)m_discs.loadFromImage(img);
+}
+
+void Map::add_disc(sf::VertexArray& va, float cx, float cy, float r, sf::Color c) const
+{
+    // The same pixels draw::disc fills, from the atlas.
+    int const i = disc_index(r);
+    float const rr = DISC_MIN + static_cast<float>(i) * DISC_STEP;
+    auto const ir = static_cast<float>(static_cast<int>(rr));
+    sf::Vector2f const t(m_disc_cells[static_cast<std::size_t>(i)]);
+    float const side = 2.0f * ir + 1.0f;
+    float const x = std::floor(cx) - ir, y = std::floor(cy) - ir;
+    const sf::Vertex q[6] = {
+        {{x, y}, c, t}, {{x + side, y}, c, {t.x + side, t.y}}, {{x + side, y + side}, c, {t.x + side, t.y + side}},
+        {{x, y}, c, t}, {{x + side, y + side}, c, {t.x + side, t.y + side}}, {{x, y + side}, c, {t.x, t.y + side}},
+    };
+    for(const auto& v : q) va.append(v);
+}
+
 void Map::draw_over(sf::RenderTarget& target, sf::Vector2f viewer, const sf::FloatRect& visible, float time) const
 {
     // --- grass tops --------------------------------------------------------------------
@@ -1043,7 +1104,11 @@ void Map::draw_over(sf::RenderTarget& target, sf::Vector2f viewer, const sf::Flo
                 draw::rect(va, r.position.x - 5, y, r.size.x + 10, 1, with_alpha(lerp(BARK, INK, 0.4f), shut));
     }
 
+    target.draw(va);
+    va.clear();
+
     // --- tree crowns --------------------------------------------------------------------------
+    make_discs();
     for(const auto& t : trees)
     {
         if(!visible.findIntersection(sf::FloatRect(t.pos - sf::Vector2f{t.canopy, t.canopy}, {t.canopy * 2, t.canopy * 2}))) continue;
@@ -1055,11 +1120,11 @@ void Map::draw_over(sf::RenderTarget& target, sf::Vector2f viewer, const sf::Flo
         sf::Color const dark = with_alpha(t.shade == 2 ? lerp(LEAF, MEADOW, 0.4f) : LEAF, alpha);
         sf::Color const mid  = with_alpha(t.shade == 1 ? lerp(LEAF_LT, WHEAT, 0.15f) : LEAF_LT, alpha);
         float const sx = std::sin(time * 0.7f + t.pos.x) * 0.6f;
-        draw::disc(va, t.pos.x + sx, t.pos.y - 2, t.canopy, dark);
-        draw::disc(va, t.pos.x - t.canopy * 0.3f + sx, t.pos.y - t.canopy * 0.35f - 2, t.canopy * 0.55f, mid);
-        draw::disc(va, t.pos.x + t.canopy * 0.35f + sx, t.pos.y + t.canopy * 0.1f - 2, t.canopy * 0.4f, with_alpha(lerp(LEAF, LEAF_LT, 0.5f), alpha));
+        add_disc(va, t.pos.x + sx, t.pos.y - 2, t.canopy, dark);
+        add_disc(va, t.pos.x - t.canopy * 0.3f + sx, t.pos.y - t.canopy * 0.35f - 2, t.canopy * 0.55f, mid);
+        add_disc(va, t.pos.x + t.canopy * 0.35f + sx, t.pos.y + t.canopy * 0.1f - 2, t.canopy * 0.4f, with_alpha(lerp(LEAF, LEAF_LT, 0.5f), alpha));
     }
-    target.draw(va);
+    target.draw(va, sf::RenderStates(&m_discs));
 }
 
 }

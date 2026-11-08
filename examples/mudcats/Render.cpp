@@ -21,15 +21,18 @@
  */
 
 #include "Battle.hpp"
+#include "Perf.hpp"
 
 #include "Draw.hpp"
 #include "Icons.hpp"
 #include "Palette.hpp"
+#include "Screens.hpp"
 #include "Sound.hpp"
 
 #include "../../include/core/Random.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -211,16 +214,15 @@ void Battle::flush_stamps()
 void Battle::render(sf::RenderTarget& target)
 {
     if(!m_ready || m_soldiers.empty()) return;
-    flush_stamps();
-    compute_visibility();
+    Perf::get().frame();
+    { PerfScope const t(Perf::SIGHT); flush_stamps(); compute_visibility(); }
 
     sf::View const view = m_camera.get_view();
     m_frame.setView(view);
     m_frame.clear(INK);
     m_frame.draw(sf::Sprite(m_ground.getTexture()));
-
     draw_world(m_frame, view);
-    draw_shade(view);
+    { PerfScope const t(Perf::SHADE); draw_shade(view); }
     m_frame.setView(view);
     draw_crosshair(m_frame);
     m_frame.display();
@@ -232,26 +234,42 @@ void Battle::render(sf::RenderTarget& target)
     sf::Sprite frame(m_frame.getTexture());
     frame.setScale({2.0f, 2.0f});
     target.setView(target.getDefaultView());
-    if(m_grade)
     {
-        float const mist = m_level == LevelId::CHARGE ? 0.22f : (m_level == LevelId::FOREST ? 0.08f : 0.0f);   // the charge: a grey morning
-        m_grade->setUniform("texture", sf::Shader::CurrentTexture);
-        m_grade->setUniform("resolution", sf::Glsl::Vec2{FRAME_F.x, FRAME_F.y});
-        m_grade->setUniform("time", m_real);
-        m_grade->setUniform("suppression", me.alive() ? me.suppression : 0.0f);
-        m_grade->setUniform("hurt", std::min(1.0f, m_hurt + (me.alive() && me.hp < 50.0f ? (50.0f - me.hp) / 80.0f : 0.0f)));
-        m_grade->setUniform("flash", m_flash);
-        m_grade->setUniform("shock", me.shock);
-        m_grade->setUniform("dying", me.life == Life::DOWNED ? std::clamp(1.0f - me.bleed_out / 32.0f, 0.3f, 1.0f) : 0.0f);
-        m_grade->setUniform("mist", mist);
-        m_grade->setUniform("eye", sf::Glsl::Vec2{eye.x, FRAME_F.y - eye.y});
-        m_grade->setUniform("reach", vision_range());
-        m_grade->setUniform("rain", 0.0f);
-        target.draw(frame, sf::RenderStates(m_grade));
+        PerfScope const grade_time(Perf::GRADE);
+        if(m_grade)
+        {
+            float const mist = m_level == LevelId::CHARGE ? 0.22f : (m_level == LevelId::FOREST ? 0.08f : 0.0f);   // the charge: a grey morning
+            m_grade->setUniform("texture", sf::Shader::CurrentTexture);
+            m_grade->setUniform("resolution", sf::Glsl::Vec2{FRAME_F.x, FRAME_F.y});
+            m_grade->setUniform("time", m_real);
+            m_grade->setUniform("suppression", me.alive() ? me.suppression : 0.0f);
+            m_grade->setUniform("hurt", std::min(1.0f, m_hurt + (me.alive() && me.hp < 50.0f ? (50.0f - me.hp) / 80.0f : 0.0f)));
+            m_grade->setUniform("flash", m_flash);
+            m_grade->setUniform("shock", me.shock);
+            m_grade->setUniform("dying", me.life == Life::DOWNED ? std::clamp(1.0f - me.bleed_out / 32.0f, 0.3f, 1.0f) : 0.0f);
+            m_grade->setUniform("mist", mist);
+            m_grade->setUniform("eye", sf::Glsl::Vec2{eye.x, FRAME_F.y - eye.y});
+            m_grade->setUniform("reach", vision_range());
+            m_grade->setUniform("rain", 0.0f);
+            // Graded at the frame's own size, then scaled up: every pixel of
+            // the grade is two by two on screen anyway.
+            sf::Sprite plain(m_frame.getTexture());
+            m_graded.setView(m_graded.getDefaultView());
+            m_graded.draw(plain, sf::RenderStates(m_grade));
+            m_graded.display();
+            sf::Sprite graded(m_graded.getTexture());
+            graded.setScale({2.0f, 2.0f});
+            target.draw(graded);
+        }
+        else target.draw(frame);
     }
-    else target.draw(frame);
 
-    draw_hud(target);
+    {
+        PerfScope const t(Perf::HUD);
+        draw_hud(target);
+        draw_perf(target);
+    }
+    draw_pad_gate(target);
 }
 
 void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
@@ -259,6 +277,7 @@ void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
     sf::FloatRect const seen(view.getCenter() - view.getSize() * 0.5f - sf::Vector2f{30, 30}, view.getSize() + sf::Vector2f{60, 60});
     sf::VertexArray va(sf::PrimitiveType::Triangles);
     const Soldier& me = this->me();
+    std::optional<PerfScope> timing(std::in_place, Perf::PEOPLE);
 
     if(m_level == LevelId::FOREST) draw_wagons(va);
 
@@ -410,13 +429,16 @@ void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
     }
     t.draw(va);
     va.clear();
+    timing.emplace(Perf::FX);
 
     // Blood and earth in the air.
     t.draw(*m_dirt_fx);
     t.draw(*m_blood_fx);
 
     // What stands over the men: grass, roofs, trees.
+    timing.emplace(Perf::OVER);
     m_map.draw_over(t, me.pos, seen, m_time);
+    timing.emplace(Perf::FX);
 
     // Smoke and smoke screens: lit by whatever light there is, like the ground.
     t.draw(*m_smoke_fx);
@@ -424,7 +446,7 @@ void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
     t.draw(*m_rain_fx);
 
     // At night, everything so far is only as bright as the light reaching it.
-    if(m_night > 0.0f) draw_lights(view);
+    if(m_night > 0.0f) { timing.emplace(Perf::LIGHTS); draw_lights(view); timing.emplace(Perf::FX); }
 
     // Then everything that makes its own light, untouched by the dark:
     // fire, sparks, rounds in flight, tracers and flares, and their halos.
@@ -435,24 +457,94 @@ void Battle::draw_world(sf::RenderTarget& t, const sf::View& view)
     t.draw(*m_glow_fx);
     t.draw(*m_round_fx);
 
-    // Light: additive glow for flashes and fire.
+    // Light: additive glow for flashes and fire. Rings, so the light falls
+    // off rather than ending at a hard edge; big lights (a flare, a fire)
+    // are dimmer for their size. All of them in one draw.
+    make_rings();
+    sf::VertexArray glows(sf::PrimitiveType::Triangles);
     for(const auto& l : m_lights)
     {
         if(!seen.contains(l.pos)) continue;
         float const k = l.life / l.max_life;
-        // Rings, so the light falls off rather than ending at a hard edge.
-        // Big lights (a flare, a fire) are dimmer for their size.
         float const strength = l.radius > 60.0f ? 0.5f : 1.0f;
-        for(float ring : {1.0f, 0.7f, 0.45f, 0.25f})
-        {
-            float const r = l.radius * ring;
-            sf::CircleShape glow(r, 24);
-            glow.setOrigin({r, r});
-            glow.setPosition(l.pos);
-            glow.setFillColor(with_alpha(l.colour, 0.1f * k * strength));
-            t.draw(glow, sf::BlendAdd);
-        }
+        add_rings(glows, l.pos, l.radius, with_alpha(l.colour, 0.4f * k * strength));
     }
+    if(glows.getVertexCount() > 0)
+    {
+        sf::RenderStates states(sf::BlendAdd);
+        states.texture = &m_rings[0];
+        t.draw(glows, states);
+    }
+}
+
+void Battle::draw_perf(sf::RenderTarget& t)
+{
+    // F3: the frame's time, piece by piece, in the top left corner.
+    const Perf& p = Perf::get();
+    if(!p.shown) return;
+    const sf::Font* f = m_font;
+    if(!f) return;
+    char buf[96];
+    float y = 8.0f;
+    auto line = [&](const char* text, sf::Color c)
+    {
+        shadowed(t, *f, text, 16, {8.0f, y}, c);
+        y += 16.0f;
+    };
+    std::snprintf(buf, sizeof buf, "%.0f fps   %.1f ms a frame", p.fps(), p.frame_ms());
+    line(buf, p.frame_ms() > 17.5f ? ALERT : PAPER);
+    std::snprintf(buf, sizeof buf, "update %.1f ms (%.1f steps)", p.update_ms(), p.steps_per_frame());
+    line(buf, TEXT);
+    for(int i = Perf::THINK; i <= Perf::SCRIPT; ++i)
+    {
+        std::snprintf(buf, sizeof buf, "  %-8s %5.2f", Perf::name(static_cast<Perf::Section>(i)), p.ms(static_cast<Perf::Section>(i)));
+        line(buf, TEXT_DIM);
+    }
+    std::snprintf(buf, sizeof buf, "draw %.1f ms", p.draw_ms());
+    line(buf, TEXT);
+    for(int i = Perf::SIGHT; i <= Perf::HUD; ++i)
+    {
+        std::snprintf(buf, sizeof buf, "  %-8s %5.2f", Perf::name(static_cast<Perf::Section>(i)), p.ms(static_cast<Perf::Section>(i)));
+        line(buf, TEXT_DIM);
+    }
+    std::snprintf(buf, sizeof buf, "waiting %.1f ms", std::max(0.0f, p.frame_ms() - p.update_ms() - p.draw_ms()));
+    line(buf, TEXT);
+}
+
+void Battle::make_rings()
+{
+    if(m_rings_made) return;
+    m_rings_made = true;
+    // How far out each ring reaches, as a share of the light's radius.
+    const float spacing[2][4] = {{1.0f, 0.7f, 0.45f, 0.25f}, {1.0f, 0.75f, 0.5f, 0.3f}};
+    constexpr unsigned SIZE = 256;
+    for(int which = 0; which < 2; ++which)
+    {
+        sf::Image img({SIZE, SIZE}, sf::Color::Transparent);
+        for(unsigned y = 0; y < SIZE; ++y)
+            for(unsigned x = 0; x < SIZE; ++x)
+            {
+                float const dx = (static_cast<float>(x) + 0.5f) / (SIZE * 0.5f) - 1.0f;
+                float const dy = (static_cast<float>(y) + 0.5f) / (SIZE * 0.5f) - 1.0f;
+                float const d = std::sqrt(dx * dx + dy * dy);
+                int covered = 0;
+                for(float ring : spacing[which]) if(d <= ring) ++covered;
+                img.setPixel({x, y}, sf::Color(255, 255, 255, static_cast<std::uint8_t>(covered * 255 / 4)));
+            }
+        if(m_rings[which].loadFromImage(img)) m_rings[which].setSmooth(true);
+    }
+}
+
+void Battle::add_rings(sf::VertexArray& va, sf::Vector2f at, float radius, sf::Color c)
+{
+    // c's alpha is the light's whole strength: the texture shares it out over the four rings.
+    float const s = 256.0f;
+    sf::Vector2f const a = at - sf::Vector2f{radius, radius}, b = at + sf::Vector2f{radius, radius};
+    const sf::Vertex q[6] = {
+        {{a.x, a.y}, c, {0, 0}}, {{b.x, a.y}, c, {s, 0}}, {{b.x, b.y}, c, {s, s}},
+        {{a.x, a.y}, c, {0, 0}}, {{b.x, b.y}, c, {s, s}}, {{a.x, b.y}, c, {0, s}},
+    };
+    for(const auto& v : q) va.append(v);
 }
 
 void Battle::draw_lights(const sf::View& view)
@@ -463,23 +555,18 @@ void Battle::draw_lights(const sf::View& view)
     m_light.setView(view);
     m_light.clear(lerp(sf::Color::White, ambient, m_night));
     sf::FloatRect const seen(view.getCenter() - view.getSize() * 0.5f - sf::Vector2f{240, 240}, view.getSize() + sf::Vector2f{480, 480});
-    auto glow = [this](sf::Vector2f at, float radius, sf::Color c, float strength)
-    {
-        for(float ring : {1.0f, 0.75f, 0.5f, 0.3f})
-        {
-            float const r = radius * ring;
-            sf::CircleShape disc(r, 28);
-            disc.setOrigin({r, r});
-            disc.setPosition(at);
-            disc.setFillColor(with_alpha(c, 0.25f * strength));
-            m_light.draw(disc, sf::BlendAdd);
-        }
-    };
+    // Each light: four rings, a quarter of its strength each, all in one draw.
+    make_rings();
+    sf::VertexArray rings(sf::PrimitiveType::Triangles);
     for(const auto& l : m_lights)
-        if(seen.contains(l.pos)) glow(l.pos, l.radius * 1.6f, l.colour, std::min(1.0f, l.life / std::max(0.001f, l.max_life) * 1.4f));
+        if(seen.contains(l.pos))
+            add_rings(rings, l.pos, l.radius * 1.6f, with_alpha(l.colour, std::min(1.0f, l.life / std::max(0.001f, l.max_life) * 1.4f)));
     // Your own eyes, used to the dark: a little of what is close by.
     const Soldier& me = this->me();
-    glow(me.pos, 80.0f, sf::Color(110, 120, 160), 0.55f);
+    add_rings(rings, me.pos, 80.0f, with_alpha(sf::Color(110, 120, 160), 0.55f));
+    sf::RenderStates states(sf::BlendAdd);
+    states.texture = &m_rings[1];
+    m_light.draw(rings, states);
     m_light.display();
 
     m_frame.setView(m_frame.getDefaultView());
@@ -508,6 +595,10 @@ void Battle::draw_shade(const sf::View& view)
         for(int i = 0; i < 4; ++i)
         {
             sf::Vector2f const a = p[i], b = p[(i + 1) % 4];
+            // Only the sides facing away from you: the shadows of the near
+            // sides lie under the wall and the far sides' shadows anyway.
+            sf::Vector2f const mid = (a + b) * 0.5f, out = mid - centre, away = mid - eye;
+            if(out.x * away.x + out.y * away.y <= 0.0f) continue;
             sf::Vector2f const fa = a + unit(a - eye) * 900.0f, fb = b + unit(b - eye) * 900.0f;
             draw::quad(va, a, b, fb, fa, c);
         }
@@ -1113,9 +1204,10 @@ void Battle::draw_hud(sf::RenderTarget& t)
         // The keys, on the right.
         float y = 156.0f;
         float const kx = W * 0.5f + 150.0f;
-        for(std::size_t i = 0; has_text("controls.pause." + std::to_string(i)); ++i)
+        std::string const keys = pad_text() && has_text("controls.pause_pad.0") ? "controls.pause_pad." : "controls.pause.";
+        for(std::size_t i = 0; has_text(keys + std::to_string(i)); ++i)
         {
-            const auto& k = list("controls.pause." + std::to_string(i));
+            const auto& k = list(keys + std::to_string(i));
             if(k.size() < 2) continue;
             shadowed(t, f, k[0], 16, {kx - 12.0f, y}, TEXT, 1.0f);
             shadowed(t, f, k[1], 16, {kx + 12.0f, y}, TEXT_DIM);

@@ -12,6 +12,9 @@
  */
 
 #include "Battle.hpp"
+#include "Pad.hpp"
+#include "Perf.hpp"
+#include "Settings.hpp"
 
 #include "Palette.hpp"
 #include "Screens.hpp"
@@ -75,7 +78,7 @@ sf::Color Battle::get_clear_color() const { return INK; }
 void Battle::on_enter()
 {
     m_font = Assets::font("assets/fonts/pixel-font-bitmap.ttf");
-    m_manager->set_bloom_enabled(true);
+    m_manager->set_bloom_enabled(!Settings::get().low_effects);
     GameTime::resume();
     m_paused = false;
     m_heard.clear();
@@ -196,7 +199,8 @@ void Battle::build_world()
 {
     if(!m_ready)
     {
-        if(!m_frame.resize(FRAME) || !m_shade.resize(FRAME) || !m_light.resize(FRAME)) return;
+        if(!m_frame.resize(FRAME) || !m_graded.resize(FRAME) || !m_shade.resize(FRAME) || !m_light.resize(FRAME)) return;
+        m_graded.setSmooth(false);
         m_light.setSmooth(true);
         m_frame.setSmooth(false);
         m_shade.setSmooth(false);
@@ -774,9 +778,25 @@ void Battle::leapfrog(Soldier& lt, int limit)
 
 void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 {
-    m_mouse_screen = mouse_pos;
     using S = sf::Keyboard::Scancode;
+    pad::notice(event);
+    if(!pad::in_use()) m_mouse_screen = mouse_pos;
     if(global_key(event, *m_manager)) return;
+
+    // The controller gone: stop, until it's back.
+    if(event.is<sf::Event::JoystickDisconnected>() && pad::in_use() && !pad::connected() && !m_paused)
+    {
+        m_paused = true;
+        GameTime::pause();
+    }
+    if(pad::missing()) return;
+    // Paused, the pad works the pause screen by its events; otherwise pad_poll reads it.
+    if(m_paused)
+    {
+        if(auto const b = pad::pressed(event)) { pad_press(static_cast<int>(*b)); return; }
+        if(auto const k = pad::menu_key(event)) { press_key(*k); return; }
+    }
+    else if(event.is<sf::Event::JoystickButtonPressed>() || event.is<sf::Event::JoystickMoved>()) return;
 
     // The pause screen's sound levels: dragged with the mouse, or picked and nudged with the arrows.
     if(m_paused)
@@ -797,6 +817,8 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
 
     if(const auto* key = event.getIf<sf::Event::KeyPressed>())
     {
+        // Where the frame's time goes, on screen.
+        if(key->scancode == sf::Keyboard::Scancode::F3) { Perf::get().shown = !Perf::get().shown; return; }
         if(m_paused)
         {
             auto& bank = SoundBank::get();
@@ -862,12 +884,15 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
                 if(p->role == Role::RADIOMAN)
                 {
                     // A mortar's flash, marked on the screen: the cursor on the mark calls the guns on the mortar itself.
+                    // With the pad: aiming toward the mark does it.
                     sf::Vector2f at = m_mouse_world;
                     for(const auto& m : m_mortars)
                         if(!m.silenced && m.seen > 0.0f)
                         {
                             sf::Vector2f const mark = edge_marker(m.pos);
-                            if(std::hypot(mark.x - m_mouse_screen.x, mark.y - m_mouse_screen.y) < 30.0f) { at = m.pos; break; }
+                            sf::Vector2f const to = m.pos - p->pos;
+                            bool const pointed = pad::in_use() && std::abs(std::remainder(std::atan2(to.y, to.x) - p->aim, 6.2831853f)) < 0.3f;
+                            if(pointed || std::hypot(mark.x - m_mouse_screen.x, mark.y - m_mouse_screen.y) < 30.0f) { at = m.pos; break; }
                         }
                     call_fire_mission(*p, at);
                 }
@@ -942,22 +967,7 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
         Soldier* p = player();
         if(press->button == sf::Mouse::Button::Left) { m_trigger = true; m_trigger_pressed = true; }
         if(press->button == sf::Mouse::Button::Middle && p->alive()) bayonet(*p);
-        if(press->button == sf::Mouse::Button::Right)
-        {
-            m_aiming = true;
-            if(p->has_mg() && p->alive())
-            {
-                if(p->deployed || p->deploying > 0.0f) { p->deployed = false; p->deploying = 0.0f; }
-                else
-                {
-                    p->deploying = 1.0f;
-                    p->deploy_dir = p->aim;
-                    if(p->stance == Stance::STAND) p->stance = Stance::CROUCH;
-                    p->body_angle = p->aim;
-                    SoundBank::get().play_at("mg_setup", p->pos, 0.8f);
-                }
-            }
-        }
+        if(press->button == sf::Mouse::Button::Right) start_aiming(*p);
     }
     else if(const auto* release = event.getIf<sf::Event::MouseButtonReleased>())
     {
@@ -968,6 +978,95 @@ void Battle::handle_event(const sf::Event& event, sf::Vector2f mouse_pos)
     {
         m_up = m_down = m_left = m_right = m_sprint = m_trigger = m_aiming = false;
     }
+}
+
+void Battle::start_aiming(Soldier& p)
+{
+    m_aiming = true;
+    if(!p.has_mg() || !p.alive()) return;
+    // A machine gun: aiming sets it up, or takes it down again.
+    if(p.deployed || p.deploying > 0.0f) { p.deployed = false; p.deploying = 0.0f; return; }
+    p.deploying = 1.0f;
+    p.deploy_dir = p.aim;
+    if(p.stance == Stance::STAND) p.stance = Stance::CROUCH;
+    p.body_angle = p.aim;
+    SoundBank::get().play_at("mg_setup", p.pos, 0.8f);
+}
+
+void Battle::press_key(sf::Keyboard::Scancode code)
+{
+    // A pad button doing what a key does: handed over as that key.
+    handle_event(pad::key_event(code), m_mouse_screen);
+}
+
+void Battle::pad_press(int button)
+{
+    using S = sf::Keyboard::Scancode;
+    using B = pad::Button;
+    auto const b = static_cast<B>(button);
+    if(m_paused)
+    {
+        // The pause screen: START or B to go back, Y to leave for the briefing; the rest are arrows.
+        if(b == B::START || b == B::B) press_key(S::Escape);
+        else if(b == B::Y) press_key(S::Q);
+        return;
+    }
+    Soldier* p = player();
+    switch(b)
+    {
+        case B::START: press_key(S::Escape); break;
+        case B::A:     press_key(S::E); break;
+        case B::RB:    press_key(S::G); break;
+        case B::LB:    press_key(S::T); break;
+        case B::Y:     if(p->life != Life::DOWNED) press_key(S::V); break;      // held while down: see pad_poll
+        case B::BACK:  press_key(player_leads() ? S::Tab : S::B); break;
+        case B::LS:    m_pad_run = !m_pad_run; break;
+        case B::RS:    if(p->alive()) bayonet(*p); break;
+        default: break;                                                          // B and X: tapped or held, see pad_poll
+    }
+}
+
+void Battle::pad_poll(float dt)
+{
+    using S = sf::Keyboard::Scancode;
+    using B = pad::Button;
+    pad::refresh();
+    // Each button pressed since last time: what it does, once.
+    std::array<bool, static_cast<std::size_t>(B::COUNT)> now{};
+    for(std::size_t i = 0; i < now.size(); ++i) now[i] = pad::held(static_cast<B>(i));
+    auto const was = m_pad_was;
+    m_pad_was = now;
+    if(!pad::in_use() || !pad::connected() || m_paused || !m_ready || m_autoplay)
+    {
+        m_hold_b = m_hold_x = m_hold_y = m_hold_up = 0.0f;
+        m_dpad_was = pad::dpad();
+        return;
+    }
+    for(std::size_t i = 0; i < now.size(); ++i)
+        if(now[i] && !was[i]) { pad_press(static_cast<int>(i)); if(m_paused) return; }
+    // Tapped, one thing; held past `need`, another.
+    auto hold = [&](bool down, float& t, float need, S tap, S held)
+    {
+        if(down)
+        {
+            if(t >= 0.0f) { t += dt; if(t >= need) { t = -1.0f; press_key(held); } }
+            return;
+        }
+        if(t > 0.0f && tap != S::Unknown) press_key(tap);
+        t = 0.0f;
+    };
+    bool const down = player()->life == Life::DOWNED;
+    hold(pad::held(B::B), m_hold_b, 0.35f, S::C, S::Z);
+    hold(pad::held(B::X), m_hold_x, 0.35f, S::R, S::F);
+    hold(pad::held(B::Y) && down, m_hold_y, 1.0f, S::Unknown, S::Space);
+
+    // The d-pad: orders, when you're giving them.
+    sf::Vector2i const d = pad::dpad();
+    if(d.x < 0 && m_dpad_was.x >= 0) press_key(S::Num1);                       // follow
+    if(d.y > 0 && m_dpad_was.y <= 0) press_key(S::Num2);                       // hold
+    if(d.x > 0 && m_dpad_was.x <= 0) press_key(S::Num4);                       // covering fire
+    hold(d.y < 0, m_hold_up, 0.5f, S::Num3, S::Num5);                          // advance, or held, charge
+    m_dpad_was = d;
 }
 
 void Battle::set_sound_level(int row, float value)
@@ -1091,14 +1190,59 @@ void Battle::player_input(float dt)
     Soldier& p = *player();
     p.firing = false;
 
-    // The mouse, in world coordinates.
+    // The mouse, in world coordinates; or, with the pad, where the right stick points.
     sf::View const& view = m_camera.get_view();
-    m_mouse_world = view.getCenter() - view.getSize() * 0.5f + m_mouse_screen * 0.5f;
+    sf::Vector2f const origin = view.getCenter() - view.getSize() * 0.5f;
+    bool const use_pad = pad::in_use() && pad::connected();
+    sf::Vector2f stick_move;
+    if(use_pad)
+    {
+        stick_move = pad::left_stick();
+        sf::Vector2f const r = pad::right_stick();
+        float const push = length(r);
+        if(push > 0.3f)
+        {
+            float want = std::atan2(r.y, r.x);
+            // A little help: pointed nearly at someone you can see, the aim
+            // drifts onto him. Never further than a few degrees.
+            float best = 0.2f;
+            float nudge = 0.0f;
+            for(const auto& o : m_soldiers)
+            {
+                if(o.team == p.team || !o.alive() || !visible_to_player(o)) continue;
+                sf::Vector2f const to = o.pos - p.pos;
+                float const d = length(to);
+                if(d < 12.0f || d > 260.0f) continue;
+                float const off = std::remainder(std::atan2(to.y, to.x) - want, 6.2831853f);
+                if(std::abs(off) < best) { best = std::abs(off); nudge = off; }
+            }
+            want += nudge * 0.5f;
+            m_pad_aim = want;
+            m_pad_reach = 40.0f + 180.0f * std::min(1.0f, push);
+        }
+        else if(push < 0.1f && length(stick_move) > 0.5f && std::abs(std::remainder(m_pad_aim - std::atan2(stick_move.y, stick_move.x), 6.2831853f)) > 2.6f)
+            m_pad_aim = p.aim;                                              // walking straight away from your aim: keep it
+        m_mouse_world = p.pos + dir(m_pad_aim) * m_pad_reach;
+        m_mouse_screen = (m_mouse_world - origin) * 2.0f;
+        // The triggers: RT fires, LT aims (or sets the gun up).
+        bool const fire = pad::right_trigger() > 0.5f, aim = pad::left_trigger() > 0.5f;
+        if(fire && !m_pad_trigger_was) m_trigger_pressed = true;
+        m_trigger = fire;
+        if(aim && !m_pad_aim_was) start_aiming(p);
+        if(!aim && m_pad_aim_was) m_aiming = false;
+        m_pad_trigger_was = fire;
+        m_pad_aim_was = aim;
+        // Running: the left stick clicked in, until you stop.
+        if(length(stick_move) < 0.2f) m_pad_run = false;
+        m_sprint = m_pad_run;
+    }
+    else m_mouse_world = origin + m_mouse_screen * 0.5f;
 
     if(p.life == Life::DOWNED)
     {
         // You can still crawl, slowly, leaving a trail.
         sf::Vector2f in{(m_right ? 1.0f : 0.0f) - (m_left ? 1.0f : 0.0f), (m_down ? 1.0f : 0.0f) - (m_up ? 1.0f : 0.0f)};
+        if(use_pad) in = stick_move;
         if(length(in) > 0.0f && p.dragged_by < 0) p.vel = in / length(in) * 6.0f;
         else p.vel = {};
         return;
@@ -1127,6 +1271,7 @@ void Battle::player_input(float dt)
 
     // --- move -------------------------------------------------------------------
     sf::Vector2f in{(m_right ? 1.0f : 0.0f) - (m_left ? 1.0f : 0.0f), (m_down ? 1.0f : 0.0f) - (m_up ? 1.0f : 0.0f)};
+    if(use_pad) in = stick_move;
 
     // Shift gets you up and running, from wherever you were.
     bool const wants_run = m_sprint && length(in) > 0.0f && p.can_walk() && p.dragging < 0 && !p.deployed && p.deploying <= 0.0f;
@@ -1155,7 +1300,9 @@ void Battle::player_input(float dt)
     if(calling || p.cutting > 0.0f) speed = 0.0f;
     if(p.stance_change > 0.0f) speed *= 0.3f;
 
-    sf::Vector2f const want = length(in) > 0.0f ? in / length(in) * speed : sf::Vector2f{};
+    // A stick pushed only part way walks slower.
+    float const tilt = use_pad ? std::clamp(length(in) * 1.25f, 0.3f, 1.0f) : 1.0f;
+    sf::Vector2f const want = length(in) > 0.0f ? in / length(in) * speed * tilt : sf::Vector2f{};
     if(p.lunge <= 0.0f) p.vel += (want - p.vel) * std::min(1.0f, dt * 12.0f);
     if(length(want) > 0.0f && p.stance == Stance::PRONE)
     {
@@ -1206,20 +1353,30 @@ void Battle::update(sf::Time delta_time)
     if(!m_autoplay) player_input(dt);
     else m_mouse_world = player()->pos + dir(player()->aim) * 60.0f;
 
-    for(auto& s : m_soldiers)
-        if((!s.is_player || m_autoplay) && s.active && s.life == Life::OK) think(s, dt);
-    for(auto& s : m_soldiers)
-        if((!s.is_player || m_autoplay) && s.active && s.life == Life::OK) act(s, dt);
-    for(auto& s : m_soldiers) update_soldier_body(s, dt);
-    for(auto& s : m_soldiers) if(s.life == Life::OK) update_bayonet(s, dt);
-    for(auto& s : m_soldiers) if(s.life == Life::OK) fire(s, dt);
-    update_bullets(dt);
-    update_world(dt);
-    update_missions(dt);
-    update_mortars(dt);
-    update_effects(dt);
-    update_script(dt);
-    platoon_orders(dt);
+    Perf::get().step();
+    {
+        PerfScope const t(Perf::THINK);
+        for(auto& s : m_soldiers)
+            if((!s.is_player || m_autoplay) && s.active && s.life == Life::OK) think(s, dt);
+    }
+    {
+        PerfScope const t(Perf::ACT);
+        for(auto& s : m_soldiers)
+            if((!s.is_player || m_autoplay) && s.active && s.life == Life::OK) act(s, dt);
+    }
+    {
+        PerfScope const t(Perf::BODIES);
+        for(auto& s : m_soldiers) update_soldier_body(s, dt);
+        for(auto& s : m_soldiers) if(s.life == Life::OK) update_bayonet(s, dt);
+    }
+    {
+        PerfScope const t(Perf::FIRE);
+        for(auto& s : m_soldiers) if(s.life == Life::OK) fire(s, dt);
+    }
+    { PerfScope const t(Perf::BULLETS); update_bullets(dt); }
+    { PerfScope const t(Perf::WORLD); update_world(dt); update_missions(dt); update_mortars(dt); }
+    { PerfScope const t(Perf::EFFECTS); update_effects(dt); }
+    { PerfScope const t(Perf::SCRIPT); update_script(dt); platoon_orders(dt); }
 
     // Who's in your section, for the armbands.
     int const mine = player()->section;
@@ -1247,6 +1404,7 @@ void Battle::update_realtime(sf::Time delta_time)
 {
     float const dt = delta_time.asSeconds();
     m_real += dt;
+    pad_poll(dt);
     m_hurt  = std::max(0.0f, m_hurt - dt * 0.6f);
     m_flash = std::max(0.0f, m_flash - dt * 2.5f);
     m_takeover = std::max(0.0f, m_takeover - dt);
