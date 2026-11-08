@@ -17,6 +17,11 @@
  * Windows numbers them the same up to START, then LS 8, RS 9, with both
  * triggers on one axis. Those two are what's written here.
  *
+ * A pad that Linux reads as a plain HID gamepad instead, like an 8BitDo
+ * SN30 Pro over Bluetooth, has another layout again: buttons by the letter
+ * printed on them, right stick on Z and Rz, triggers as buttons. Pad.cpp
+ * tells the two apart by the axes the pad has.
+ *
  * The game also remembers which you touched last, keys and mouse or the
  * pad, so the hints on screen name the right buttons (see Text.hpp: with
  * the pad in use, a line "x" is shown as "x_pad" where the file has one).

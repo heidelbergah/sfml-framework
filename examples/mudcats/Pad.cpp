@@ -23,17 +23,49 @@ namespace
 {
     using Axis = sf::Joystick::Axis;
 
+    constexpr std::size_t N = static_cast<std::size_t>(Button::COUNT);
+
+    // How one kind of pad numbers its buttons and where it puts its right
+    // stick and triggers.
+    struct Layout
+    {
+        std::array<unsigned, N> number;             // A B X Y LB RB BACK START LS RS
+        enum class Triggers { SHARED, AXES, BUTTONS } triggers;
+        Axis right_x, right_y;
+        unsigned lt_button{}, rt_button{};          // Triggers::BUTTONS only
+    };
+
 #if defined(_WIN32)
-    // Windows: A B X Y LB RB BACK START, then the sticks' clicks. No guide button.
-    constexpr std::array<unsigned, static_cast<std::size_t>(Button::COUNT)> NUMBER{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    constexpr bool SHARED_TRIGGERS = true;          // one axis, Z: one trigger one way, the other the other
-    constexpr Axis RIGHT_X = Axis::U, RIGHT_Y = Axis::R;
+    // Windows: A B X Y LB RB BACK START, then the sticks' clicks. No guide
+    // button. Both triggers on one axis, Z: one trigger one way, the other the other.
+    constexpr Layout XBOX{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, Layout::Triggers::SHARED, Axis::U, Axis::R};
 #else
-    // Linux's joystick driver: the guide button sits between START and the sticks' clicks.
-    constexpr std::array<unsigned, static_cast<std::size_t>(Button::COUNT)> NUMBER{0, 1, 2, 3, 4, 5, 6, 7, 9, 10};
-    constexpr bool SHARED_TRIGGERS = false;         // LT is Z, RT is R, each from -100 (let go) to 100
-    constexpr Axis RIGHT_X = Axis::U, RIGHT_Y = Axis::V;
+    // Linux's joystick driver, for an Xbox pad (or an 8BitDo in X-input mode,
+    // usually over a cable): the guide button sits between START and the
+    // sticks' clicks. LT is Z, RT is R, each from -100 (let go) to 100.
+    constexpr Layout XBOX{{0, 1, 2, 3, 4, 5, 6, 7, 9, 10}, Layout::Triggers::AXES, Axis::U, Axis::V};
 #endif
+    // Linux, for a pad the kernel reads as a plain HID gamepad: an 8BitDo
+    // (SN30 Pro and others) over Bluetooth, for one. Its buttons come as
+    // BtnA BtnB BtnC BtnX BtnY BtnZ TL TR TL2 TR2 Select Start Mode ThumbL
+    // ThumbR, numbered 0 to 14 in that order, with C and Z never used. The
+    // right stick is Z and Rz; the triggers are buttons TL2 and TR2 (they're
+    // also axes, Gas and Brake, but those are axes SFML doesn't read).
+    // Buttons go by the letter printed on them, so A is A.
+    constexpr Layout HID{{0, 1, 3, 4, 6, 7, 10, 11, 13, 14}, Layout::Triggers::BUTTONS, Axis::Z, Axis::R, 8, 9};
+
+    // Which this pad is: one with no U axis (the Xbox right stick's X) but a
+    // Z and an R, and buttons enough, is the plain HID kind.
+    const Layout& layout(unsigned pad)
+    {
+#if !defined(_WIN32)
+        if(!sf::Joystick::hasAxis(pad, Axis::U) && sf::Joystick::hasAxis(pad, Axis::Z)
+           && sf::Joystick::hasAxis(pad, Axis::R) && sf::Joystick::getButtonCount(pad) >= 15)
+            return HID;
+#endif
+        (void)pad;
+        return XBOX;
+    }
 
     constexpr float DEAD = 0.22f;                   // how much of a stick's middle does nothing
 
@@ -60,10 +92,11 @@ namespace
     sf::Vector2f dead_zone(sf::Vector2f v);
     bool made_up = false;           // the next key press is one key_event made, for a pad button
 
-    sf::Vector2f stick(Axis ax, Axis ay)
+    sf::Vector2f stick(bool right)
     {
         auto const i = id();
         if(!i) return {};
+        Axis const ax = right ? layout(*i).right_x : Axis::X, ay = right ? layout(*i).right_y : Axis::Y;
         return dead_zone({sf::Joystick::getAxisPosition(*i, ax) / 100.0f, sf::Joystick::getAxisPosition(*i, ay) / 100.0f});
     }
 
@@ -80,7 +113,10 @@ namespace
     {
         auto const i = id();
         if(!i) return 0.0f;
-        if(SHARED_TRIGGERS)
+        const Layout& l = layout(*i);
+        if(l.triggers == Layout::Triggers::BUTTONS)
+            return sf::Joystick::isButtonPressed(*i, right ? l.rt_button : l.lt_button) ? 1.0f : 0.0f;
+        if(l.triggers == Layout::Triggers::SHARED)
         {
             float const z = sf::Joystick::getAxisPosition(*i, Axis::Z) / 100.0f;
             return std::clamp(right ? -z : z, 0.0f, 1.0f);
@@ -96,8 +132,9 @@ namespace
     std::optional<Button> button_from(unsigned joystick, unsigned number)
     {
         if(auto const i = id(); !i || *i != joystick) return std::nullopt;
-        for(std::size_t b = 0; b < NUMBER.size(); ++b)
-            if(NUMBER[b] == number) return static_cast<Button>(b);
+        const auto& numbers = layout(joystick).number;
+        for(std::size_t b = 0; b < numbers.size(); ++b)
+            if(numbers[b] == number) return static_cast<Button>(b);
         return std::nullopt;
     }
 
@@ -148,11 +185,11 @@ bool held(Button b)
 {
     if(fake().on) return fake().buttons[static_cast<std::size_t>(b)];
     auto const i = id();
-    return i && sf::Joystick::isButtonPressed(*i, NUMBER[static_cast<std::size_t>(b)]);
+    return i && sf::Joystick::isButtonPressed(*i, layout(*i).number[static_cast<std::size_t>(b)]);
 }
 
-sf::Vector2f left_stick() { return fake().on ? dead_zone({fake().lx, fake().ly}) : stick(Axis::X, Axis::Y); }
-sf::Vector2f right_stick() { return fake().on ? dead_zone({fake().rx, fake().ry}) : stick(RIGHT_X, RIGHT_Y); }
+sf::Vector2f left_stick() { return fake().on ? dead_zone({fake().lx, fake().ly}) : stick(false); }
+sf::Vector2f right_stick() { return fake().on ? dead_zone({fake().rx, fake().ry}) : stick(true); }
 float left_trigger() { return fake().on ? fake().lt : trigger(false); }
 float right_trigger() { return fake().on ? fake().rt : trigger(true); }
 
@@ -184,7 +221,7 @@ void notice(const sf::Event& e)
     if(e.is<sf::Event::KeyPressed>() || e.is<sf::Event::MouseButtonPressed>()) using_pad = false;
     else if(e.is<sf::Event::JoystickButtonPressed>()) using_pad = true;
     else if(const auto* m = e.getIf<sf::Event::JoystickMoved>(); m && std::abs(m->position) > 60.0f
-            && m->axis != Axis::Z && m->axis != Axis::R) using_pad = true;
+            && (m->axis == Axis::X || m->axis == Axis::Y || m->axis == Axis::U || m->axis == Axis::V)) using_pad = true;
     // On a console there's nothing else to use; nor with the made-up pad.
     if(required() || fake().on) using_pad = true;
     if(was != using_pad || required()) set_pad_text(using_pad);
