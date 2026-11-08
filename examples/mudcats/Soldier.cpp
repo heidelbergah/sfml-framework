@@ -189,6 +189,21 @@ void draw_soldier(sf::VertexArray& va, const Soldier& s, float time)
             draw::rect(va, std::floor(at.x), std::floor(at.y) - 1, 1, 3, tone(RCH_RED));
             draw::rect(va, std::floor(at.x) - 1, std::floor(at.y), 3, 1, tone(RCH_RED));
         }
+        else if(mon)
+        {
+            // The Adrian: a round crown on a brim that juts out in front and
+            // behind, and a crest running front to back along the top.
+            sf::Color const shell = storm ? tone(lerp(helmet, INK, 0.25f)) : helmet;
+            sf::Color const rim = tone(lerp(shell, INK, 0.55f));
+            draw::disc(va, at.x, at.y, 2.7f, rim);
+            draw::rotated_rect(va, at + u * 0.5f, 7.4f, 2.6f, a, rim);
+            draw::disc(va, at.x, at.y, 2.0f, shell);
+            draw::rotated_rect(va, at + u * 0.2f, 4.2f, 1.0f, a, tone(lerp(shell, MON_WHITE, 0.4f)));
+            if(!storm) draw::rotated_rect(va, at - u * 3.0f, 1.0f, 3.0f, a, tone(MON_CLOTH));   // the white scarf at the back of his neck
+            if(sniper)
+                for(int k = 0; k < 3; ++k)          // a scrim of grass and rag
+                    draw::rect(va, std::floor(at.x + std::cos(static_cast<float>(k) * 2.1f) * 2.2f), std::floor(at.y + std::sin(static_cast<float>(k) * 2.1f) * 2.2f), 1, 1, tone(GRASS_DEAD));
+        }
         else if(storm)
         {
             // A deep steel helmet with a flared skirt: wider than anyone else's.
@@ -198,12 +213,11 @@ void draw_soldier(sf::VertexArray& va, const Soldier& s, float time)
         else
         {
             draw::disc(va, at.x, at.y, 2.4f, helmet);
-            if(mon) draw::rotated_rect(va, at - u * 2.6f, 1.0f, 3.0f, a, tone(MON_CLOTH));   // the white scarf at the back of his neck
             if(sniper)
                 for(int k = 0; k < 3; ++k)          // a scrim of grass and rag
                     draw::rect(va, std::floor(at.x + std::cos(static_cast<float>(k) * 2.1f) * 2.2f), std::floor(at.y + std::sin(static_cast<float>(k) * 2.1f) * 2.2f), 1, 1, tone(GRASS_DEAD));
             else
-                draw::rect(va, std::floor(at.x - u.y), std::floor(at.y) - 1, 1, 1, tone(mon ? MON_CLOTH : lerp(helmet, MON_WHITE, 0.4f)));
+                draw::rect(va, std::floor(at.x - u.y), std::floor(at.y) - 1, 1, 1, tone(lerp(helmet, MON_WHITE, 0.4f)));
         }
     };
 

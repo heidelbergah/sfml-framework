@@ -255,8 +255,8 @@ Everything takes `EXAMPLE=<folder>` to pick what to build. Binaries go in
 | macOS | `brew install sfml`. Apple Silicon and Intel Homebrew are both found automatically. |
 | Windows | MSYS2/MinGW with `mingw32-make SFML_ROOT=C:/SFML-3.0.0`. Add `WINDOWED=1` to a release build to drop the console window. |
 
-There's also a `CMakeLists.txt`, for Visual Studio, Xcode, or making a zip
-of the Mud Cats demo to hand to someone. It downloads and builds SFML 3
+There's also a `CMakeLists.txt`, for Visual Studio, Xcode, or making the downloads
+of the Mud Cats demo for Windows, macOS and Linux. It downloads and builds SFML 3
 itself and links it statically; see
 [the demo's README](examples/mudcats/README.md#building-it-for-linux-macos-and-windows).
 

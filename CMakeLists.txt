@@ -9,13 +9,21 @@
 #   cmake --build build-cmake --config Release
 #
 # The game lands in build-cmake/mudcats/ with its assets and shaders next
-# to it: MudCats.exe on Windows, Mud Cats.app on macOS, MudCats on Linux. To make a zip to hand to someone:
+# to it: MudCats.exe on Windows, Mud Cats.app on macOS, MudCats on Linux.
+# To make something to hand to someone (a zip on Windows and Linux, a disk
+# image on macOS):
 #
 #   cmake --build build-cmake --config Release --target package
 #
+# For a Mac build that runs on both Apple Silicon and Intel, add
+# -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" to the first line. The Linux
+# AppImage is made from the package by tools/package/appimage.sh. The
+# GitHub workflow in .github/workflows/build.yml does all of it, on all
+# three systems.
+#
 # Linux needs the usual development packages for SFML first (on Debian or
 # Ubuntu: libx11-dev libxrandr-dev libxcursor-dev libxi-dev libudev-dev
-# libgl1-mesa-dev libfreetype-dev). To build against an SFML 3 that's
+# libgl1-mesa-dev). To build against an SFML 3 that's
 # already installed instead, add -DMUDCATS_SYSTEM_SFML=ON.
 
 cmake_minimum_required(VERSION 3.24)
@@ -36,8 +44,20 @@ if(MUDCATS_SYSTEM_SFML)
     find_package(SFML 3 REQUIRED COMPONENTS Graphics Audio Window System)
 else()
     include(FetchContent)
+    if(MSVC)
+        # The C++ runtime linked in, everywhere, so Windows needs no
+        # redistributable installed (SFML's and ours have to match).
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(SFML_BUILD_NETWORK OFF CACHE BOOL "" FORCE)
+    # SFML builds freetype, Vorbis and FLAC itself and links them in, instead
+    # of using the system's: those differ between Linux distributions, and
+    # the game has to run on ones it wasn't built on.
+    set(SFML_USE_SYSTEM_DEPS OFF CACHE BOOL "" FORCE)
+    if(MSVC)
+        set(SFML_USE_STATIC_STD_LIBS ON CACHE BOOL "" FORCE)
+    endif()
     FetchContent_Declare(SFML
         GIT_REPOSITORY https://github.com/SFML/SFML.git
         GIT_TAG 3.0.2
@@ -74,6 +94,11 @@ add_executable(mudcats WIN32 MACOSX_BUNDLE ${MUDCATS_SOURCES})
 target_link_libraries(mudcats PRIVATE sfml_framework)
 if(WIN32)
     target_link_libraries(mudcats PRIVATE SFML::Main)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # The C++ runtime in the program, so it doesn't depend on the version
+    # the player's distribution happens to have.
+    target_link_options(mudcats PRIVATE -static-libstdc++ -static-libgcc)
 endif()
 if(APPLE)
     set(MUDCATS_NAME "Mud Cats")
@@ -115,32 +140,45 @@ if(APPLE AND EXISTS "${CMAKE_SOURCE_DIR}/assets/mudcats/mudcats.icns")
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/assets/mudcats/mudcats.icns" "${MUDCATS_DATA_DEST}/mudcats.icns")
 endif()
 
-# ---------------------------------------------------------------- the zip
+# ---------------------------------------------------------------- the package
 
 if(APPLE)
+    # The bundle already holds everything it needs, in Resources.
     install(TARGETS mudcats BUNDLE DESTINATION . COMPONENT game)
-    set(MUDCATS_INSTALL_DATA "Mud Cats.app/Contents/Resources")
-    install(FILES assets/mudcats/mudcats.icns DESTINATION "${MUDCATS_INSTALL_DATA}" COMPONENT game)
+    # Signed, so macOS will open it: "-" signs it ad hoc, as nobody in
+    # particular, which is enough for a Mac to run it once the player has
+    # allowed it. Give a Developer ID here to sign it properly.
+    set(MUDCATS_SIGN_IDENTITY "-" CACHE STRING "codesign identity for the app; - for ad hoc")
+    install(CODE "execute_process(COMMAND codesign --force --deep --sign \"${MUDCATS_SIGN_IDENTITY}\" \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/Mud Cats.app\" COMMAND_ERROR_IS_FATAL ANY)"
+            COMPONENT game)
 else()
     install(TARGETS mudcats RUNTIME DESTINATION . COMPONENT game)
-    set(MUDCATS_INSTALL_DATA ".")
+    foreach(dir ${MUDCATS_DATA_DIRS})
+        get_filename_component(parent "${dir}" DIRECTORY)
+        install(DIRECTORY "${dir}" DESTINATION "./${parent}" COMPONENT game)
+    endforeach()
+    foreach(file ${MUDCATS_DATA_FILES})
+        get_filename_component(file_dir "${file}" DIRECTORY)
+        install(FILES "${file}" DESTINATION "./${file_dir}" COMPONENT game)
+    endforeach()
 endif()
-foreach(dir ${MUDCATS_DATA_DIRS})
-    get_filename_component(parent "${dir}" DIRECTORY)
-    install(DIRECTORY "${dir}" DESTINATION "${MUDCATS_INSTALL_DATA}/${parent}" COMPONENT game)
-endforeach()
-foreach(file ${MUDCATS_DATA_FILES})
-    get_filename_component(file_dir "${file}" DIRECTORY)
-    install(FILES "${file}" DESTINATION "${MUDCATS_INSTALL_DATA}/${file_dir}" COMPONENT game)
-endforeach()
 install(FILES examples/mudcats/README.md LICENSE DESTINATION . COMPONENT game)
 # nlohmann/json is compiled in, so its licence goes with it.
 install(FILES third_party/nlohmann/LICENSE.MIT DESTINATION . RENAME LICENSE-nlohmann-json.txt COMPONENT game)
 
 # Only the game: SFML's own install rules (its headers and libraries) stay out of it.
 set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${PROJECT_NAME};game;/")
-set(CPACK_GENERATOR ZIP)
 set(CPACK_PACKAGE_NAME "MudCats")
-set(CPACK_PACKAGE_FILE_NAME "MudCats-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}")
-set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY ON)
+set(CPACK_PACKAGE_VENDOR "James Bouchat")
+if(APPLE)
+    # A disk image: the app, with a link to Applications to drag it onto.
+    set(CPACK_GENERATOR DragNDrop)
+    set(CPACK_DMG_VOLUME_NAME "Mud Cats")
+    set(MUDCATS_SYSTEM_LABEL macOS)
+else()
+    set(CPACK_GENERATOR ZIP)
+    set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY ON)
+    set(MUDCATS_SYSTEM_LABEL "${CMAKE_SYSTEM_NAME}")
+endif()
+set(CPACK_PACKAGE_FILE_NAME "MudCats-${PROJECT_VERSION}-${MUDCATS_SYSTEM_LABEL}")
 include(CPack)

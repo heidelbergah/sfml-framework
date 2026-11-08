@@ -120,12 +120,12 @@
 
     "credits": {
         "title": "MUD CATS",
-        "subtitle": "an infantry demo",
+        "subtitle": "(demo)",
         "_about": "Each entry is [what, who]. An entry with an empty second half is a line on its own.",
         "lines": [
             ["made by", "James Bouchat"],
             ["sound and music", "James Bouchat"],
-            ["built on", "sfml-framework, and SFML 3"],
+            ["built on", "Mortar, SFML 3"],
             ["type", "Pixel Operator, Jayvee Enaguas (CC0)"],
             ["text files", "nlohmann/json (MIT)"],
             ["", ""],

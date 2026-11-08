@@ -239,12 +239,36 @@ crashing, and `python3 tools/text/check_text.py` lists every key the code
 asks for that the file doesn't have. Running the game with
 `MUDCATS_TEXT_CHECK=1` reports each missing key once as it comes up.
 
+## Getting it
+
+Each release on GitHub has three downloads. None of them needs anything
+installed first.
+
+- **Windows**: `MudCats-<version>-Windows.zip`. Unzip it anywhere and run
+  `MudCats.exe`. Windows SmartScreen will say it doesn't know the publisher
+  the first time: **More info**, then **Run anyway**.
+- **macOS**: `MudCats-<version>-macOS.dmg`, for Apple Silicon and Intel Macs
+  on macOS 11 or later. Open it and drag Mud Cats onto Applications. The
+  first time, macOS won't open it because it can't check who made it:
+  click **Done**, then go to **System Settings**, **Privacy & Security**,
+  scroll down to the message about Mud Cats, and click **Open Anyway**.
+  After that it opens like anything else.
+- **Linux**: `MudCats-<version>-Linux-x86_64.AppImage`. One file: make it
+  executable (in a file manager's properties, or `chmod +x` on it) and run
+  it. It works on most distributions from the last few years, Arch
+  included. If it complains about FUSE, run it with
+  `--appimage-extract-and-run`.
+
+Those warnings are there because the game isn't signed with a paid
+certificate yet.
+
 ## Building it for Linux, macOS and Windows
 
 The Makefile is the quick way on Linux, and works on macOS (Homebrew SFML)
 and on Windows under MSYS2. To build something you can hand to someone
-else, use CMake: it downloads SFML 3 and links it in statically, so the
-result runs on a machine with nothing installed.
+else, use CMake: it downloads SFML 3, with the libraries it uses for fonts
+and sound, and links all of it in, so the result runs on a machine with
+nothing installed.
 
 ```
 cmake -B build-cmake -DCMAKE_BUILD_TYPE=Release
@@ -252,16 +276,22 @@ cmake --build build-cmake --config Release
 cmake --build build-cmake --config Release --target package
 ```
 
-The last line makes `MudCats-0.14.0-<system>.zip`: the game with its
-assets, shaders, this README and the licence. On Windows that's
-`MudCats.exe` with its icon and no console window; on macOS, `Mud Cats.app`;
-on Linux, `MudCats`. The game finds its assets next to itself, so it can be
-started from anywhere. On Linux, CMake needs SFML's usual development
-packages first; on Debian or Ubuntu that's `libx11-dev libxrandr-dev
-libxcursor-dev libxi-dev libudev-dev libgl1-mesa-dev libfreetype-dev`.
+The last line makes the download for the system you're on: a zip with
+`MudCats.exe` on Windows (with its icon, no console window, and no Visual
+C++ redistributable needed), a disk image with `Mud Cats.app` on macOS, and
+a zip on Linux, which `tools/package/appimage.sh build-cmake` then turns
+into the AppImage. For a Mac build that runs on both kinds of Mac, add
+`-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"` to the first line. The game
+finds its files next to itself, so it can be started from anywhere. On
+Linux, CMake needs SFML's usual development packages first; on Debian or
+Ubuntu that's `libx11-dev libxrandr-dev libxcursor-dev libxi-dev
+libudev-dev libgl1-mesa-dev`.
 
-macOS will warn about an app from an unidentified developer, since it
-isn't signed: right click, Open, the first time.
+You don't need a Mac or a Windows machine for any of it, though:
+`.github/workflows/build.yml` builds all three on GitHub every time you
+push, and keeps the downloads on the run's page under Artifacts. Pushing a
+tag that matches the version in `CMakeLists.txt`, like `v0.14.0`, also
+publishes them as a GitHub Release.
 
 ## Files
 
